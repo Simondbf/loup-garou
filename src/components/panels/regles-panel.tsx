@@ -21,15 +21,16 @@ export const SECTIONS = [
     titre: "🌙 La nuit",
     contenu: [
       "« Le village s'endort, tout le monde ferme les yeux. »",
-      "Le Maître du Jeu appelle les rôles un par un, dans l'ordre indiqué sur son écran. La première nuit : le Voleur en tout premier, puis Cupidon, puis les Amoureux qui se reconnaissent une fois Cupidon rendormi.",
-      "Viennent ensuite les rôles de chaque nuit : Salvateur, Voyante, Loups-Garous, Sorcière, etc., et le Garde Champêtre en toute fin de nuit.",
-      "Chaque joueur appelé ouvre les yeux, agit en silence, puis les referme.",
+      "Le Maître du Jeu appelle les rôles un par un, dans l'ordre affiché sur son écran. Chaque joueur appelé ouvre les yeux, agit en silence, puis les referme.",
+      "Certains rôles n'interviennent que lors de la toute première nuit : ils sont signalés comme tels sur l'écran du Maître du Jeu.",
+      "Le Garde Champêtre est toujours le dernier appelé, juste avant le lever du jour.",
     ],
   },
   {
     titre: "☀️ Le jour",
     contenu: [
       "Le Maître du Jeu annonce les victimes de la nuit. Les morts révèlent leur carte et ne parlent plus.",
+      "Le premier jour commence par l'élection du Capitaine, avant le débat.",
       "Le village débat, s'accuse, se défend. Puis vient le vote : à main levée, le joueur qui réunit le plus de voix est exécuté.",
       "En cas d'égalité : nouveau vote entre les ex æquo, ou intervention du Capitaine / du Bouc Émissaire si ces rôles sont en jeu.",
     ],
@@ -37,18 +38,20 @@ export const SECTIONS = [
   {
     titre: "🎖️ Le Capitaine",
     contenu: [
-      "Avant la première nuit, le village élit un Capitaine. Son vote compte double et il tranche les égalités.",
+      "Le Capitaine est élu par le village au cours de la première journée, après la première nuit.",
+      "Son vote compte double et il tranche les égalités.",
       "Quand il meurt, il désigne immédiatement son successeur — c'est souvent le moment le plus stratégique de la partie.",
     ],
   },
   {
     titre: "🗝️ Le Voleur",
     contenu: [
-      "Le Voleur est le tout premier appelé, avant Cupidon. Deux cartes supplémentaires sont mises au centre : l'application les gère automatiquement dès que le Voleur est dans la composition.",
-      "Il voit ces deux cartes sur son écran et peut en prendre une : ce rôle devient définitivement le sien. S'il tombe sur deux Loups-Garous, il est obligé d'en prendre un.",
-      "Variante possible, choisie à la création de la partie : au lieu du centre, il échange définitivement sa carte avec celle d'un joueur ; les deux sont prévenus.",
+      "Deux variantes, choisies à la création de la partie.",
+      "Cartes au centre : deux cartes supplémentaires sont mises de côté. La première nuit, le Voleur en découvre une et la prend définitivement. Face à deux Loups-Garous, il est obligé d'en prendre un.",
+      "Échange : le Voleur est appelé chaque nuit et échange sa carte avec celle du joueur de son choix ; les deux découvrent leur nouveau rôle. Cette variante est déconseillée quand la table ne dispose que d'un seul téléphone, car tout le monde doit revérifier sa carte chaque matin.",
     ],
   },
+
   {
     titre: "❤️ Les Amoureux",
     contenu: [
