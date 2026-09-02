@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DistributionRouteImport } from './routes/distribution'
+import { Route as MaitreRouteImport } from './routes/maitre'
 import { Route as NouvellePartieRouteImport } from './routes/nouvelle-partie'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,11 @@ const DistributionRoute = DistributionRouteImport.update({
   path: '/distribution',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MaitreRoute = MaitreRouteImport.update({
+  id: '/maitre',
+  path: '/maitre',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NouvellePartieRoute = NouvellePartieRouteImport.update({
   id: '/nouvelle-partie',
   path: '/nouvelle-partie',
@@ -32,30 +38,34 @@ const NouvellePartieRoute = NouvellePartieRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/distribution': typeof DistributionRoute
+  '/maitre': typeof MaitreRoute
   '/nouvelle-partie': typeof NouvellePartieRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/distribution': typeof DistributionRoute
+  '/maitre': typeof MaitreRoute
   '/nouvelle-partie': typeof NouvellePartieRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/distribution': typeof DistributionRoute
+  '/maitre': typeof MaitreRoute
   '/nouvelle-partie': typeof NouvellePartieRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/distribution' | '/nouvelle-partie'
+  fullPaths: '/' | '/distribution' | '/maitre' | '/nouvelle-partie'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/distribution' | '/nouvelle-partie'
-  id: '__root__' | '/' | '/distribution' | '/nouvelle-partie'
+  to: '/' | '/distribution' | '/maitre' | '/nouvelle-partie'
+  id: '__root__' | '/' | '/distribution' | '/maitre' | '/nouvelle-partie'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DistributionRoute: typeof DistributionRoute
+  MaitreRoute: typeof MaitreRoute
   NouvellePartieRoute: typeof NouvellePartieRoute
 }
 
@@ -75,6 +85,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DistributionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/maitre': {
+      id: '/maitre'
+      path: '/maitre'
+      fullPath: '/maitre'
+      preLoaderRoute: typeof MaitreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/nouvelle-partie': {
       id: '/nouvelle-partie'
       path: '/nouvelle-partie'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DistributionRoute: DistributionRoute,
+  MaitreRoute: MaitreRoute,
   NouvellePartieRoute: NouvellePartieRoute,
 }
 export const routeTree = rootRouteImport
