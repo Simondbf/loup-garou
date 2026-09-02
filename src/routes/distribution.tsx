@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useGame } from "@/lib/game-store";
-import { Button, CampBadge, RoleSigil } from "@/components/ui-kit";
+import { Button, CampBadge, RoleArt } from "@/components/ui-kit";
 import { ROLES_BY_ID } from "@/data/roles";
 
 export const Route = createFileRoute("/distribution")({
