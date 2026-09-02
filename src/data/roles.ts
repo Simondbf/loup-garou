@@ -8,6 +8,8 @@ export interface Role {
   max: number;
   /** Ordre de réveil pendant la nuit (plus petit = plus tôt) */
   wakeOrder?: number;
+  /** Statut découlant d'un autre rôle (Amoureux, Capitaine) : ne se distribue pas. */
+  derived?: boolean;
   short: string;
   description: string;
   emoji: string;
