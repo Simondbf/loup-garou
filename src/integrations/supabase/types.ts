@@ -14,7 +14,148 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      games: {
+        Row: {
+          center_cards: Json
+          code: string
+          created_at: string
+          host_token: string
+          id: string
+          night: number
+          phase: string
+          player_count: number
+          selection: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          center_cards?: Json
+          code: string
+          created_at?: string
+          host_token: string
+          id?: string
+          night?: number
+          phase?: string
+          player_count?: number
+          selection?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          center_cards?: Json
+          code?: string
+          created_at?: string
+          host_token?: string
+          id?: string
+          night?: number
+          phase?: string
+          player_count?: number
+          selection?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reveals: {
+        Row: {
+          acknowledged: boolean
+          created_at: string
+          game_id: string
+          id: string
+          note: string | null
+          target_position: number
+          to_position: number
+        }
+        Insert: {
+          acknowledged?: boolean
+          created_at?: string
+          game_id: string
+          id?: string
+          note?: string | null
+          target_position: number
+          to_position: number
+        }
+        Update: {
+          acknowledged?: boolean
+          created_at?: string
+          game_id?: string
+          id?: string
+          note?: string | null
+          target_position?: number
+          to_position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reveals_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seats: {
+        Row: {
+          alive: boolean
+          created_at: string
+          death_cause: string | null
+          death_order: number | null
+          device_token: string | null
+          game_id: string
+          id: string
+          is_captain: boolean
+          lover_group: number | null
+          name: string
+          position: number
+          public_role: boolean
+          role_id: string | null
+          seen: boolean
+          statuses: string[]
+        }
+        Insert: {
+          alive?: boolean
+          created_at?: string
+          death_cause?: string | null
+          death_order?: number | null
+          device_token?: string | null
+          game_id: string
+          id?: string
+          is_captain?: boolean
+          lover_group?: number | null
+          name?: string
+          position: number
+          public_role?: boolean
+          role_id?: string | null
+          seen?: boolean
+          statuses?: string[]
+        }
+        Update: {
+          alive?: boolean
+          created_at?: string
+          death_cause?: string | null
+          death_order?: number | null
+          device_token?: string | null
+          game_id?: string
+          id?: string
+          is_captain?: boolean
+          lover_group?: number | null
+          name?: string
+          position?: number
+          public_role?: boolean
+          role_id?: string | null
+          seen?: boolean
+          statuses?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seats_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
