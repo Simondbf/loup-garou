@@ -195,8 +195,9 @@ export function RoleDetail({ role, onClose }: { role: Role; onClose?: () => void
   return (
     <div className="text-center">
       <div className="flex justify-center">
-        <RoleSigil role={role} size="lg" />
+        <RoleArt role={role} className="aspect-[3/4] max-w-[13rem]" />
       </div>
+
       <h2 className="mt-4 text-2xl font-bold">{role.name}</h2>
       <div className="mt-2 flex justify-center">
         <CampBadge camp={role.camp} />
