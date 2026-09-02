@@ -74,6 +74,8 @@ function NouvellePartie() {
   const [selection, setSelection] = useState<Record<string, number>>({});
   const [thiefVariant, setThiefVariant] = useState<"centre" | "echange">("centre");
   const [detail, setDetail] = useState<Role | null>(null);
+  const [aideAppareil, setAideAppareil] = useState(false);
+
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
