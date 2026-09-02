@@ -58,21 +58,29 @@ export function PageHeader({
   title,
   subtitle,
   back,
+  onBack,
+  backLabel = "Retour",
 }: {
   title: string;
   subtitle?: string;
   back?: string;
+  /** Retour « interne » (étape précédente) : prioritaire sur `back`. */
+  onBack?: () => void;
+  backLabel?: string;
 }) {
+  const classes =
+    "mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary";
   return (
     <header className="mb-6 animate-rise">
-      {back && (
-        <Link
-          to={back}
-          className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary"
-        >
-          ← Retour
+      {onBack ? (
+        <button onClick={onBack} className={classes}>
+          ← {backLabel}
+        </button>
+      ) : back ? (
+        <Link to={back} className={classes}>
+          ← {backLabel}
         </Link>
-      )}
+      ) : null}
       <h1 className="text-3xl leading-tight font-bold text-gradient-moon">{title}</h1>
       {subtitle && <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>}
     </header>
