@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DistributionRouteImport } from './routes/distribution'
 import { Route as NouvellePartieRouteImport } from './routes/nouvelle-partie'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DistributionRoute = DistributionRouteImport.update({
+  id: '/distribution',
+  path: '/distribution',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NouvellePartieRoute = NouvellePartieRouteImport.update({
@@ -25,27 +31,31 @@ const NouvellePartieRoute = NouvellePartieRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/distribution': typeof DistributionRoute
   '/nouvelle-partie': typeof NouvellePartieRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/distribution': typeof DistributionRoute
   '/nouvelle-partie': typeof NouvellePartieRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/distribution': typeof DistributionRoute
   '/nouvelle-partie': typeof NouvellePartieRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/nouvelle-partie'
+  fullPaths: '/' | '/distribution' | '/nouvelle-partie'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/nouvelle-partie'
-  id: '__root__' | '/' | '/nouvelle-partie'
+  to: '/' | '/distribution' | '/nouvelle-partie'
+  id: '__root__' | '/' | '/distribution' | '/nouvelle-partie'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DistributionRoute: typeof DistributionRoute
   NouvellePartieRoute: typeof NouvellePartieRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/distribution': {
+      id: '/distribution'
+      path: '/distribution'
+      fullPath: '/distribution'
+      preLoaderRoute: typeof DistributionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nouvelle-partie': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DistributionRoute: DistributionRoute,
   NouvellePartieRoute: NouvellePartieRoute,
 }
 export const routeTree = rootRouteImport
