@@ -301,7 +301,8 @@ function Maitre() {
                 </h2>
                 <ol className="mt-2 flex flex-col gap-2">
                   {ordreReveil.map((r, i) => {
-                    const premiereNuit = PREMIERE_NUIT_SEULEMENT.has(r.id);
+                    const echangeur = r.id === "voleur" && game.thiefVariant === "echange";
+                    const premiereNuit = PREMIERE_NUIT_SEULEMENT.has(r.id) && !echangeur;
                     return (
                       <li key={r.id} className="flex items-center gap-3">
                         <span className="w-5 text-xs text-muted-foreground">{i + 1}</span>
@@ -309,6 +310,11 @@ function Maitre() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-semibold">
                             {r.name}
+                            {echangeur && (
+                              <span className="ml-2 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
+                                chaque nuit
+                              </span>
+                            )}
                             {premiereNuit && (
                               <span className="ml-2 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
                                 1re nuit
