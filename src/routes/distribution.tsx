@@ -129,7 +129,7 @@ function Distribution() {
                   onClick={() => takeCenterCard(player.id, cid)}
                   className="rounded-xl border border-border bg-secondary p-3 text-center active:scale-[0.97]"
                 >
-                  <div className="text-3xl">{c.emoji}</div>
+                  <RoleArt role={c} className="mx-auto aspect-[3/4] w-16" />
                   <div className="mt-1 text-xs font-semibold">{c.name}</div>
                 </button>
               );
