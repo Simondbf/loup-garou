@@ -74,7 +74,13 @@ function Maitre() {
     return [...ids]
       .map((id) => ROLES_BY_ID[id]!)
       .filter((r) => r && r.wakeOrder !== undefined)
-      .filter((r) => game.night <= 1 || !PREMIERE_NUIT_SEULEMENT.has(r.id))
+      .filter(
+        (r) =>
+          game.night <= 1 ||
+          !PREMIERE_NUIT_SEULEMENT.has(r.id) ||
+          (r.id === "voleur" && game.thiefVariant === "echange"),
+      )
+
       .sort((a, b) => (a.wakeOrder ?? 0) - (b.wakeOrder ?? 0));
   }, [game]);
 
