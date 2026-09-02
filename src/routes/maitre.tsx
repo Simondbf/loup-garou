@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Button, CampBadge, PageHeader, RoleSigil } from "@/components/ui-kit";
+import { Button, PageHeader, RoleSigil } from "@/components/ui-kit";
 import { CAMP_LABEL, ROLES_BY_ID } from "@/data/roles";
 import { useGame } from "@/lib/game-store";
 import {
