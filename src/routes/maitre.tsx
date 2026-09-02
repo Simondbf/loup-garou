@@ -12,10 +12,12 @@ import {
   pushReveal,
   setCaptain,
   setDead,
+  setHostState,
   setLovers,
   setPhase,
   setPublicRole,
   setSeatName,
+  type HostState,
   type SeatDTO,
 } from "@/lib/party.functions";
 import { cn } from "@/lib/utils";
