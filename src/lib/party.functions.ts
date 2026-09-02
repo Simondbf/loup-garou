@@ -168,11 +168,13 @@ export const createGame = createServerFn({ method: "POST" })
       playerCount: number;
       selection: Record<string, number>;
       thiefVariant?: "centre" | "echange";
+      singleDevice?: boolean;
     }) => d,
   )
   .handler(async ({ data }) => {
     const db = await admin();
     const count = Math.max(7, Math.min(30, Math.floor(data.playerCount)));
+    const single = !!data.singleDevice;
 
     let code = makeCode();
     for (let attempt = 0; attempt < 8; attempt++) {
@@ -195,21 +197,46 @@ export const createGame = createServerFn({ method: "POST" })
         status: "lobby",
         phase: "lobby",
         thief_variant: data.thiefVariant ?? "centre",
+        single_device: single,
+        host_state: {
+          potionVie: true,
+          potionMort: true,
+          charmed: [],
+          lastUsed: {},
+        },
       })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
 
+    // Mode « un seul téléphone » : toutes les places sont portées par l'appareil du MJ.
     await db.from("seats").insert(
       Array.from({ length: count }, (_, i) => ({
         game_id: game["id"],
         position: i + 1,
         name: "",
+        ...(single ? { device_token: data.hostToken } : {}),
       })),
     );
 
     return { code: game["code"] as string };
   });
+
+/** Suivi privé du Maître du Jeu (potions, envoûtés, pouvoirs rechargeables). */
+export const setHostState = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string; patch: HostState }) => d)
+  .handler(async ({ data }) => {
+    const db = await admin();
+    const game = await requireHost(db, data.code, data.token);
+    const current = (game["host_state"] ?? {}) as HostState;
+    await db
+      .from("games")
+      .update({ host_state: { ...current, ...data.patch } })
+      .eq("id", game["id"]);
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
 
 export const fetchGame = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; token: string }) => d)
