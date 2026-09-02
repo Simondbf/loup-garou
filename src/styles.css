@@ -2,6 +2,16 @@
 @source "../src";
 @import "tw-animate-css";
 
+/*
+ * Polices servies par l'application elle-même, plus par Google Fonts.
+ * Deux raisons : chaque visiteur envoyait son adresse IP à Google (sujet
+ * RGPD tranché par plusieurs juridictions européennes), et l'application
+ * dépendait d'un tiers pour s'afficher correctement. Les fichiers viennent
+ * de npm et sont intégrés au build.
+ */
+@import "@fontsource-variable/cinzel";
+@import "@fontsource-variable/outfit";
+
 @custom-variant dark (&:is(.dark *));
 
 /*
@@ -74,8 +84,8 @@
   --wolf: oklch(0.62 0.2 25);
   --solo: oklch(0.7 0.15 300);
 
-  --font-display: "Cinzel", "Georgia", serif;
-  --font-body: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Cinzel Variable", "Cinzel", "Georgia", serif;
+  --font-body: "Outfit Variable", "Outfit", ui-sans-serif, system-ui, sans-serif;
 
   --gradient-night: radial-gradient(
       120% 90% at 50% -10%,

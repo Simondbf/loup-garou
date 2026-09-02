@@ -387,6 +387,8 @@ function Maitre() {
                 </div>
               )}
 
+              <MontreurOurs seats={game.seats} />
+
               <SuiviPouvoirs
                 seats={game.seats}
                 hostState={game.hostState}
@@ -455,7 +457,7 @@ function Maitre() {
               <div className="surface p-4">
                 <h2 className="font-display text-sm font-bold">Montrer une carte</h2>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  Pour la Voyante, le Renard, le Médium… choisissez d'abord qui reçoit
+                  Pour la Voyante, le Chaman, la Gitane… choisissez d'abord qui reçoit
                   l'information, puis la carte à révéler. Elle apparaît sur le téléphone du joueur —
                   s'il n'en a pas, montrez-lui simplement votre écran.
                 </p>
@@ -620,6 +622,58 @@ function Mini({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * Montreur d'Ours : rappel actif au lever du jour.
+ *
+ * L'ours grogne si au moins un des deux VOISINS DIRECTS VIVANTS du Montreur
+ * est un Loup-Garou. Les morts ne comptent pas : on saute jusqu'au prochain
+ * joueur vivant de chaque côté de la table.
+ */
+function MontreurOurs({ seats }: { seats: SeatDTO[] }) {
+  const montreur = seats.find((s) => s.roleId === "montreur-ours");
+  if (!montreur || !montreur.alive) return null;
+
+  const vivants = seats.filter((s) => s.alive);
+  const index = vivants.findIndex((s) => s.position === montreur.position);
+  if (index === -1 || vivants.length < 3) return null;
+
+  const gauche = vivants[(index - 1 + vivants.length) % vivants.length]!;
+  const droite = vivants[(index + 1) % vivants.length]!;
+
+  const estLoup = (s: SeatDTO) => {
+    const role = s.roleId ? ROLES_BY_ID[s.roleId] : undefined;
+    return role?.camp === "loups" || role?.id === "loup-garou-blanc";
+  };
+
+  const voisins = [gauche, droite];
+  const grogne = voisins.some(estLoup);
+  const nom = (s: SeatDTO) => s.name || `Place ${s.position}`;
+
+  return (
+    <div className={cn("surface border p-4", grogne ? "border-destructive/60" : "border-border")}>
+      <h2 className="font-display text-sm font-bold">🐻 Montreur d'Ours — au lever du jour</h2>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        {nom(montreur)} · voisins vivants : {nom(gauche)} et {nom(droite)}
+      </p>
+      <p
+        className={cn(
+          "mt-3 rounded-xl border p-3 text-center font-display text-base font-black",
+          grogne
+            ? "border-destructive/60 bg-destructive/15 text-destructive"
+            : "border-border bg-secondary text-muted-foreground",
+        )}
+      >
+        {grogne ? "FAITES GROGNER L'OURS" : "L'ours reste silencieux"}
+      </p>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        Annoncez-le à voix haute, avant le débat, sans dire de quel côté vient le grognement.
+        Attention : un joueur infecté par l'Infect Père ou un Enfant Sauvage transformé compte comme
+        Loup-Garou, mais l'application ne les suit pas encore — à vous d'en tenir compte.
+      </p>
+    </div>
   );
 }
 

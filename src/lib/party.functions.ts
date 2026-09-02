@@ -53,17 +53,37 @@ export interface GameDTO {
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 
+/**
+ * Entier aléatoire dans [0, borne[, tiré du générateur cryptographique.
+ *
+ * Math.random() ne convenait ni pour les codes de partie (devinables) ni
+ * pour la distribution des cartes (état interne prévisible après quelques
+ * tirages). Le rejet des valeurs hautes évite le biais du modulo, qui
+ * favoriserait les premières lettres de l'alphabet et les premières cartes
+ * du paquet.
+ */
+function entierAleatoire(borne: number): number {
+  if (borne <= 0) return 0;
+  const max = Math.floor(0x100000000 / borne) * borne;
+  const tampon = new Uint32Array(1);
+  let valeur: number;
+  do {
+    crypto.getRandomValues(tampon);
+    valeur = tampon[0]!;
+  } while (valeur >= max);
+  return valeur % borne;
+}
+
 function makeCode() {
   let out = "";
-  for (let i = 0; i < 4; i++)
-    out += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+  for (let i = 0; i < 4; i++) out += CODE_ALPHABET[entierAleatoire(CODE_ALPHABET.length)];
   return out;
 }
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = entierAleatoire(i + 1);
     [a[i], a[j]] = [a[j]!, a[i]!];
   }
   return a;

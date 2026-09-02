@@ -373,6 +373,7 @@ export const ROLES: Role[] = [
     name: "Comédien",
     camp: "villageois",
     max: 1,
+    wakeOrder: 16,
     emoji: "🎭",
     short: "Emprunte un pouvoir chaque nuit.",
     description:
@@ -383,6 +384,7 @@ export const ROLES: Role[] = [
     name: "La Gitane",
     camp: "villageois",
     max: 1,
+    wakeOrder: 58,
     emoji: "🃏",
     short: "Ouvre le Spiritisme avec les morts.",
     description:

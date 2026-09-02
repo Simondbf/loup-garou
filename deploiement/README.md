@@ -15,29 +15,52 @@ qu'au compte de service.
 
 ## Première installation, étape par étape
 
-Tout se fait en SSH sur le VPS Hetzner. Les blocs se copient tels quels.
+Tout se fait en SSH sur le VPS. **Fais les étapes une par une** : chacune se
+vérifie avant de passer à la suivante. Lancer tout le bloc d'un coup masque
+l'endroit où ça casse.
 
-### 1. Vérifier que le port 3010 est libre
+### 1. Choisir un port libre
 
 ```bash
-ss -ltnp | grep :3010
+for p in 3010 3011 3012 3013 3014; do ss -ltn | grep -q ":$p " || { echo "PORT LIBRE : $p"; break; }; done
 ```
 
-Si la commande ne renvoie **rien**, le port est libre : continue.
-Si elle renvoie une ligne, choisis un autre port (3011, 3012…) et remplace
-`3010` partout aux étapes 5 et 7.
+Note le port affiché. Le dépôt est réglé sur **3010** ; si la commande en
+propose un autre, remplace `3010` par celui-là dans deux fichiers après
+l'étape 2 : la ligne `ports:` de `docker-compose.yml`, et les `proxy_pass`
+des fichiers de `deploiement/`.
 
 ### 2. Récupérer le projet
 
+Le dépôt est privé : le clonage en HTTPS échoue avec « Write access to
+repository not granted ». Il faut passer par SSH.
+
 ```bash
-cd /srv
-git clone https://github.com/Simondbf/loup-garou.git lg
-cd lg
+ls ~/.ssh/id_*.pub          # une clé existe-t-elle ?
+ssh -T git@github.com       # doit répondre « Hi Simondbf! »
 ```
 
-### 3. Créer le fichier de secrets
+Si `ssh -T` échoue, crée une clé et ajoute-la sur GitHub
+(Settings → SSH and GPG keys) :
 
-Génère un mot de passe :
+```bash
+ssh-keygen -t ed25519 -C "vps-hetzner"
+cat ~/.ssh/id_ed25519.pub
+```
+
+Puis :
+
+```bash
+cd /srv
+git clone git@github.com:Simondbf/loup-garou.git lg
+cd lg
+pwd                          # doit afficher /srv/lg
+```
+
+**Ne continue pas tant que `pwd` n'affiche pas `/srv/lg`.** Toutes les
+commandes suivantes supposent que tu es dans ce dossier.
+
+### 3. Créer le fichier de secrets
 
 ```bash
 openssl rand -base64 30
@@ -51,26 +74,20 @@ nano .env
 ```
 
 Colle le mot de passe après `POCKETBASE_ADMIN_PASSWORD=`, sans guillemets ni
-espace. `Ctrl+O`, `Entrée`, `Ctrl+X` pour enregistrer et sortir.
+espace. `Ctrl+O`, `Entrée`, `Ctrl+X`.
 
-Ce fichier ne part jamais sur GitHub. Garde une copie du mot de passe dans ton
-gestionnaire : il sert à ouvrir le tableau de bord PocketBase si un jour tu en
-as besoin.
+Garde une copie du mot de passe dans ton gestionnaire : il sert à ouvrir le
+tableau de bord PocketBase si tu en as besoin un jour.
 
 ### 4. Démarrer les conteneurs
 
 ```bash
 docker compose up -d --build
-```
-
-La première construction prend deux à trois minutes. Ensuite :
-
-```bash
 docker compose ps
 ```
 
-Les deux lignes `lg-app` et `lg-pocketbase` doivent afficher `Up`
-(`healthy` pour PocketBase).
+La première construction prend deux à trois minutes. Les deux lignes
+`lg-app` et `lg-pocketbase` doivent afficher `Up`.
 
 ### 5. Vérifier que l'application répond
 
@@ -78,23 +95,60 @@ Les deux lignes `lg-app` et `lg-pocketbase` doivent afficher `Up`
 curl -I http://127.0.0.1:3010/
 ```
 
-Il faut lire `HTTP/1.1 200 OK`. Si ce n'est pas le cas, arrête-toi ici et
-regarde `docker compose logs app` — inutile de brancher nginx tant que cette
-étape échoue.
+Il faut lire `HTTP/1.1 200 OK` **et** `x-powered-by` absent d'un autre
+serveur. Si tu vois `server: uvicorn` ou tout autre serveur, c'est qu'un
+autre projet occupe ce port : reprends à l'étape 1.
 
-### 6. Obtenir le certificat
+Si ce n'est pas 200 : `docker compose logs app`. Inutile de toucher à nginx
+tant que cette étape échoue.
 
-Les zones DNS A et AAAA sont déjà en place chez Infomaniak, donc :
+### 6. Installer la configuration nginx temporaire
+
+Certbot ne sait pas valider un domaine que nginx ignore : il répond 404 au
+défi et la demande échoue. On installe donc d'abord une configuration sans
+TLS.
 
 ```bash
-sudo certbot certonly --nginx -d lg.soleiljaune.be
+sudo mkdir -p /var/www/certbot
+sudo cp deploiement/lg.soleiljaune.be.etape1-http.conf \
+        /etc/nginx/sites-available/lg.soleiljaune.be
+sudo ln -sf /etc/nginx/sites-available/lg.soleiljaune.be \
+            /etc/nginx/sites-enabled/lg.soleiljaune.be
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-### 7. Brancher nginx
+Vérifie depuis l'extérieur, en HTTP simple :
 
 ```bash
-sudo cp deploiement/lg.soleiljaune.be.conf /etc/nginx/sites-available/
-sudo ln -s /etc/nginx/sites-available/lg.soleiljaune.be /etc/nginx/sites-enabled/
+curl -I http://lg.soleiljaune.be/
+```
+
+Un `200` confirme que le DNS pointe bien ici et que nginx transmet à
+l'application. Si tu obtiens un 404 ou une autre page, le certificat
+échouera aussi : règle-le maintenant.
+
+### 7. Obtenir le certificat
+
+```bash
+sudo certbot certonly --webroot -w /var/www/certbot -d lg.soleiljaune.be
+```
+
+Le message attendu se termine par `Successfully received certificate`.
+
+Note : ton domaine a un enregistrement AAAA (IPv6). Let's Encrypt valide en
+priorité par IPv6 — c'est ce qui a échoué la première fois. Vérifie que les
+deux adresses répondent :
+
+```bash
+curl -4 -I http://lg.soleiljaune.be/
+curl -6 -I http://lg.soleiljaune.be/
+```
+
+### 8. Passer en HTTPS
+
+```bash
+sudo cp deploiement/lg.soleiljaune.be.etape2-https.conf \
+        /etc/nginx/sites-available/lg.soleiljaune.be
 sudo nginx -t
 ```
 
@@ -105,11 +159,10 @@ seulement :
 sudo systemctl reload nginx
 ```
 
-### 8. Vérifier depuis l'extérieur
+### 9. Vérifier depuis un navigateur
 
-Ouvre `https://lg.soleiljaune.be` dans un navigateur. Tu dois voir la lune et
-« Thiercelieux ». Crée une partie de test à 7 joueurs pour confirmer que la
-base répond.
+Ouvre `https://lg.soleiljaune.be`. Tu dois voir la lune et « Thiercelieux ».
+Crée une partie de test à 7 joueurs pour confirmer que la base répond.
 
 ## Mise à jour
 
