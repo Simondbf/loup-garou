@@ -197,6 +197,14 @@ function Maitre() {
             ))}
           </div>
 
+          {game.singleDevice && (
+            <LinkButton to="/distribution" variant="ghost" className="mb-4 w-full py-3 text-sm">
+              📱 Faire tourner le téléphone (prénoms + cartes)
+            </LinkButton>
+          )}
+
+
+
           {onglet === "village" && (
             <ul className="flex flex-col gap-2">
               {game.seats.map((s) => (
