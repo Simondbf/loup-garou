@@ -474,7 +474,7 @@ export const gagPlayer = createServerFn({ method: "POST" })
     const db = await admin();
     const game = await requireHost(db, data.code, data.token);
     const night = (game["night"] as number) ?? 1;
-    const history = ((game["gag_history"] ?? []) as { night: number; position: number }[]) ?? [];
+    const history = (game["gag_history"] ?? []) as { night: number; position: number }[];
 
     if (history.some((h) => h.position === data.position && night - h.night < 3)) {
       throw new Error("Ce joueur a déjà été bâillonné il y a moins de trois nuits");
