@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Button, LinkButton, PageHeader, RoleSigil } from "@/components/ui-kit";
 import { ChampPrenom } from "@/components/champ-prenom";
+import { ConduiteNuit } from "@/components/conduite-nuit";
 import { CAMP_LABEL, PREMIERE_NUIT_SEULEMENT, ROLES_BY_ID } from "@/data/roles";
 import { useGame } from "@/lib/game-store";
 import {
@@ -10,16 +11,21 @@ import {
   endGame,
   gagPlayer,
   hostTakeSeat,
+  moveSeat,
   pushReveal,
   resetSeen,
+  resolveNight,
   setCaptain,
   setDead,
   setHostState,
   setLovers,
   setPhase,
   setPublicRole,
+  setNightAction,
   setSeatName,
+  thiefSwap,
   type HostState,
+  type NuitEnCours,
   type SeatDTO,
 } from "@/lib/party.functions";
 import { cn } from "@/lib/utils";
@@ -54,6 +60,12 @@ function Maitre() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [lovers, setLoversSel] = useState<number[]>([]);
   const [revealFrom, setRevealFrom] = useState<number | null>(null);
+  const [bilan, setBilan] = useState<{
+    morts: { position: number; cause: string }[];
+    sauves: { position: number; raison: string }[];
+    infecte: number | null;
+    enfantTransforme: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (hydrated && !session?.host) void navigate({ to: "/" });
@@ -155,6 +167,36 @@ function Maitre() {
                   className="min-w-0 flex-1"
                 />
                 {!game.singleDevice && (
+                  <div className="flex shrink-0 flex-col">
+                    <button
+                      aria-label="Monter d'une place"
+                      onClick={() =>
+                        void run(
+                          moveSeat({
+                            data: { code: game.code, token, position: s.position, vers: "haut" },
+                          }),
+                        )
+                      }
+                      className="rounded-t-lg border border-border px-2 text-[11px] leading-4 text-muted-foreground"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      aria-label="Descendre d'une place"
+                      onClick={() =>
+                        void run(
+                          moveSeat({
+                            data: { code: game.code, token, position: s.position, vers: "bas" },
+                          }),
+                        )
+                      }
+                      className="rounded-b-lg border border-t-0 border-border px-2 text-[11px] leading-4 text-muted-foreground"
+                    >
+                      ↓
+                    </button>
+                  </div>
+                )}
+                {!game.singleDevice && (
                   <button
                     onClick={() =>
                       void run(
@@ -176,6 +218,14 @@ function Maitre() {
               </li>
             ))}
           </ul>
+
+          {!game.singleDevice && (
+            <p className="rounded-xl border border-border bg-secondary p-3 text-[11px] text-muted-foreground">
+              Les flèches ↑ ↓ rangent la liste dans l'ordre réel autour de la table. C'est
+              indispensable au Renard et au Montreur d'Ours, dont les pouvoirs portent sur les
+              voisins. En mode un seul téléphone, l'ordre est déjà le bon.
+            </p>
+          )}
 
           <Button
             className="w-full py-4"
@@ -288,33 +338,73 @@ function Maitre() {
                   Nuit {game.night} — {game.phase}
                 </span>
                 <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    onClick={() =>
-                      void run(setPhase({ data: { code: game.code, token, phase: "jour" } }))
-                    }
-                  >
-                    ☀️ Jour
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      void run(
-                        setPhase({
-                          data: { code: game.code, token, phase: "nuit", night: game.night + 1 },
-                        }),
-                      )
-                    }
-                  >
-                    🌙 Nuit +1
-                  </Button>
+                  {game.phase === "nuit" ? (
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        void run(setPhase({ data: { code: game.code, token, phase: "jour" } }))
+                      }
+                    >
+                      ☀️ Jour
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => {
+                        setBilan(null);
+                        void run(
+                          setPhase({
+                            data: { code: game.code, token, phase: "nuit", night: game.night + 1 },
+                          }),
+                        );
+                      }}
+                    >
+                      🌙 Nuit suivante
+                    </Button>
+                  )}
                 </div>
               </div>
 
-              <div className="surface p-4">
-                <h2 className="font-display text-sm font-bold">
-                  Ordre d'appel — nuit {game.night}
-                </h2>
-                <ol className="mt-2 flex flex-col gap-2">
+              {bilan && (
+                <BilanNuit bilan={bilan} seats={game.seats} onFermer={() => setBilan(null)} />
+              )}
+
+              {game.phase === "nuit" && (
+                <ConduiteNuit
+                  game={game}
+                  onAction={(patch: NuitEnCours) =>
+                    void run(setNightAction({ data: { code: game.code, token, patch } }))
+                  }
+                  onResoudre={async () => {
+                    try {
+                      const dto = await resolveNight({ data: { code: game.code, token } });
+                      apply(dto);
+                      setBilan(dto.bilan);
+                      setErreur(null);
+                    } catch (e) {
+                      setErreur(e instanceof Error ? e.message : "Résolution impossible");
+                    }
+                  }}
+                  onVol={(position, avec) =>
+                    void run(thiefSwap({ data: { code: game.code, token, position, avec } }))
+                  }
+                  onBaillon={(position) =>
+                    void run(gagPlayer({ data: { code: game.code, token, position } }))
+                  }
+                  onRevelation={(de, vers) =>
+                    void run(
+                      pushReveal({
+                        data: { code: game.code, token, toPosition: de, targetPosition: vers },
+                      }),
+                    )
+                  }
+                />
+              )}
+
+              <details className="surface p-4">
+                <summary className="cursor-pointer font-display text-sm font-bold">
+                  Vue d'ensemble de l'ordre d'appel
+                </summary>
+                <ol className="mt-3 flex flex-col gap-2">
                   {ordreReveil.map((r, i) => {
                     const echangeur = r.id === "voleur" && game.thiefVariant === "echange";
                     const premiereNuit = PREMIERE_NUIT_SEULEMENT.has(r.id) && !echangeur;
@@ -349,12 +439,7 @@ function Maitre() {
                     );
                   })}
                 </ol>
-                <p className="mt-3 text-[11px] text-muted-foreground">
-                  Les rôles marqués « 1re nuit » ne sont plus appelés les nuits suivantes. Le Garde
-                  Champêtre intervient toujours en dernier, juste avant le lever du jour. Le
-                  Capitaine, lui, est élu pendant la première journée.
-                </p>
-              </div>
+              </details>
 
               {sansAppel.length > 0 && (
                 <div className="surface border border-destructive/40 p-4">
@@ -622,6 +707,107 @@ function Mini({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * Bilan du lever du jour.
+ *
+ * C'est le seul écran qui dit au Maître du Jeu ce qu'il doit annoncer au
+ * village, et ce qu'il doit surtout garder pour lui : une victime sauvée
+ * par la Sorcière ou le Salvateur ne s'annonce jamais, sinon le village
+ * apprend gratuitement qui détient ces cartes.
+ */
+function BilanNuit({
+  bilan,
+  seats,
+  onFermer,
+}: {
+  bilan: {
+    morts: { position: number; cause: string }[];
+    sauves: { position: number; raison: string }[];
+    infecte: number | null;
+    enfantTransforme: boolean;
+  };
+  seats: SeatDTO[];
+  onFermer: () => void;
+}) {
+  const nom = (p: number) => seats.find((s) => s.position === p)?.name || `Place ${p}`;
+  const CAUSES: Record<string, string> = {
+    loups: "dévoré par les Loups-Garous",
+    poison: "empoisonné",
+    chagrin: "mort de chagrin",
+    "loup blanc": "égorgé par le Loup-Garou Blanc",
+  };
+
+  return (
+    <div className="surface border border-primary/40 p-5">
+      <h2 className="font-display text-base font-black">☀️ Lever du jour</h2>
+
+      <p className="mt-3 text-[11px] tracking-widest text-muted-foreground uppercase">
+        À annoncer au village
+      </p>
+      {bilan.morts.length === 0 ? (
+        <p className="mt-1 rounded-xl border border-primary/30 bg-primary/10 p-3 text-sm font-semibold text-primary">
+          « Cette nuit, personne n'est mort. »
+        </p>
+      ) : (
+        <ul className="mt-1 flex flex-col gap-2">
+          {bilan.morts.map((m) => (
+            <li
+              key={m.position}
+              className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-sm font-semibold text-primary"
+            >
+              « {nom(m.position)} est mort cette nuit. » —{" "}
+              <span className="font-normal">{CAUSES[m.cause] ?? m.cause}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        N'annoncez jamais la cause : le village doit la deviner. Les morts retournent leur carte et
+        ne parlent plus.
+      </p>
+
+      {(bilan.sauves.length > 0 || bilan.infecte !== null || bilan.enfantTransforme) && (
+        <>
+          <p className="mt-5 text-[11px] tracking-widest text-destructive uppercase">
+            Pour vous seul — ne dites rien
+          </p>
+          <ul className="mt-1 flex flex-col gap-1 text-xs text-muted-foreground">
+            {bilan.sauves.map((s) => (
+              <li key={s.position}>
+                • {nom(s.position)} a survécu : {s.raison}.
+              </li>
+            ))}
+            {bilan.infecte !== null && (
+              <li>
+                • Prévenez discrètement {nom(bilan.infecte)} qu'il rejoint les Loups-Garous, en
+                gardant son pouvoir.
+              </li>
+            )}
+            {bilan.enfantTransforme && (
+              <li>
+                • Le modèle de l'Enfant Sauvage est mort : prévenez-le qu'il devient Loup-Garou.
+              </li>
+            )}
+          </ul>
+        </>
+      )}
+
+      {bilan.morts.some(
+        (m) => seats.find((s) => s.position === m.position)?.roleId === "chasseur",
+      ) && (
+        <p className="mt-4 rounded-xl border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
+          🎯 Le Chasseur est mort : il tire immédiatement sur un joueur de son choix. Marquez cette
+          mort depuis l'onglet Village.
+        </p>
+      )}
+
+      <Button variant="ghost" className="mt-4 w-full" onClick={onFermer}>
+        J'ai fait les annonces
+      </Button>
+    </div>
   );
 }
 

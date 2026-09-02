@@ -53,6 +53,7 @@ migrate(
         { type: "json", name: "center_cards", maxSize: 100000 },
         { type: "json", name: "gag_history", maxSize: 100000 },
         { type: "json", name: "host_state", maxSize: 100000 },
+        { type: "json", name: "nuit", maxSize: 100000 },
         { type: "autodate", name: "created", onCreate: true, onUpdate: false },
         { type: "autodate", name: "updated", onCreate: true, onUpdate: true },
       ],

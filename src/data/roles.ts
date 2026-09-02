@@ -100,7 +100,7 @@ export const ROLES: Role[] = [
     name: "Cupidon",
     camp: "villageois",
     max: 1,
-    wakeOrder: 10,
+    wakeOrder: 2,
     emoji: "💘",
     short: "Désigne deux amoureux la première nuit.",
     description:
@@ -517,7 +517,7 @@ export const ROLES: Role[] = [
     name: "Amoureux",
     camp: "special",
     max: 2,
-    wakeOrder: 11,
+    wakeOrder: 3,
     derived: true,
     emoji: "❤️",
     short: "Lié à un autre joueur pour la vie et la mort.",

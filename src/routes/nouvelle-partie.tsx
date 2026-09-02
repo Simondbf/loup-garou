@@ -72,7 +72,7 @@ function NouvellePartie() {
   const [saisie, setSaisie] = useState("8");
   const [singleDevice, setSingleDevice] = useState(false);
   const [selection, setSelection] = useState<Record<string, number>>({});
-  const [thiefVariant, setThiefVariant] = useState<"centre" | "echange">("centre");
+  const [thiefVariant, setThiefVariant] = useState<"centre" | "echange">("echange");
   const [detail, setDetail] = useState<Role | null>(null);
   const [aideAppareil, setAideAppareil] = useState(false);
 
@@ -87,7 +87,10 @@ function NouvellePartie() {
     setSelection(propositions[0] ? { ...propositions[0].roles } : compositionAuto(count));
   }, [step, count, propositions]);
 
-  const extraCards = selection["voleur"] && thiefVariant === "centre" ? 2 : 0;
+  // La variante « vol de rôle » oblige chaque joueur à revérifier sa carte le
+  // matin : impossible quand tout le monde partage un seul téléphone.
+  const varianteVoleur: "centre" | "echange" = singleDevice ? "centre" : thiefVariant;
+  const extraCards = selection["voleur"] && varianteVoleur === "centre" ? 2 : 0;
   const total = Object.values(selection).reduce((a, b) => a + b, 0);
   const cible = count + extraCards;
 
@@ -118,7 +121,13 @@ function NouvellePartie() {
     setErreur(null);
     try {
       const { code } = await createGame({
-        data: { hostToken: token, playerCount: count, selection, thiefVariant, singleDevice },
+        data: {
+          hostToken: token,
+          playerCount: count,
+          selection,
+          thiefVariant: varianteVoleur,
+          singleDevice,
+        },
       });
       saveSession({ code, host: true });
       await navigate({ to: "/maitre" });
@@ -323,27 +332,38 @@ function NouvellePartie() {
                     </div>
 
                     {role.id === "voleur" && selection["voleur"] ? (
-                      <div className="mt-2 flex gap-1 rounded-xl bg-secondary p-1">
-                        {(
-                          [
-                            ["centre", "2 cartes au centre"],
-                            ["echange", "Échange chaque nuit"],
-                          ] as const
-                        ).map(([v, label]) => (
-                          <button
-                            key={v}
-                            onClick={() => setThiefVariant(v)}
-                            className={cn(
-                              "flex-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold transition",
-                              thiefVariant === v
-                                ? "bg-card text-primary shadow-sm"
-                                : "text-muted-foreground",
-                            )}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
+                      <>
+                        <div className="mt-2 flex gap-1 rounded-xl bg-secondary p-1">
+                          {(
+                            [
+                              ["echange", "Vol de rôle"],
+                              ["centre", "2 cartes au centre"],
+                            ] as const
+                          ).map(([v, label]) => (
+                            <button
+                              key={v}
+                              disabled={singleDevice && v === "echange"}
+                              onClick={() => setThiefVariant(v)}
+                              className={cn(
+                                "flex-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold transition",
+                                varianteVoleur === v
+                                  ? "bg-card text-primary shadow-sm"
+                                  : "text-muted-foreground",
+                                singleDevice && v === "echange" && "opacity-40",
+                              )}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                          {singleDevice
+                            ? "Le vol de rôle demande à chacun de revérifier sa carte le matin : indisponible quand la table n'a qu'un seul téléphone."
+                            : varianteVoleur === "echange"
+                              ? "Chaque nuit, le Voleur échange sa carte avec celle d'un joueur. Les deux devront revoir leur carte au lever du jour."
+                              : "Deux cartes de plus sont mises au centre. La première nuit, le Voleur en prend une définitivement."}
+                        </p>
+                      </>
                     ) : null}
                   </li>
                 ))}

@@ -96,6 +96,11 @@ function EcranJoueur() {
                 placeholder="Prénom"
                 className="mt-2 w-full"
               />
+              {game.status !== "lobby" && !s.seen && s.name && (
+                <p className="mt-3 text-center text-[11px] text-primary">
+                  Votre carte a peut-être changé : ouvrez-la de nouveau.
+                </p>
+              )}
               {game.status !== "lobby" &&
                 (s.seen ? (
                   <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-center text-xs text-muted-foreground">
@@ -142,7 +147,6 @@ function EcranJoueur() {
           code={game.code}
           token={token}
           centerCards={game.centerCards}
-          seats={game.seats}
           onApply={apply}
           onClose={() => {
             setActive(null);
@@ -175,7 +179,6 @@ function CarteRevelee({
   code,
   token,
   centerCards,
-  seats,
   onApply,
   onClose,
 }: {
@@ -183,14 +186,14 @@ function CarteRevelee({
   code: string;
   token: string;
   centerCards: string[];
-  seats: SeatDTO[];
   onApply: (dto: Awaited<ReturnType<typeof thiefChoose>>) => void;
   onClose: () => void;
 }) {
   const role = ROLES_BY_ID[seat.roleId!];
   if (!role) return null;
+  // Variante « cartes au centre » seulement : le vol de rôle est piloté par
+  // le Maître du Jeu depuis son écran, comme toutes les actions de la nuit.
   const voleurCentre = role.id === "voleur" && centerCards.length > 0;
-  const voleurEchange = role.id === "voleur" && centerCards.length === 0;
 
   return (
     <div className="animate-flip-in flex flex-col gap-4">
@@ -239,29 +242,6 @@ function CarteRevelee({
                 </button>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {voleurEchange && (
-        <div className="surface p-4">
-          <p className="font-display text-sm font-bold">Voler la carte d'un joueur</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {seats
-              .filter((s) => s.position !== seat.position)
-              .map((s) => (
-                <button
-                  key={s.position}
-                  onClick={() =>
-                    void thiefChoose({
-                      data: { code, token, position: seat.position, swapWith: s.position },
-                    }).then(onApply)
-                  }
-                  className="rounded-xl border border-border bg-secondary px-3 py-2 text-xs"
-                >
-                  {s.name || `Place ${s.position}`}
-                </button>
-              ))}
           </div>
         </div>
       )}

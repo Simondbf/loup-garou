@@ -31,6 +31,43 @@ export interface HostState {
   charmed?: number[];
   /** Pouvoirs à rechargement : roleId -> dernière nuit d'utilisation */
   lastUsed?: Record<string, number>;
+  /** Salvateur : cible de la nuit précédente, interdite cette nuit */
+  protectionPrecedente?: number;
+  /** Ancien : a-t-il déjà encaissé sa première attaque de Loups ? */
+  ancienDejaAttaque?: boolean;
+  /** Infect Père des Loups : son infection unique a-t-elle été jouée ? */
+  infectionUtilisee?: boolean;
+  /** Enfant Sauvage : position de son modèle */
+  modele?: number;
+  /** Positions passées côté Loups en cours de partie (infection, transformation) */
+  devenusLoups?: number[];
+}
+
+/**
+ * Actions enregistrées pendant la nuit en cours.
+ *
+ * Rien n'est appliqué au fil de l'eau : une victime des Loups peut encore
+ * être sauvée par le Salvateur ou la Sorcière. Tout se résout d'un coup au
+ * lever du jour, dans `resolveNight`.
+ */
+export interface NuitEnCours {
+  /** Index de l'étape atteinte dans l'ordre d'appel */
+  etape?: number;
+  /** Salvateur */
+  protection?: number;
+  /** Victime désignée par la meute */
+  victimeLoups?: number;
+  /** Grand Méchant Loup */
+  secondeVictime?: number;
+  /** Loup-Garou Blanc */
+  loupBlanc?: number;
+  /** Infect Père : la victime des Loups est infectée au lieu d'être dévorée */
+  infection?: boolean;
+  /** Sorcière */
+  soin?: number;
+  poison?: number;
+  /** Morts ajoutées à la main (Assassin, Pyromane, variantes maison) */
+  autres?: { position: number; cause: string }[];
 }
 
 export interface GameDTO {
@@ -45,6 +82,8 @@ export interface GameDTO {
   centerCards: string[];
   gagHistory: { night: number; position: number }[];
   hostState: HostState;
+  /** Actions de la nuit en cours — visible du seul Maître du Jeu */
+  nuit: NuitEnCours;
   seats: SeatDTO[];
   isHost: boolean;
   mySeats: number[];
@@ -155,6 +194,7 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
         : [],
     gagHistory: (game["gag_history"] ?? []) as { night: number; position: number }[],
     hostState: isHost ? ((game["host_state"] ?? {}) as HostState) : {},
+    nuit: isHost ? ((game["nuit"] ?? {}) as NuitEnCours) : {},
     isHost,
     mySeats,
     reveals: revealRows
@@ -233,7 +273,9 @@ export const createGame = createServerFn({ method: "POST" })
         potionMort: true,
         charmed: [],
         lastUsed: {},
+        devenusLoups: [],
       },
+      nuit: {},
     });
 
     // Mode « un seul téléphone » : toutes les places sont portées par l'appareil du MJ.
@@ -317,6 +359,59 @@ export const setSeatName = createServerFn({ method: "POST" })
     return buildDTO(db, game, data.token);
   });
 
+/**
+ * Le MJ déplace un joueur d'un cran dans l'ordre des places.
+ *
+ * Les places sont numérotées dans l'ordre où les téléphones les réclament,
+ * ce qui n'a aucune raison de correspondre à l'ordre réel autour de la
+ * table. Or le Renard et le Montreur d'Ours raisonnent sur les voisins :
+ * sans cet ordre, leurs pouvoirs sont faux. Le MJ range donc la liste pour
+ * qu'elle suive la table.
+ *
+ * On échange le contenu des deux places (le joueur et sa carte), pas leurs
+ * numéros : les positions restent 1..N, sans trou.
+ */
+export const moveSeat = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string; position: number; vers: "haut" | "bas" }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    const seats = await seatsDe(db, game["id"]);
+    const total = seats.length;
+    const depart = seats.find((s) => s["position"] === data.position);
+    if (!depart || total < 2) return buildDTO(db, game, data.token);
+
+    // La table est un cercle : le premier remonte à la dernière place.
+    const cible =
+      data.vers === "haut"
+        ? ((data.position - 2 + total) % total) + 1
+        : (data.position % total) + 1;
+    const arrivee = seats.find((s) => s["position"] === cible);
+    if (!arrivee) return buildDTO(db, game, data.token);
+
+    const CHAMPS = [
+      "name",
+      "role_id",
+      "alive",
+      "death_cause",
+      "death_order",
+      "is_captain",
+      "lover_group",
+      "statuses",
+      "public_role",
+      "device_token",
+      "seen",
+    ];
+    const contenu = (s: AnyRow) => Object.fromEntries(CHAMPS.map((c) => [c, s[c]]));
+    const aDepart = contenu(depart);
+    const aArrivee = contenu(arrivee);
+    await db.pb.modifier("seats", depart["id"], aArrivee);
+    await db.pb.modifier("seats", arrivee["id"], aDepart);
+
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
 /** Le MJ récupère une place non réclamée sur son propre téléphone. */
 export const hostTakeSeat = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; token: string; position: number; take: boolean }) => d)
@@ -397,6 +492,30 @@ export const resetSeen = createServerFn({ method: "POST" })
     const cible = seats.find((s) => s["position"] === data.position);
     if (cible) await db.pb.modifier("seats", cible["id"], { seen: false });
     return buildDTO(db, game, data.token);
+  });
+
+/**
+ * Voleur, variante « vol de rôle » : le MJ échange la carte du Voleur avec
+ * celle d'un autre joueur. Les deux verront une carte différente au réveil,
+ * d'où la remise à zéro de `seen` : l'application leur redemandera de la
+ * consulter.
+ */
+export const thiefSwap = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string; position: number; avec: number }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    const seats = await seatsDe(db, game["id"]);
+    const voleur = seats.find((s) => s["position"] === data.position);
+    const cible = seats.find((s) => s["position"] === data.avec);
+    if (!voleur || !cible) throw new Error("Joueur introuvable");
+    if (voleur["id"] === cible["id"]) throw new Error("Le Voleur ne peut pas se voler lui-même");
+
+    await db.pb.modifier("seats", voleur["id"], { role_id: cible["role_id"], seen: false });
+    await db.pb.modifier("seats", cible["id"], { role_id: voleur["role_id"], seen: false });
+
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
   });
 
 /** Voleur : prend une des deux cartes du centre (variante « centre »)
@@ -592,6 +711,167 @@ export const setPhase = createServerFn({ method: "POST" })
     await db.pb.modifier("games", game["id"], patch);
     const fresh = await loadGame(db, data.code);
     return buildDTO(db, fresh, data.token);
+  });
+
+/** Le MJ enregistre une action de la nuit en cours (cible des Loups, potion, protection…). */
+export const setNightAction = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string; patch: NuitEnCours }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    const courante = (game["nuit"] ?? {}) as NuitEnCours;
+    const fusion: NuitEnCours = { ...courante, ...data.patch };
+    // Une valeur nulle efface la cible (le MJ revient sur son choix).
+    for (const [cle, valeur] of Object.entries(data.patch)) {
+      if (valeur === null) delete (fusion as Record<string, unknown>)[cle];
+    }
+    await db.pb.modifier("games", game["id"], { nuit: fusion });
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
+/**
+ * Lever du jour : applique d'un coup tout ce qui a été enregistré pendant la nuit.
+ *
+ * L'ordre compte. Une victime des Loups peut être protégée par le Salvateur,
+ * soignée par la Sorcière, infectée par l'Infect Père, ou survivre parce
+ * qu'elle est l'Ancien. Le poison, lui, ignore la protection. Les Amoureux
+ * suivent en dernier, une fois les morts établies.
+ */
+export const resolveNight = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    const seats = await seatsDe(db, game["id"]);
+    const nuit = (game["nuit"] ?? {}) as NuitEnCours;
+    const etat = (game["host_state"] ?? {}) as HostState;
+
+    const parPosition = (p?: number) =>
+      p === undefined ? undefined : seats.find((s) => s["position"] === p);
+
+    const morts: { position: number; cause: string }[] = [];
+    const sauves: { position: number; raison: string }[] = [];
+    const patchEtat: HostState = {};
+    let infecte: number | undefined;
+
+    /** Une attaque de Loups, avec toutes ses parades. */
+    function attaqueLoups(cible: number | undefined, peutEtreInfecte: boolean) {
+      if (cible === undefined) return;
+      const siege = parPosition(cible);
+      if (!siege || !siege["alive"]) return;
+
+      if (nuit.protection === cible) {
+        sauves.push({ position: cible, raison: "protégé par le Salvateur" });
+        return;
+      }
+      if (nuit.soin === cible) {
+        sauves.push({ position: cible, raison: "soigné par la Sorcière" });
+        return;
+      }
+      if (peutEtreInfecte && nuit.infection && !etat.infectionUtilisee) {
+        infecte = cible;
+        patchEtat.infectionUtilisee = true;
+        sauves.push({ position: cible, raison: "infecté : il rejoint les Loups-Garous" });
+        return;
+      }
+      if (siege["role_id"] === "ancien" && !etat.ancienDejaAttaque) {
+        patchEtat.ancienDejaAttaque = true;
+        sauves.push({ position: cible, raison: "l'Ancien encaisse sa première attaque" });
+        return;
+      }
+      morts.push({ position: cible, cause: "loups" });
+    }
+
+    attaqueLoups(nuit.victimeLoups, true);
+    attaqueLoups(nuit.secondeVictime, false);
+
+    // Le Loup-Garou Blanc frappe un Loup : ni protection ni potion ne jouent ici.
+    if (nuit.loupBlanc !== undefined) {
+      const siege = parPosition(nuit.loupBlanc);
+      if (siege && siege["alive"]) morts.push({ position: nuit.loupBlanc, cause: "loup blanc" });
+    }
+
+    // Le poison ignore la protection du Salvateur.
+    if (nuit.poison !== undefined) {
+      const siege = parPosition(nuit.poison);
+      if (siege && siege["alive"]) morts.push({ position: nuit.poison, cause: "poison" });
+    }
+
+    for (const autre of nuit.autres ?? []) {
+      const siege = parPosition(autre.position);
+      if (siege && siege["alive"]) morts.push(autre);
+    }
+
+    // Application : d'abord les morts directes, puis la cascade des Amoureux.
+    let ordre = Math.max(0, ...seats.map((s) => (s["death_order"] as number) ?? 0));
+    const dejaMort = new Set<number>();
+
+    async function tuer(position: number, cause: string) {
+      if (dejaMort.has(position)) return;
+      const siege = parPosition(position);
+      if (!siege || !siege["alive"]) return;
+      dejaMort.add(position);
+      ordre += 1;
+      await db.pb.modifier("seats", siege["id"], {
+        alive: false,
+        death_cause: cause,
+        death_order: ordre,
+      });
+      siege["alive"] = false;
+    }
+
+    for (const m of morts) await tuer(m.position, m.cause);
+
+    // Cascade des Amoureux : un Amoureux mort entraîne l'autre.
+    for (const m of [...morts]) {
+      const siege = parPosition(m.position);
+      const groupe = siege?.["lover_group"];
+      if (!groupe) continue;
+      for (const autre of seats) {
+        if (autre["lover_group"] === groupe && autre["position"] !== m.position) {
+          await tuer(autre["position"] as number, "chagrin");
+          morts.push({ position: autre["position"] as number, cause: "chagrin" });
+        }
+      }
+    }
+
+    // Enfant Sauvage : si son modèle est mort cette nuit, il devient Loup-Garou.
+    let enfantTransforme = false;
+    if (etat.modele !== undefined && dejaMort.has(etat.modele)) {
+      const enfant = seats.find((s) => s["role_id"] === "enfant-sauvage" && s["alive"]);
+      if (enfant) {
+        enfantTransforme = true;
+        patchEtat.devenusLoups = [...(etat.devenusLoups ?? []), enfant["position"] as number];
+      }
+    }
+
+    if (infecte !== undefined) {
+      patchEtat.devenusLoups = [...(patchEtat.devenusLoups ?? etat.devenusLoups ?? []), infecte];
+    }
+
+    // Le Salvateur ne pourra pas reprendre la même cible la nuit prochaine.
+    patchEtat.protectionPrecedente = nuit.protection ?? 0;
+    if (nuit.soin !== undefined) patchEtat.potionVie = false;
+    if (nuit.poison !== undefined) patchEtat.potionMort = false;
+
+    await db.pb.modifier("games", game["id"], {
+      host_state: { ...etat, ...patchEtat },
+      nuit: {},
+      phase: "jour",
+    });
+
+    const fresh = await loadGame(db, data.code);
+    const dto = await buildDTO(db, fresh, data.token);
+    return {
+      ...dto,
+      bilan: {
+        morts: morts.filter((m, i, t) => t.findIndex((x) => x.position === m.position) === i),
+        sauves,
+        infecte: infecte ?? null,
+        enfantTransforme,
+      },
+    };
   });
 
 /** Révélation privée : le MJ envoie le rôle d'un joueur à un autre joueur (Voyante, Renard…). */
