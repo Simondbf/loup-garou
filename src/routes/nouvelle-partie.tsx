@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, CampBadge, Modal, PageHeader, RoleDetail, RoleSigil } from "@/components/ui-kit";
 import { CAMP_LABEL, ROLES, ROLES_BY_ID, type Camp, type Role } from "@/data/roles";
-import { COMPOSITIONS, type Composition } from "@/data/compositions";
+import { COMPOSITIONS } from "@/data/compositions";
 import { createGame } from "@/lib/party.functions";
 import { useGame } from "@/lib/game-store";
 import { cn } from "@/lib/utils";
@@ -14,12 +14,12 @@ export const Route = createFileRoute("/nouvelle-partie")({
       {
         name: "description",
         content:
-          "Choisissez le nombre de joueurs, une composition conseillée, puis partagez le code de partie avec le village.",
+          "Choisissez le nombre de joueurs, ajustez la composition conseillée, puis partagez le code de partie avec le village.",
       },
       { property: "og:title", content: "Créer une partie de Loup-Garou" },
       {
         property: "og:description",
-        content: "Compositions équilibrées de 7 à 24 joueurs et code de partie à partager.",
+        content: "Compositions équilibrées de 7 à 30 joueurs et code de partie à partager.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -29,32 +29,48 @@ export const Route = createFileRoute("/nouvelle-partie")({
 });
 
 const MIN = 7;
-const MAX = 24;
+const MAX = 30;
+
+/** Rôles réellement distribuables : Amoureux et Capitaine découlent du jeu, pas de la pioche. */
+const ROLES_DISTRIBUABLES = ROLES.filter((r) => !r.derived);
+
+/** Composition de secours quand aucun préréglage n'existe pour ce nombre de joueurs. */
+function compositionAuto(count: number): Record<string, number> {
+  const loups = Math.max(2, Math.round(count / 4));
+  const base: Record<string, number> = { "loup-garou": loups, voyante: 1, sorciere: 1 };
+  let reste = count - loups - 2;
+  for (const id of ["chasseur", "cupidon", "salvateur", "petite-fille", "ancien"]) {
+    if (reste <= 1) break;
+    base[id] = 1;
+    reste -= 1;
+  }
+  if (reste > 0) base["simple-villageois"] = reste;
+  return base;
+}
 
 function NouvellePartie() {
   const navigate = useNavigate();
   const { token, saveSession } = useGame();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2>(1);
   const [count, setCount] = useState(8);
+  const [singleDevice, setSingleDevice] = useState(false);
   const [selection, setSelection] = useState<Record<string, number>>({});
   const [thiefVariant, setThiefVariant] = useState<"centre" | "echange">("centre");
   const [detail, setDetail] = useState<Role | null>(null);
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
+  const propositions = useMemo(() => COMPOSITIONS.filter((c) => c.players === count), [count]);
+
+  // La composition conseillée est pré-remplie dès l'arrivée sur l'étape 2.
+  useEffect(() => {
+    if (step !== 2) return;
+    setSelection(propositions[0] ? { ...propositions[0].roles } : compositionAuto(count));
+  }, [step, count, propositions]);
+
   const extraCards = selection["voleur"] && thiefVariant === "centre" ? 2 : 0;
   const total = Object.values(selection).reduce((a, b) => a + b, 0);
   const cible = count + extraCards;
-
-  const propositions = useMemo(
-    () => COMPOSITIONS.filter((c) => c.players === count),
-    [count],
-  );
-
-  function appliquer(c: Composition) {
-    setSelection({ ...c.roles });
-    setStep(3);
-  }
 
   function ajuster(roleId: string, delta: number) {
     setSelection((s) => {
@@ -69,12 +85,21 @@ function NouvellePartie() {
     });
   }
 
+  function completerVillageois() {
+    const manque = cible - total;
+    if (manque <= 0) return;
+    setSelection((s) => ({
+      ...s,
+      "simple-villageois": (s["simple-villageois"] ?? 0) + manque,
+    }));
+  }
+
   async function lancer() {
     setBusy(true);
     setErreur(null);
     try {
       const { code } = await createGame({
-        data: { hostToken: token, playerCount: count, selection, thiefVariant },
+        data: { hostToken: token, playerCount: count, selection, thiefVariant, singleDevice },
       });
       saveSession({ code, host: true });
       await navigate({ to: "/maitre" });
@@ -92,9 +117,7 @@ function NouvellePartie() {
         subtitle={
           step === 1
             ? "Combien de joueurs autour de la table ? (le Maître du Jeu n'en fait pas partie)"
-            : step === 2
-              ? "Choisissez une composition conseillée, ou partez d'une base à ajuster."
-              : "Ajustez les cartes puis générez le code de partie."
+            : "La composition conseillée est déjà prête : ajustez-la comme vous voulez."
         }
         back="/"
       />
@@ -122,57 +145,87 @@ function NouvellePartie() {
             </button>
           </div>
           <p className="mt-3 text-center text-xs text-muted-foreground">
-            Minimum {MIN} joueurs pour une partie intéressante.
+            De {MIN} à {MAX} joueurs.
           </p>
+
+          <button
+            onClick={() => setSingleDevice((v) => !v)}
+            className="surface mt-5 flex w-full items-center gap-3 p-4 text-left"
+          >
+            <span
+              className={cn(
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-xs",
+                singleDevice ? "border-primary bg-primary/20 text-primary" : "border-border",
+              )}
+            >
+              {singleDevice ? "✓" : ""}
+            </span>
+            <span className="min-w-0">
+              <span className="block font-display text-sm font-bold">
+                Un seul téléphone pour tout le monde
+              </span>
+              <span className="block text-[11px] text-muted-foreground">
+                {singleDevice
+                  ? "Pas de code : votre appareil porte toutes les places et tourne autour de la table."
+                  : "Chaque joueur (ou petit groupe) rejoint avec le code ; vous gardez votre téléphone."}
+              </span>
+            </span>
+          </button>
+
           <Button className="mt-6 w-full py-4" onClick={() => setStep(2)}>
-            Voir les compositions conseillées
+            Choisir la composition
           </Button>
         </section>
       )}
 
       {step === 2 && (
-        <section className="flex flex-col gap-3">
-          {propositions.length === 0 && (
-            <p className="surface p-4 text-sm text-muted-foreground">
-              Pas de préréglage pour {count} joueurs : composez librement à l'étape suivante.
-            </p>
-          )}
-          {propositions.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => appliquer(c)}
-              className="surface p-4 text-left active:scale-[0.98]"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-display font-bold">{c.name}</span>
-                <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
-                  {c.difficulty}
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">{c.description}</p>
-              <p className="mt-2 text-[11px] text-muted-foreground/80">
-                {Object.entries(c.roles)
-                  .map(([id, n]) => `${ROLES_BY_ID[id]?.name ?? id}${n > 1 ? ` ×${n}` : ""}`)
-                  .join(" · ")}
-              </p>
-            </button>
-          ))}
-          <Button variant="ghost" className="mt-2 w-full" onClick={() => setStep(3)}>
-            Composer moi-même
-          </Button>
-        </section>
-      )}
-
-      {step === 3 && (
         <section>
-          <div className="surface sticky top-2 z-10 mb-4 flex items-center justify-between p-3 text-sm">
+          <div className="surface sticky top-2 z-10 mb-4 flex items-center justify-between gap-2 p-3 text-sm">
             <span className={cn(total === cible ? "text-primary" : "text-muted-foreground")}>
               {total} / {cible} cartes
             </span>
-            <button className="text-xs text-muted-foreground underline" onClick={() => setStep(2)}>
-              Compositions
+            <div className="flex gap-2">
+              {total < cible && (
+                <button
+                  className="rounded-lg border border-border px-2 py-1 text-[11px]"
+                  onClick={completerVillageois}
+                >
+                  Compléter en Villageois
+                </button>
+              )}
+              <button
+                className="rounded-lg border border-border px-2 py-1 text-[11px]"
+                onClick={() => setStep(1)}
+              >
+                {count} joueurs
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+            {propositions.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setSelection({ ...c.roles })}
+                className="shrink-0 rounded-xl border border-border bg-secondary px-3 py-2 text-left text-[11px]"
+              >
+                <span className="block font-display font-bold">{c.name}</span>
+                <span className="block text-muted-foreground">{c.difficulty}</span>
+              </button>
+            ))}
+            <button
+              onClick={() => setSelection(compositionAuto(count))}
+              className="shrink-0 rounded-xl border border-border bg-secondary px-3 py-2 text-left text-[11px]"
+            >
+              <span className="block font-display font-bold">Automatique</span>
+              <span className="block text-muted-foreground">équilibrée</span>
             </button>
           </div>
+
+          <p className="mb-4 text-[11px] text-muted-foreground">
+            Le Capitaine (élu) et les Amoureux (Cupidon) s'ajoutent en cours de partie : ils ne
+            comptent pas dans les cartes distribuées.
+          </p>
 
           {selection["voleur"] ? (
             <div className="surface mb-4 p-4">
@@ -211,15 +264,12 @@ function NouvellePartie() {
                 {CAMP_LABEL[camp]}
               </h2>
               <ul className="flex flex-col gap-2">
-                {ROLES.filter((r) => r.camp === camp).map((role) => (
+                {ROLES_DISTRIBUABLES.filter((r) => r.camp === camp).map((role) => (
                   <li key={role.id} className="surface flex items-center gap-3 p-2.5">
                     <button onClick={() => setDetail(role)} aria-label={`Détails ${role.name}`}>
                       <RoleSigil role={role} size="sm" />
                     </button>
-                    <button
-                      className="min-w-0 flex-1 text-left"
-                      onClick={() => setDetail(role)}
-                    >
+                    <button className="min-w-0 flex-1 text-left" onClick={() => setDetail(role)}>
                       <div className="flex items-center gap-2">
                         <span className="truncate text-sm font-semibold">{role.name}</span>
                         <CampBadge camp={role.camp} />
@@ -261,8 +311,12 @@ function NouvellePartie() {
               {total === cible
                 ? busy
                   ? "Création…"
-                  : "Générer le code de partie"
-                : `Il manque ${cible - total} carte(s)`}
+                  : singleDevice
+                    ? "Créer la partie"
+                    : "Générer le code de partie"
+                : total < cible
+                  ? `Il manque ${cible - total} carte(s)`
+                  : `${total - cible} carte(s) en trop`}
             </Button>
           </div>
         </section>
