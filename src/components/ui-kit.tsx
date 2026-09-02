@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { CAMP_LABEL, type Camp, type Role } from "@/data/roles";
-import { roleImage } from "@/data/role-images";
+
 
 
 export function Button({
