@@ -1,0 +1,51 @@
+services:
+  # Base de données. Volontairement SANS ports publiés : PocketBase n'est
+  # joignable que depuis le réseau Docker interne, par le service « app ».
+  # C'est la différence avec Gringotts, où PocketBase est proxifié : ici
+  # c'est le serveur Node qui garde les rôles secrets, rien ne justifie
+  # d'ouvrir l'API ou le tableau de bord sur Internet.
+  pocketbase:
+    image: ghcr.io/muchobien/pocketbase:0.40.1
+    container_name: lg-pocketbase
+    restart: unless-stopped
+    environment:
+      # Lus par pb_migrations/1756944000_init_loup_garou.js au premier
+      # démarrage, pour créer le compte de service.
+      POCKETBASE_ADMIN_EMAIL: ${POCKETBASE_ADMIN_EMAIL:?definir POCKETBASE_ADMIN_EMAIL dans .env}
+      POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_ADMIN_PASSWORD:?definir POCKETBASE_ADMIN_PASSWORD dans .env}
+    volumes:
+      - ./pb_data:/pb_data
+      - ./pb_migrations:/pb_migrations:ro
+    networks:
+      - lg
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8090/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lg-app
+    restart: unless-stopped
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+    environment:
+      POCKETBASE_URL: http://pocketbase:8090
+      POCKETBASE_ADMIN_EMAIL: ${POCKETBASE_ADMIN_EMAIL}
+      POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_ADMIN_PASSWORD}
+      PORT: 3000
+    # Écoute uniquement sur la boucle locale du VPS : c'est le nginx de
+    # l'hôte qui termine le TLS et transmet les requêtes.
+    ports:
+      - "127.0.0.1:3005:3000"
+    networks:
+      - lg
+
+networks:
+  lg:
+    driver: bridge

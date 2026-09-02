@@ -30,3 +30,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets locaux
+.env
+.env.*
+!.env.example
+
+# Donnees PocketBase (volume Docker)
+pb_data/
