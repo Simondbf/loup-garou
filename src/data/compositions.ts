@@ -203,7 +203,6 @@ export const COMPOSITIONS: Composition[] = [
       renard: 1,
       "montreur-ours": 1,
       "petite-fille": 1,
-      corbeau: 1,
     },
   },
   {
@@ -227,7 +226,6 @@ export const COMPOSITIONS: Composition[] = [
       "servante-devouee": 1,
       "juge-begue": 1,
       corbeau: 1,
-      renard: 1,
       soeurs: 2,
     },
   },

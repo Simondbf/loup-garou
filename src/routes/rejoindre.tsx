@@ -71,10 +71,6 @@ function Rejoindre() {
         <p className="font-display text-sm font-bold">
           Combien de joueurs sur ce téléphone ?
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Tout le monde n'a pas forcément un smartphone : un appareil peut porter plusieurs
-          places, chacun regardera sa carte à son tour.
-        </p>
         <div className="mt-3 flex gap-2">
           {[1, 2, 3, 4, 5, 6].map((n) => (
             <button
