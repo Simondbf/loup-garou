@@ -299,6 +299,16 @@ function Maitre() {
                 </p>
               </div>
 
+              <SuiviPouvoirs
+                seats={game.seats}
+                hostState={game.hostState}
+                onPatch={(patch) =>
+                  void run(setHostState({ data: { code: game.code, token, patch } }))
+                }
+              />
+
+
+
               {game.seats.some((s) => s.roleId === "garde-champetre") && (
                 <div className="surface p-4">
                   <h2 className="font-display text-sm font-bold">Bâillon du Garde Champêtre</h2>
