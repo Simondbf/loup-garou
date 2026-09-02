@@ -383,6 +383,25 @@ function NouvellePartie() {
       <Modal open={!!detail} onClose={() => setDetail(null)}>
         {detail && <RoleDetail role={detail} onClose={() => setDetail(null)} />}
       </Modal>
+
+      <Modal open={aideAppareil} onClose={() => setAideAppareil(false)}>
+        <div className="p-1">
+          <h2 className="font-display text-lg font-bold">Un seul téléphone ?</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Cochez cette case si la table n'utilise qu'un appareil : le téléphone du Maître du Jeu
+            porte toutes les places et circule de joueur en joueur au moment de la distribution.
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Laissez-la décochée pour jouer avec plusieurs appareils : un code de partie est généré,
+            et chacun rejoint avec son téléphone — un appareil peut aussi porter deux ou trois
+            joueurs.
+          </p>
+          <Button className="mt-4 w-full" onClick={() => setAideAppareil(false)}>
+            J'ai compris
+          </Button>
+        </div>
+      </Modal>
     </main>
   );
+
 }
