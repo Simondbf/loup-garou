@@ -67,7 +67,7 @@ const SECTIONS = [
       "Deux cartes supplémentaires sont mises au centre. L'application les gère automatiquement dès que le Voleur est dans la composition.",
       "La première nuit, le Voleur voit ces deux cartes sur son écran et peut en prendre une : ce rôle devient définitivement le sien.",
       "S'il tombe sur deux Loups-Garous, il est obligé d'en prendre un.",
-      "Variante « Voleur d'Identité » (extension bonus) : il échange sa carte avec celle d'un joueur vivant.",
+      "Variante « Voleur d'Identité » : il échange définitivement sa carte avec celle d'un joueur, les deux sont prévenus par le Maître du Jeu.",
     ],
   },
   {

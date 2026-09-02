@@ -13,16 +13,16 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/roles")({
   head: () => ({
     meta: [
-      { title: "Toutes les cartes du Loup-Garou — extensions incluses" },
+      { title: "Toutes les cartes du Loup-Garou et leurs pouvoirs" },
       {
         name: "description",
         content:
-          "Le pouvoir de chaque carte du Loup-Garou de Thiercelieux : jeu de base, Nouvelle Lune, Personnages, Le Village et Le Pacte.",
+          "Le pouvoir de chaque carte du jeu : loups, villageois, rôles ambigus et solitaires.",
       },
       { property: "og:title", content: "Toutes les cartes du Loup-Garou" },
       {
         property: "og:description",
-        content: "Description complète du pouvoir de chaque rôle, extension par extension.",
+        content: "Description complète du pouvoir de chaque rôle, camp par camp.",
       },
     ],
   }),

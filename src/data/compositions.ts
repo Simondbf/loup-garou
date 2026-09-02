@@ -10,22 +10,6 @@ export interface Composition {
 
 export const COMPOSITIONS: Composition[] = [
   {
-    id: "6-init",
-    name: "Première meute",
-    players: 6,
-    difficulty: "Découverte",
-    description: "La composition minimale pour découvrir le jeu à 6.",
-    roles: { "loup-garou": 1, voyante: 1, sorciere: 1, "simple-villageois": 3 },
-  },
-  {
-    id: "6-nerveux",
-    name: "Nuit nerveuse",
-    players: 6,
-    difficulty: "Classique",
-    description: "Deux loups, peu de pouvoirs : ça va vite.",
-    roles: { "loup-garou": 2, voyante: 1, chasseur: 1, "simple-villageois": 2 },
-  },
-  {
     id: "7-classique",
     name: "Village tranquille",
     players: 7,
@@ -67,7 +51,7 @@ export const COMPOSITIONS: Composition[] = [
     name: "Nouvelle Lune",
     players: 9,
     difficulty: "Corsée",
-    description: "Première incursion dans l'extension Nouvelle Lune.",
+    description: "Un premier village avec des rôles plus retors.",
     roles: {
       "loup-garou": 2,
       "loup-garou-blanc": 1,
@@ -206,7 +190,7 @@ export const COMPOSITIONS: Composition[] = [
     name: "Épopée",
     players: 18,
     difficulty: "Chaos",
-    description: "La partie fleuve : toutes les extensions se croisent.",
+    description: "La partie fleuve : tous les rôles se croisent.",
     roles: {
       "loup-garou": 4,
       "grand-mechant-loup": 1,
