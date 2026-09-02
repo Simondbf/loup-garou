@@ -7,7 +7,7 @@ import {
   RoleDetail,
   RoleSigil,
 } from "@/components/ui-kit";
-import { EXTENSION_LABEL, ROLES, type Extension, type Role } from "@/data/roles";
+import { CAMP_LABEL, ROLES, type Camp, type Role } from "@/data/roles";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/roles")({
@@ -29,24 +29,16 @@ export const Route = createFileRoute("/roles")({
   component: Roles,
 });
 
-const EXTENSIONS: (Extension | "toutes")[] = [
-  "toutes",
-  "base",
-  "nouvelle-lune",
-  "personnages",
-  "village",
-  "pacte",
-  "bonus",
-];
+const CAMPS: (Camp | "toutes")[] = ["toutes", "loups", "villageois", "special", "solitaire"];
 
 function Roles() {
-  const [ext, setExt] = useState<Extension | "toutes">("toutes");
+  const [ext, setExt] = useState<Camp | "toutes">("toutes");
   const [q, setQ] = useState("");
   const [detail, setDetail] = useState<Role | null>(null);
 
   const liste = useMemo(
     () =>
-      ROLES.filter((r) => ext === "toutes" || r.extension === ext).filter((r) =>
+      ROLES.filter((r) => ext === "toutes" || r.camp === ext).filter((r) =>
         r.name.toLowerCase().includes(q.trim().toLowerCase()),
       ),
     [ext, q],
@@ -56,7 +48,7 @@ function Roles() {
     <main className="mx-auto min-h-screen w-full max-w-md px-5 pt-10 pb-16">
       <PageHeader
         title="Les cartes"
-        subtitle={`${ROLES.length} rôles, toutes extensions confondues. Touchez une carte pour lire son pouvoir.`}
+        subtitle={`${ROLES.length} rôles, tous camps confondus. Touchez une carte pour lire son pouvoir.`}
         back="/"
       />
 
@@ -68,7 +60,7 @@ function Roles() {
       />
 
       <div className="-mx-5 my-4 flex gap-2 overflow-x-auto px-5 pb-1">
-        {EXTENSIONS.map((e) => (
+        {CAMPS.map((e) => (
           <button
             key={e}
             onClick={() => setExt(e)}
@@ -79,7 +71,7 @@ function Roles() {
                 : "border-border bg-secondary text-muted-foreground",
             )}
           >
-            {e === "toutes" ? "Toutes" : EXTENSION_LABEL[e]}
+            {e === "toutes" ? "Toutes" : CAMP_LABEL[e]}
           </button>
         ))}
       </div>
@@ -98,9 +90,6 @@ function Roles() {
                   <CampBadge camp={role.camp} />
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">{role.short}</p>
-                <p className="mt-1 text-[11px] text-muted-foreground/70">
-                  {EXTENSION_LABEL[role.extension]}
-                </p>
               </div>
             </button>
           </li>

@@ -373,7 +373,13 @@ export const thiefChoose = createServerFn({ method: "POST" })
 
 export const setDead = createServerFn({ method: "POST" })
   .inputValidator(
-    (d: { code: string; token: string; position: number; alive: boolean; cause?: string }) => d,
+    (d: {
+      code: string;
+      token: string;
+      position: number;
+      alive: boolean;
+      cause?: string | undefined;
+    }) => d,
   )
   .handler(async ({ data }) => {
     const db = await admin();
