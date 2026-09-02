@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Button, LinkButton, PageHeader, RoleSigil } from "@/components/ui-kit";
-import { CAMP_LABEL, ROLES_BY_ID } from "@/data/roles";
+import { CAMP_LABEL, PREMIERE_NUIT_SEULEMENT, ROLES_BY_ID } from "@/data/roles";
 import { useGame } from "@/lib/game-store";
 import {
   clearReveals,
@@ -74,8 +74,16 @@ function Maitre() {
     return [...ids]
       .map((id) => ROLES_BY_ID[id]!)
       .filter((r) => r && r.wakeOrder !== undefined)
+      .filter(
+        (r) =>
+          game.night <= 1 ||
+          !PREMIERE_NUIT_SEULEMENT.has(r.id) ||
+          (r.id === "voleur" && game.thiefVariant === "echange"),
+      )
+
       .sort((a, b) => (a.wakeOrder ?? 0) - (b.wakeOrder ?? 0));
   }, [game]);
+
 
   if (!game) {
     return (
@@ -288,28 +296,49 @@ function Maitre() {
               </div>
 
               <div className="surface p-4">
-                <h2 className="font-display text-sm font-bold">Ordre de réveil</h2>
+                <h2 className="font-display text-sm font-bold">
+                  Ordre d'appel — nuit {game.night}
+                </h2>
                 <ol className="mt-2 flex flex-col gap-2">
-                  {ordreReveil.map((r, i) => (
-                    <li key={r.id} className="flex items-center gap-3">
-                      <span className="w-5 text-xs text-muted-foreground">{i + 1}</span>
-                      <RoleSigil role={r} size="sm" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold">{r.name}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">
-                          {game.seats
-                            .filter((s) => s.roleId === r.id)
-                            .map((s) => `${s.name || `Place ${s.position}`}${s.alive ? "" : " †"}`)
-                            .join(", ")}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
+                  {ordreReveil.map((r, i) => {
+                    const echangeur = r.id === "voleur" && game.thiefVariant === "echange";
+                    const premiereNuit = PREMIERE_NUIT_SEULEMENT.has(r.id) && !echangeur;
+                    return (
+                      <li key={r.id} className="flex items-center gap-3">
+                        <span className="w-5 text-xs text-muted-foreground">{i + 1}</span>
+                        <RoleSigil role={r} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold">
+                            {r.name}
+                            {echangeur && (
+                              <span className="ml-2 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
+                                chaque nuit
+                              </span>
+                            )}
+                            {premiereNuit && (
+                              <span className="ml-2 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
+                                1re nuit
+                              </span>
+                            )}
+                          </p>
+                          <p className="truncate text-[11px] text-muted-foreground">
+                            {game.seats
+                              .filter((s) => s.roleId === r.id)
+                              .map((s) => `${s.name || `Place ${s.position}`}${s.alive ? "" : " †"}`)
+                              .join(", ")}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ol>
                 <p className="mt-3 text-[11px] text-muted-foreground">
-                  Le Garde Champêtre intervient toujours en dernier, juste avant le lever du jour.
+                  Les rôles marqués « 1re nuit » ne sont plus appelés les nuits suivantes. Le Garde
+                  Champêtre intervient toujours en dernier, juste avant le lever du jour. Le
+                  Capitaine, lui, est élu pendant la première journée.
                 </p>
               </div>
+
 
               <SuiviPouvoirs
                 seats={game.seats}

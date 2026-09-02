@@ -22,6 +22,18 @@ export const CAMP_LABEL: Record<Camp, string> = {
   special: "Camp inconnu",
 };
 
+/** Rôles appelés uniquement lors de la toute première nuit. */
+export const PREMIERE_NUIT_SEULEMENT = new Set([
+  "voleur",
+  "cupidon",
+  "amoureux",
+  "enfant-sauvage",
+  "chien-loup",
+  "soeurs",
+  "freres",
+]);
+
+
 export const ROLES: Role[] = [
   // ---------------- BASE ----------------
   {

@@ -74,6 +74,8 @@ function NouvellePartie() {
   const [selection, setSelection] = useState<Record<string, number>>({});
   const [thiefVariant, setThiefVariant] = useState<"centre" | "echange">("centre");
   const [detail, setDetail] = useState<Role | null>(null);
+  const [aideAppareil, setAideAppareil] = useState(false);
+
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
@@ -163,6 +165,7 @@ function NouvellePartie() {
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={saisie}
+                onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => {
                   const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
                   setSaisie(v);
@@ -171,14 +174,14 @@ function NouvellePartie() {
                 }}
                 onBlur={() => {
                   const n = Number(saisie);
-                  const clamp = Number.isFinite(n) ? Math.min(MAX, Math.max(MIN, n)) : count;
+                  const clamp = Number.isFinite(n) && saisie ? Math.min(MAX, Math.max(MIN, n)) : count;
                   setCount(clamp);
                   setSaisie(String(clamp));
                 }}
                 aria-label="Nombre de joueurs"
-                className="w-24 bg-transparent text-center font-display text-5xl font-black text-gradient-moon outline-none"
+                className="w-24 rounded-xl border-2 border-dashed border-border bg-transparent py-1 text-center font-display text-5xl font-black text-gradient-moon outline-none focus:border-primary"
               />
-              <div className="text-xs text-muted-foreground">joueurs</div>
+              <div className="text-xs text-muted-foreground">joueurs · touchez pour saisir</div>
             </div>
             <button
               onClick={() =>
@@ -198,23 +201,34 @@ function NouvellePartie() {
             De {MIN} à {MAX} joueurs.
           </p>
 
-          <label className="surface mt-5 flex w-full cursor-pointer items-center gap-3 p-4">
-            <input
-              type="checkbox"
-              checked={singleDevice}
-              onChange={(e) => setSingleDevice(e.target.checked)}
-              className="h-5 w-5 shrink-0 accent-primary"
-            />
-            <span className="font-display text-sm font-bold">
-              Un seul téléphone pour tout le monde
-            </span>
-          </label>
+          <div className="surface mt-5 flex w-full items-center gap-3 p-4">
+            <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                checked={singleDevice}
+                onChange={(e) => setSingleDevice(e.target.checked)}
+                className="h-5 w-5 shrink-0 accent-primary"
+              />
+              <span className="font-display text-sm font-bold">
+                Un seul téléphone pour tout le monde
+              </span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setAideAppareil(true)}
+              aria-label="En savoir plus sur ce réglage"
+              className="h-7 w-7 shrink-0 rounded-full border border-border text-sm font-bold text-muted-foreground"
+            >
+              ?
+            </button>
+          </div>
 
           <Button className="mt-6 w-full py-4" onClick={() => setStep(2)}>
             Choisir la composition
           </Button>
         </section>
       )}
+
 
       {step === 2 && (
         <section>
@@ -290,9 +304,18 @@ function NouvellePartie() {
                 ))}
               </div>
               <p className="mt-2 text-[11px] text-muted-foreground">
-                « Centre » ajoute deux cartes supplémentaires à la pioche. « Échange » : le Voleur
-                prend définitivement la carte d'un joueur, les deux sont prévenus.
+                « Centre » : deux cartes en plus sont mises de côté, le Voleur en choisit une la
+                première nuit et la garde jusqu'à la fin.
               </p>
+              {thiefVariant === "echange" && (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  « Échange » : le Voleur est appelé <strong>chaque nuit</strong> et échange sa carte
+                  avec celle du joueur de son choix ; les deux voient leur nouveau rôle. Avec un seul
+                  téléphone, chaque matin oblige toute la table à revérifier sa carte : mieux vaut
+                  alors que chacun ait un appareil.
+                </p>
+              )}
+
             </div>
           ) : null}
 
@@ -360,6 +383,25 @@ function NouvellePartie() {
       <Modal open={!!detail} onClose={() => setDetail(null)}>
         {detail && <RoleDetail role={detail} onClose={() => setDetail(null)} />}
       </Modal>
+
+      <Modal open={aideAppareil} onClose={() => setAideAppareil(false)}>
+        <div className="p-1">
+          <h2 className="font-display text-lg font-bold">Un seul téléphone ?</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Cochez cette case si la table n'utilise qu'un appareil : le téléphone du Maître du Jeu
+            porte toutes les places et circule de joueur en joueur au moment de la distribution.
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Laissez-la décochée pour jouer avec plusieurs appareils : un code de partie est généré,
+            et chacun rejoint avec son téléphone — un appareil peut aussi porter deux ou trois
+            joueurs.
+          </p>
+          <Button className="mt-4 w-full" onClick={() => setAideAppareil(false)}>
+            J'ai compris
+          </Button>
+        </div>
+      </Modal>
     </main>
   );
+
 }
