@@ -117,9 +117,11 @@ async function buildDTO(
     phase: game["phase"],
     night: game["night"],
     playerCount: game["player_count"],
+    singleDevice: !!game["single_device"],
     selection: (game["selection"] ?? {}) as Record<string, number>,
     centerCards: isHost || mySeats.length > 0 ? ((game["center_cards"] ?? []) as string[]) : [],
     gagHistory: (game["gag_history"] ?? []) as { night: number; position: number }[],
+    hostState: isHost ? ((game["host_state"] ?? {}) as HostState) : {},
     isHost,
     mySeats,
     reveals: ((revealRows ?? []) as AnyRow[])
