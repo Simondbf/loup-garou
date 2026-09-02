@@ -502,10 +502,11 @@ export const ROLES: Role[] = [
     name: "Garde Champêtre",
     camp: "villageois",
     max: 1,
+    wakeOrder: 99,
     emoji: "🚨",
-    short: "Impose un couvre-feu, un joueur ne vote pas.",
+    short: "En fin de nuit, il bâillonne un joueur pour le lendemain.",
     description:
-      "Chaque jour, le Garde Champêtre peut interdire à un joueur de prendre la parole pendant le débat. Un pouvoir de contrôle du village, sans mort.",
+      "En toute fin de nuit, après tous les autres rôles, le Garde Champêtre désigne au Maître du Jeu un joueur qui ne pourra pas prendre la parole pendant le débat du lendemain. Le joueur bâillonné garde son droit de vote. Le Garde Champêtre ne peut pas re-désigner quelqu'un qu'il a déjà bâillonné : la cible redevient disponible seulement après trois nuits.",
   },
 ];
 
