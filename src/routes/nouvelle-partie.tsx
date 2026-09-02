@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Button, CampBadge, Modal, PageHeader, RoleDetail, RoleSigil } from "@/components/ui-kit";
+import { Button, Modal, PageHeader, RoleDetail, RoleSigil } from "@/components/ui-kit";
 import { CAMP_LABEL, ROLES, ROLES_BY_ID, type Camp, type Role } from "@/data/roles";
 import { COMPOSITIONS } from "@/data/compositions";
 import { createGame } from "@/lib/party.functions";
@@ -34,13 +34,29 @@ const MAX = 30;
 /** Rôles réellement distribuables : Amoureux et Capitaine découlent du jeu, pas de la pioche. */
 const ROLES_DISTRIBUABLES = ROLES.filter((r) => !r.derived);
 
-/** Composition de secours quand aucun préréglage n'existe pour ce nombre de joueurs. */
+/**
+ * Composition de secours quand aucun préréglage n'existe : environ un tiers de la table
+ * côté loups, et le moins de Simples Villageois possible (rôle sans pouvoir).
+ */
 function compositionAuto(count: number): Record<string, number> {
-  const loups = Math.max(2, Math.round(count / 4));
+  const loups = Math.max(2, Math.round(count / 3));
   const base: Record<string, number> = { "loup-garou": loups, voyante: 1, sorciere: 1 };
   let reste = count - loups - 2;
-  for (const id of ["chasseur", "cupidon", "salvateur", "petite-fille", "ancien"]) {
-    if (reste <= 1) break;
+  for (const id of [
+    "chasseur",
+    "cupidon",
+    "salvateur",
+    "petite-fille",
+    "ancien",
+    "renard",
+    "idiot-du-village",
+    "bouc-emissaire",
+    "corbeau",
+    "montreur-ours",
+    "juge-begue",
+    "servante-devouee",
+  ]) {
+    if (reste <= 0) break;
     base[id] = 1;
     reste -= 1;
   }
@@ -53,6 +69,7 @@ function NouvellePartie() {
   const { token, saveSession } = useGame();
   const [step, setStep] = useState<1 | 2>(1);
   const [count, setCount] = useState(8);
+  const [saisie, setSaisie] = useState("8");
   const [singleDevice, setSingleDevice] = useState(false);
   const [selection, setSelection] = useState<Record<string, number>>({});
   const [thiefVariant, setThiefVariant] = useState<"centre" | "echange">("centre");
@@ -119,25 +136,58 @@ function NouvellePartie() {
             ? "Combien de joueurs autour de la table ? (le Maître du Jeu n'en fait pas partie)"
             : "La composition conseillée est déjà prête : ajustez-la comme vous voulez."
         }
-        back="/"
+        back={step === 1 ? "/" : undefined}
+        onBack={step === 2 ? () => setStep(1) : undefined}
+        backLabel={step === 2 ? "Nombre de joueurs" : "Retour"}
       />
 
       {step === 1 && (
         <section className="animate-rise">
           <div className="surface flex items-center justify-between p-5">
             <button
-              onClick={() => setCount((c) => Math.max(MIN, c - 1))}
+              onClick={() =>
+                setCount((c) => {
+                  const n = Math.max(MIN, c - 1);
+                  setSaisie(String(n));
+                  return n;
+                })
+              }
               className="btn-base btn-ghost h-12 w-12 text-xl"
               aria-label="Un joueur de moins"
             >
               −
             </button>
             <div className="text-center">
-              <div className="font-display text-5xl font-black text-gradient-moon">{count}</div>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={saisie}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
+                  setSaisie(v);
+                  const n = Number(v);
+                  if (v && n >= MIN && n <= MAX) setCount(n);
+                }}
+                onBlur={() => {
+                  const n = Number(saisie);
+                  const clamp = Number.isFinite(n) ? Math.min(MAX, Math.max(MIN, n)) : count;
+                  setCount(clamp);
+                  setSaisie(String(clamp));
+                }}
+                aria-label="Nombre de joueurs"
+                className="w-24 bg-transparent text-center font-display text-5xl font-black text-gradient-moon outline-none"
+              />
               <div className="text-xs text-muted-foreground">joueurs</div>
             </div>
             <button
-              onClick={() => setCount((c) => Math.min(MAX, c + 1))}
+              onClick={() =>
+                setCount((c) => {
+                  const n = Math.min(MAX, c + 1);
+                  setSaisie(String(n));
+                  return n;
+                })
+              }
               className="btn-base btn-ghost h-12 w-12 text-xl"
               aria-label="Un joueur de plus"
             >
@@ -148,29 +198,17 @@ function NouvellePartie() {
             De {MIN} à {MAX} joueurs.
           </p>
 
-          <button
-            onClick={() => setSingleDevice((v) => !v)}
-            className="surface mt-5 flex w-full items-center gap-3 p-4 text-left"
-          >
-            <span
-              className={cn(
-                "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-xs",
-                singleDevice ? "border-primary bg-primary/20 text-primary" : "border-border",
-              )}
-            >
-              {singleDevice ? "✓" : ""}
+          <label className="surface mt-5 flex w-full cursor-pointer items-center gap-3 p-4">
+            <input
+              type="checkbox"
+              checked={singleDevice}
+              onChange={(e) => setSingleDevice(e.target.checked)}
+              className="h-5 w-5 shrink-0 accent-primary"
+            />
+            <span className="font-display text-sm font-bold">
+              Un seul téléphone pour tout le monde
             </span>
-            <span className="min-w-0">
-              <span className="block font-display text-sm font-bold">
-                Un seul téléphone pour tout le monde
-              </span>
-              <span className="block text-[11px] text-muted-foreground">
-                {singleDevice
-                  ? "Pas de code : votre appareil porte toutes les places et tourne autour de la table."
-                  : "Chaque joueur (ou petit groupe) rejoint avec le code ; vous gardez votre téléphone."}
-              </span>
-            </span>
-          </button>
+          </label>
 
           <Button className="mt-6 w-full py-4" onClick={() => setStep(2)}>
             Choisir la composition
@@ -270,10 +308,7 @@ function NouvellePartie() {
                       <RoleSigil role={role} size="sm" />
                     </button>
                     <button className="min-w-0 flex-1 text-left" onClick={() => setDetail(role)}>
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-semibold">{role.name}</span>
-                        <CampBadge camp={role.camp} />
-                      </div>
+                      <span className="block truncate text-sm font-semibold">{role.name}</span>
                       <p className="truncate text-[11px] text-muted-foreground">{role.short}</p>
                     </button>
                     <div className="flex items-center gap-1.5">

@@ -19,7 +19,7 @@ export const CAMP_LABEL: Record<Camp, string> = {
   villageois: "Village",
   loups: "Loups-Garous",
   solitaire: "Solitaire",
-  special: "Ambigu",
+  special: "Camp inconnu",
 };
 
 export const ROLES: Role[] = [
@@ -493,6 +493,7 @@ export const ROLES: Role[] = [
     name: "Amoureux",
     camp: "special",
     max: 2,
+    wakeOrder: 11,
     derived: true,
     emoji: "❤️",
     short: "Lié à un autre joueur pour la vie et la mort.",

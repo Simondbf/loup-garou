@@ -69,6 +69,8 @@ function Maitre() {
   const ordreReveil = useMemo(() => {
     if (!game) return [];
     const ids = new Set(game.seats.map((s) => s.roleId).filter(Boolean) as string[]);
+    // Les Amoureux se reconnaissent juste après que Cupidon se soit rendormi.
+    if (ids.has("cupidon")) ids.add("amoureux");
     return [...ids]
       .map((id) => ROLES_BY_ID[id]!)
       .filter((r) => r && r.wakeOrder !== undefined)
