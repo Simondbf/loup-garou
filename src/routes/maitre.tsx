@@ -525,3 +525,122 @@ function Mini({
     </button>
   );
 }
+
+/** Suivi privé du MJ : potions de la Sorcière, envoûtés du Joueur de Flûte,
+ *  pouvoirs à usage unique ou à rechargement. */
+function SuiviPouvoirs({
+  seats,
+  hostState,
+  onPatch,
+}: {
+  seats: SeatDTO[];
+  hostState: HostState;
+  onPatch: (patch: HostState) => void;
+}) {
+  const aRole = (id: string) => seats.some((s) => s.roleId === id);
+  const charmed = hostState.charmed ?? [];
+  const lastUsed = hostState.lastUsed ?? {};
+
+  const rappels = [
+    aRole("salvateur") && "Salvateur : jamais deux nuits de suite la même personne.",
+    aRole("infect-pere-des-loups") && "Infect Père des Loups : infection possible une seule fois.",
+    aRole("ancien") && "Ancien : survit à la première attaque des Loups.",
+    aRole("juge-begue") && "Juge Bègue : second vote utilisable une seule fois.",
+    aRole("gitane") && "Gitane / rôles à usage unique : appelez-les quand même chaque nuit.",
+  ].filter(Boolean) as string[];
+
+  if (!aRole("sorciere") && !aRole("joueur-de-flute") && rappels.length === 0) return null;
+
+  return (
+    <div className="surface p-4">
+      <h2 className="font-display text-sm font-bold">Suivi des pouvoirs</h2>
+
+      {aRole("sorciere") && (
+        <div className="mt-3">
+          <p className="text-[11px] text-muted-foreground">Potions de la Sorcière</p>
+          <div className="mt-2 flex gap-2">
+            {(
+              [
+                ["potionVie", "🧪 Potion de vie"],
+                ["potionMort", "☠️ Potion de mort"],
+              ] as const
+            ).map(([cle, label]) => {
+              const dispo = hostState[cle] !== false;
+              return (
+                <button
+                  key={cle}
+                  onClick={() => onPatch({ [cle]: !dispo } as HostState)}
+                  className={cn(
+                    "flex-1 rounded-xl border px-3 py-2 text-xs font-semibold",
+                    dispo
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-secondary text-muted-foreground line-through",
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Touchez une potion quand elle est consommée.
+          </p>
+        </div>
+      )}
+
+      {aRole("joueur-de-flute") && (
+        <div className="mt-4">
+          <p className="text-[11px] text-muted-foreground">
+            Joueurs envoûtés ({charmed.length}) — réveillez-les ensemble après le Joueur de Flûte.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {seats
+              .filter((s) => s.alive)
+              .map((s) => {
+                const on = charmed.includes(s.position);
+                return (
+                  <button
+                    key={s.position}
+                    onClick={() =>
+                      onPatch({
+                        charmed: on
+                          ? charmed.filter((p) => p !== s.position)
+                          : [...charmed, s.position],
+                      })
+                    }
+                    className={cn(
+                      "rounded-xl border px-3 py-2 text-xs",
+                      on
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border bg-secondary",
+                    )}
+                  >
+                    🎶 {s.name || `Place ${s.position}`}
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      {rappels.length > 0 && (
+        <ul className="mt-4 flex flex-col gap-1">
+          {rappels.map((r) => (
+            <li key={r} className="text-[11px] text-muted-foreground">
+              • {r}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {Object.keys(lastUsed).length > 0 && (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Derniers usages :{" "}
+          {Object.entries(lastUsed)
+            .map(([id, n]) => `${ROLES_BY_ID[id]?.name ?? id} (nuit ${n})`)
+            .join(" · ")}
+        </p>
+      )}
+    </div>
+  );
+}
