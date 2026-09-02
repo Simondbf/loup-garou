@@ -81,7 +81,7 @@ const SECTIONS = [
     titre: "🚨 Le Garde Champêtre",
     contenu: [
       "Il agit en toute fin de nuit, après tous les autres rôles : il désigne au Maître du Jeu un joueur qui ne pourra pas prendre la parole pendant le débat du lendemain.",
-      "Le joueur bâillonné conserve son droit de vote.",
+      "Le joueur bâillonné conserve son droit de vote et peut communiquer par gestes, mimiques ou hochements de tête — mais il ne prononce aucun mot et n'écrit rien.",
       "Le Garde Champêtre ne peut pas re-désigner une même personne : elle redevient une cible possible seulement après trois nuits.",
     ],
   },
