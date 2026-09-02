@@ -78,10 +78,11 @@ const SECTIONS = [
     ],
   },
   {
-    titre: "🏠 Extensions hors cartes",
+    titre: "🚨 Le Garde Champêtre",
     contenu: [
-      "Certaines extensions ajoutent des bâtiments (l'Auberge, l'Église, l'Écurie…) ou des objets de village. Elles se jouent avec du matériel physique, mais toutes leurs cartes de rôle sont disponibles ici.",
-      "L'écran du Maître du Jeu peut être utilisé en parallèle de n'importe quelle extension matérielle.",
+      "Il agit en toute fin de nuit, après tous les autres rôles : il désigne au Maître du Jeu un joueur qui ne pourra pas prendre la parole pendant le débat du lendemain.",
+      "Le joueur bâillonné conserve son droit de vote.",
+      "Le Garde Champêtre ne peut pas re-désigner une même personne : elle redevient une cible possible seulement après trois nuits.",
     ],
   },
 ];
