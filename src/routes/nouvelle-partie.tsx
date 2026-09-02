@@ -279,45 +279,6 @@ function NouvellePartie() {
             comptent pas dans les cartes distribuées.
           </p>
 
-          {selection["voleur"] ? (
-            <div className="surface mb-4 p-4">
-              <p className="font-display text-sm font-bold">Variante du Voleur</p>
-              <div className="mt-2 flex gap-2">
-                {(
-                  [
-                    ["centre", "2 cartes au centre"],
-                    ["echange", "Échange avec un joueur"],
-                  ] as const
-                ).map(([v, label]) => (
-                  <button
-                    key={v}
-                    onClick={() => setThiefVariant(v)}
-                    className={cn(
-                      "flex-1 rounded-xl border px-3 py-2 text-xs font-semibold",
-                      thiefVariant === v
-                        ? "border-primary bg-primary/15 text-primary"
-                        : "border-border bg-secondary text-muted-foreground",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                « Centre » : deux cartes en plus sont mises de côté, le Voleur en choisit une la
-                première nuit et la garde jusqu'à la fin.
-              </p>
-              {thiefVariant === "echange" && (
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  « Échange » : le Voleur est appelé <strong>chaque nuit</strong> et échange sa carte
-                  avec celle du joueur de son choix ; les deux voient leur nouveau rôle. Avec un seul
-                  téléphone, chaque matin oblige toute la table à revérifier sa carte : mieux vaut
-                  alors que chacun ait un appareil.
-                </p>
-              )}
-
-            </div>
-          ) : null}
 
           {(["loups", "villageois", "special", "solitaire"] as Camp[]).map((camp) => (
             <div key={camp} className="mb-5">
@@ -326,33 +287,59 @@ function NouvellePartie() {
               </h2>
               <ul className="flex flex-col gap-2">
                 {ROLES_DISTRIBUABLES.filter((r) => r.camp === camp).map((role) => (
-                  <li key={role.id} className="surface flex items-center gap-3 p-2.5">
-                    <button onClick={() => setDetail(role)} aria-label={`Détails ${role.name}`}>
-                      <RoleSigil role={role} size="sm" />
-                    </button>
-                    <button className="min-w-0 flex-1 text-left" onClick={() => setDetail(role)}>
-                      <span className="block truncate text-sm font-semibold">{role.name}</span>
-                      <p className="truncate text-[11px] text-muted-foreground">{role.short}</p>
-                    </button>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => ajuster(role.id, -1)}
-                        className="btn-base btn-ghost h-8 w-8 p-0"
-                        aria-label="Retirer"
-                      >
-                        −
+                  <li key={role.id} className="surface p-2.5">
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setDetail(role)} aria-label={`Détails ${role.name}`}>
+                        <RoleSigil role={role} size="sm" />
                       </button>
-                      <span className="w-5 text-center text-sm font-bold">
-                        {selection[role.id] ?? 0}
-                      </span>
-                      <button
-                        onClick={() => ajuster(role.id, 1)}
-                        className="btn-base btn-ghost h-8 w-8 p-0"
-                        aria-label="Ajouter"
-                      >
-                        +
+                      <button className="min-w-0 flex-1 text-left" onClick={() => setDetail(role)}>
+                        <span className="block truncate text-sm font-semibold">{role.name}</span>
+                        <p className="truncate text-[11px] text-muted-foreground">{role.short}</p>
                       </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => ajuster(role.id, -1)}
+                          className="btn-base btn-ghost h-8 w-8 p-0"
+                          aria-label="Retirer"
+                        >
+                          −
+                        </button>
+                        <span className="w-5 text-center text-sm font-bold">
+                          {selection[role.id] ?? 0}
+                        </span>
+                        <button
+                          onClick={() => ajuster(role.id, 1)}
+                          className="btn-base btn-ghost h-8 w-8 p-0"
+                          aria-label="Ajouter"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
+
+                    {role.id === "voleur" && selection["voleur"] ? (
+                      <div className="mt-2 flex gap-1 rounded-xl bg-secondary p-1">
+                        {(
+                          [
+                            ["centre", "2 cartes au centre"],
+                            ["echange", "Échange chaque nuit"],
+                          ] as const
+                        ).map(([v, label]) => (
+                          <button
+                            key={v}
+                            onClick={() => setThiefVariant(v)}
+                            className={cn(
+                              "flex-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold transition",
+                              thiefVariant === v
+                                ? "bg-card text-primary shadow-sm"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                   </li>
                 ))}
               </ul>

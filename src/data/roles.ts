@@ -114,13 +114,13 @@ export const ROLES: Role[] = [
   {
     id: "voleur",
     name: "Voleur",
-    camp: "special",
+    camp: "villageois",
     max: 1,
     wakeOrder: 1,
     emoji: "🗝️",
     short: "Choisit entre deux cartes au centre.",
     description:
-      "Deux cartes supplémentaires sont mises de côté au centre. La toute première nuit, le Voleur les regarde et peut en prendre une : il devient définitivement ce rôle. Si les deux cartes sont des Loups-Garous, il est obligé d'en prendre une.",
+      "Deux cartes supplémentaires sont mises de côté au centre. La toute première nuit, le Voleur les regarde et peut en prendre une : il devient définitivement ce rôle. Si les deux cartes sont des Loups-Garous, il est obligé d'en prendre une. Le Voleur joue dans le camp des villageois, sauf s'il vole une carte de Loup.",
   },
   {
     id: "capitaine",
