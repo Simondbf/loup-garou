@@ -62,11 +62,11 @@ export function PageHeader({
   backLabel = "Retour",
 }: {
   title: string;
-  subtitle?: string;
-  back?: string;
+  subtitle?: string | undefined;
+  back?: string | undefined;
   /** Retour « interne » (étape précédente) : prioritaire sur `back`. */
-  onBack?: () => void;
-  backLabel?: string;
+  onBack?: (() => void) | undefined;
+  backLabel?: string | undefined;
 }) {
   const classes =
     "mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-primary";
