@@ -102,14 +102,15 @@ function Distribution() {
             </span>
           </button>
         ) : (
-          <div className="surface flex aspect-[3/4.4] w-full max-w-[19rem] animate-flip-in flex-col items-center justify-center gap-3 rounded-3xl p-6 text-center">
-            <RoleSigil role={role} size="lg" />
+          <div className="surface flex aspect-[3/4.4] w-full max-w-[19rem] animate-flip-in flex-col items-center gap-3 rounded-3xl p-4 text-center">
+            <RoleArt role={role} className="min-h-0 flex-1" />
             <h2 className="font-display text-2xl font-black">{role.name}</h2>
             <CampBadge camp={role.camp} />
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            <p className="text-xs leading-relaxed text-muted-foreground">
               {role.description}
             </p>
           </div>
+
         )}
       </div>
 
