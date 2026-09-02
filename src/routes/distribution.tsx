@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useGame } from "@/lib/game-store";
-import { Button, CampBadge, RoleSigil } from "@/components/ui-kit";
+import { Button, CampBadge, RoleArt } from "@/components/ui-kit";
 import { ROLES_BY_ID } from "@/data/roles";
 
 export const Route = createFileRoute("/distribution")({
@@ -102,14 +102,15 @@ function Distribution() {
             </span>
           </button>
         ) : (
-          <div className="surface flex aspect-[3/4.4] w-full max-w-[19rem] animate-flip-in flex-col items-center justify-center gap-3 rounded-3xl p-6 text-center">
-            <RoleSigil role={role} size="lg" />
+          <div className="surface flex aspect-[3/4.4] w-full max-w-[19rem] animate-flip-in flex-col items-center gap-3 rounded-3xl p-4 text-center">
+            <RoleArt role={role} className="min-h-0 flex-1" />
             <h2 className="font-display text-2xl font-black">{role.name}</h2>
             <CampBadge camp={role.camp} />
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            <p className="text-xs leading-relaxed text-muted-foreground">
               {role.description}
             </p>
           </div>
+
         )}
       </div>
 
@@ -128,7 +129,7 @@ function Distribution() {
                   onClick={() => takeCenterCard(player.id, cid)}
                   className="rounded-xl border border-border bg-secondary p-3 text-center active:scale-[0.97]"
                 >
-                  <div className="text-3xl">{c.emoji}</div>
+                  <RoleArt role={c} className="mx-auto aspect-[3/4] w-16" />
                   <div className="mt-1 text-xs font-semibold">{c.name}</div>
                 </button>
               );
