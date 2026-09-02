@@ -279,45 +279,6 @@ function NouvellePartie() {
             comptent pas dans les cartes distribuées.
           </p>
 
-          {selection["voleur"] ? (
-            <div className="surface mb-4 p-4">
-              <p className="font-display text-sm font-bold">Variante du Voleur</p>
-              <div className="mt-2 flex gap-2">
-                {(
-                  [
-                    ["centre", "2 cartes au centre"],
-                    ["echange", "Échange avec un joueur"],
-                  ] as const
-                ).map(([v, label]) => (
-                  <button
-                    key={v}
-                    onClick={() => setThiefVariant(v)}
-                    className={cn(
-                      "flex-1 rounded-xl border px-3 py-2 text-xs font-semibold",
-                      thiefVariant === v
-                        ? "border-primary bg-primary/15 text-primary"
-                        : "border-border bg-secondary text-muted-foreground",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                « Centre » : deux cartes en plus sont mises de côté, le Voleur en choisit une la
-                première nuit et la garde jusqu'à la fin.
-              </p>
-              {thiefVariant === "echange" && (
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  « Échange » : le Voleur est appelé <strong>chaque nuit</strong> et échange sa carte
-                  avec celle du joueur de son choix ; les deux voient leur nouveau rôle. Avec un seul
-                  téléphone, chaque matin oblige toute la table à revérifier sa carte : mieux vaut
-                  alors que chacun ait un appareil.
-                </p>
-              )}
-
-            </div>
-          ) : null}
 
           {(["loups", "villageois", "special", "solitaire"] as Camp[]).map((camp) => (
             <div key={camp} className="mb-5">
