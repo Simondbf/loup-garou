@@ -7,55 +7,61 @@ import { COMPOSITIONS } from "@/data/compositions";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Loup-Garou — Distribuez les cartes sur un seul téléphone" },
+      { title: "Lune Rousse — Loup-Garou sur mobile, un ou plusieurs téléphones" },
       {
         name: "description",
         content:
-          "Application Loup-Garou de Thiercelieux : toutes les extensions, compositions conseillées, écran Maître du Jeu et règles de chaque carte.",
+          "Distribuez les rôles de Loup-Garou : un seul téléphone qui tourne, un téléphone par joueur ou un mélange des deux, grâce à un code de partie.",
       },
-      { property: "og:title", content: "Loup-Garou — Maître du Jeu" },
+      { property: "og:title", content: "Lune Rousse — jeu de Loup-Garou" },
       {
         property: "og:description",
         content:
-          "Choisissez vos joueurs, vos cartes et faites tourner le téléphone. Toutes les extensions incluses.",
+          "Compositions conseillées, cartes secrètes et tableau de bord du Maître du Jeu.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Accueil,
 });
 
 function Accueil() {
-  const { state, hydrated } = useGame();
-  const partieEnCours = hydrated && state.started && state.players.length > 0;
+  const { hydrated, session, game } = useGame();
+  const reprise = hydrated && session && game && game.status !== "ended";
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-md px-5 pt-14 pb-12">
-      <div className="text-center animate-rise">
+      <div className="animate-rise text-center">
         <div className="mx-auto mb-6 flex h-24 w-24 animate-glow items-center justify-center rounded-full border border-primary/30 bg-card text-5xl">
           🌕
         </div>
-        <p className="text-xs tracking-[0.35em] text-muted-foreground uppercase">
-          Les nuits de
-        </p>
-        <h1 className="mt-2 text-4xl font-black text-gradient-moon">Thiercelieux</h1>
+        <p className="text-xs tracking-[0.35em] text-muted-foreground uppercase">Les nuits de</p>
+        <h1 className="mt-2 text-4xl font-black text-gradient-moon">Lune Rousse</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          Un seul téléphone, tout le village. Composez la partie, faites tourner
-          l'appareil, chacun découvre sa carte en secret.
+          Le Maître du Jeu crée la partie et donne un code. Les joueurs rejoignent avec leur
+          téléphone — seuls, à deux ou à plusieurs sur le même appareil.
         </p>
       </div>
 
       <div className="mt-9 flex flex-col gap-3">
-        {partieEnCours && (
-          <LinkButton to="/maitre" className="w-full py-4 text-base">
-            🎖️ Reprendre la partie en cours
+        {reprise && (
+          <LinkButton
+            to={session!.host ? "/maitre" : "/distribution"}
+            className="w-full py-4 text-base"
+          >
+            ↩️ Reprendre la partie {game!.code}
           </LinkButton>
         )}
         <LinkButton
           to="/nouvelle-partie"
-          variant={partieEnCours ? "ghost" : "primary"}
+          variant={reprise ? "ghost" : "primary"}
           className="w-full py-4 text-base"
         >
-          🐺 Nouvelle partie
+          🎖️ Créer une partie (Maître du Jeu)
+        </LinkButton>
+        <LinkButton to="/rejoindre" variant="ghost" className="w-full py-4 text-base">
+          🔑 Rejoindre avec un code
         </LinkButton>
       </div>
 
@@ -68,11 +74,11 @@ function Accueil() {
           valeur={`${COMPOSITIONS.length} préréglages`}
         />
         <Tuile to="/regles" emoji="📖" titre="Règles" valeur="Déroulé d'une nuit" />
-        <Tuile to="/maitre" emoji="🎖️" titre="Maître du jeu" valeur="Vue complète" />
+        <Tuile to="/rejoindre" emoji="📱" titre="Téléphone partagé" valeur="1 à 6 joueurs" />
       </div>
 
       <p className="mt-10 text-center text-xs text-muted-foreground">
-        Jeu de base · Nouvelle Lune · Personnages · Le Village · Le Pacte
+        7 joueurs minimum · le Maître du Jeu garde son téléphone pour lui
       </p>
     </main>
   );
@@ -92,10 +98,10 @@ function Tuile({
   return (
     <Link
       to={to}
-      className="surface flex flex-col gap-1 p-4 transition-transform active:scale-[0.97]"
+      className="surface flex flex-col gap-1 p-4 text-left transition active:scale-[0.97]"
     >
       <span className="text-2xl">{emoji}</span>
-      <span className="font-display text-sm font-bold">{titre}</span>
+      <span className="font-display font-bold">{titre}</span>
       <span className="text-xs text-muted-foreground">{valeur}</span>
     </Link>
   );

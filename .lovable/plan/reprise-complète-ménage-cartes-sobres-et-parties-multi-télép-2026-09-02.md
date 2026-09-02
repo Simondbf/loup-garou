@@ -12,8 +12,10 @@ Trois lots, dans l'ordre. Le lot 1 et 2 sont rapides, le lot 3 est le gros morce
 - Suppression de la catégorie « Rôles bonus & maison » et de ses rôles inventés :
   - Le Médium : supprimé.
   - Le Voleur d'Identité (V2) : supprimé en tant que carte ; il devient une **variante du Voleur** (même carte, option activable à la création de partie).
-  - Le Garde Champêtre : conservé, reclassé dans une extension existante.
+  - Le Garde Champêtre : conservé, reclassé dans aucunes des extensions existantes
 - Création d'un fichier `A FAIRE` à la racine du dépôt listant les points en attente (variante Voleur V2, illustrations futures, publication Play Store, etc.).
+- suppression de la nomination des extensions du jeu loup garou de thiercelieux
+- vérification des doubles ou triples cartes pour les rôles jumeaux (deux soeurs et 3 frères)
 
 ## Lot 2 — Garde Champêtre revu
 
@@ -39,14 +41,14 @@ MJ : "Nouvelle partie" -> choisit le nombre de joueurs
      -> l'app génère un CODE à 4 lettres, affiché en grand
 Joueurs : "Rejoindre" -> code -> "combien de joueurs sur ce téléphone ?"
      -> chacun prend une place libre, saisit son prénom
-MJ : voit le remplissage en direct, lance la distribution quand tout est prêt
+MJ : voit le remplissage en direct, lance la distribution quand tout est prêt. Distribution aléatoire.
 Joueurs : tapent leur carte -> nom + description -> re-tap pour refermer
 ```
 
 - Places non réclamées : le MJ peut les basculer sur son propre téléphone (mode « passe le téléphone ») pour les joueurs sans smartphone. Aucun joueur ne reste bloqué.
 - Le MJ a toujours un téléphone pour lui seul et ne reçoit pas de carte.
 - Reconnexion : si un joueur ferme l'app, il retrouve ses places grâce à un jeton stocké sur l'appareil.
-- Minimum 7 joueurs.
+- Minimum 7 joueurs en plus d'un MJ.
 - L'onglet MJ disparaît de l'accueil : c'est la création de partie qui donne le rôle de MJ.
 
 ### Écran Maître du Jeu
@@ -55,9 +57,9 @@ Joueurs : tapent leur carte -> nom + description -> re-tap pour refermer
 - Marquer un mort avec sa cause (loups, vote, potion, chasseur…) : cascade automatique des amoureux, du chasseur (rappel de tir), de l'Ancien.
 - Désigner le Capitaine et le transférer à sa mort.
 - Lier les deux amoureux de Cupidon.
-- Marquer le Villageois-Villageois comme rôle public : sa carte devient visible de tous.
-- Révélations privées : le MJ envoie à la Voyante (ou au Renard, à la Gitane…) le rôle d'un joueur ; l'info apparaît sur le téléphone du joueur concerné, ou s'affiche sur celui du MJ si le joueur n'a pas d'appareil.
-- Ordre de réveil de la nuit avec les rôles réellement en jeu, cochable nuit par nuit, Garde Champêtre en dernier.
+- Marquer le Villageois-Villageois comme rôle public : sa carte devient visible de tous, avec le nom du joueur associé.
+- Révélations privées : le MJ envoie à la Voyante (ou au Renard, à la Gitane…) le rôle d'un joueur ; l'info apparaît sur le téléphone du MJ
+- Ordre de réveil de la nuit avec les rôles réellement en jeu, cochable rôle par rôle si besoin, Garde Champêtre en dernier.
 
 ## Détails techniques
 

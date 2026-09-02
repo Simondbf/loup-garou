@@ -19,6 +19,7 @@ export type Database = {
           center_cards: Json
           code: string
           created_at: string
+          gag_history: Json
           host_token: string
           id: string
           night: number
@@ -26,12 +27,14 @@ export type Database = {
           player_count: number
           selection: Json
           status: string
+          thief_variant: string
           updated_at: string
         }
         Insert: {
           center_cards?: Json
           code: string
           created_at?: string
+          gag_history?: Json
           host_token: string
           id?: string
           night?: number
@@ -39,12 +42,14 @@ export type Database = {
           player_count?: number
           selection?: Json
           status?: string
+          thief_variant?: string
           updated_at?: string
         }
         Update: {
           center_cards?: Json
           code?: string
           created_at?: string
+          gag_history?: Json
           host_token?: string
           id?: string
           night?: number
@@ -52,6 +57,7 @@ export type Database = {
           player_count?: number
           selection?: Json
           status?: string
+          thief_variant?: string
           updated_at?: string
         }
         Relationships: []

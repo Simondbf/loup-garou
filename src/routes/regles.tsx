@@ -67,7 +67,7 @@ const SECTIONS = [
       "Deux cartes supplémentaires sont mises au centre. L'application les gère automatiquement dès que le Voleur est dans la composition.",
       "La première nuit, le Voleur voit ces deux cartes sur son écran et peut en prendre une : ce rôle devient définitivement le sien.",
       "S'il tombe sur deux Loups-Garous, il est obligé d'en prendre un.",
-      "Variante « Voleur d'Identité » (extension bonus) : il échange sa carte avec celle d'un joueur vivant.",
+      "Variante « Voleur d'Identité » : il échange définitivement sa carte avec celle d'un joueur, les deux sont prévenus par le Maître du Jeu.",
     ],
   },
   {
@@ -78,10 +78,11 @@ const SECTIONS = [
     ],
   },
   {
-    titre: "🏠 Extensions hors cartes",
+    titre: "🚨 Le Garde Champêtre",
     contenu: [
-      "Certaines extensions ajoutent des bâtiments (l'Auberge, l'Église, l'Écurie…) ou des objets de village. Elles se jouent avec du matériel physique, mais toutes leurs cartes de rôle sont disponibles ici.",
-      "L'écran du Maître du Jeu peut être utilisé en parallèle de n'importe quelle extension matérielle.",
+      "Il agit en toute fin de nuit, après tous les autres rôles : il désigne au Maître du Jeu un joueur qui ne pourra pas prendre la parole pendant le débat du lendemain.",
+      "Le joueur bâillonné conserve son droit de vote.",
+      "Le Garde Champêtre ne peut pas re-désigner une même personne : elle redevient une cible possible seulement après trois nuits.",
     ],
   },
 ];

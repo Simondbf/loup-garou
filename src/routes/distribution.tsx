@@ -1,136 +1,212 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { useGame } from "@/lib/game-store";
-import { Button, CampBadge, RoleArt } from "@/components/ui-kit";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Button, PageHeader, RoleArt, CampBadge } from "@/components/ui-kit";
 import { ROLES_BY_ID } from "@/data/roles";
+import { useGame } from "@/lib/game-store";
+import { markSeen, setSeatName, thiefChoose, type SeatDTO } from "@/lib/party.functions";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/distribution")({
   head: () => ({
     meta: [
-      { title: "Distribution des cartes — Loup-Garou" },
+      { title: "Ma carte secrète — partie de Loup-Garou" },
       {
         name: "description",
         content:
-          "Faites tourner le téléphone : chaque joueur découvre sa carte en secret puis la referme.",
+          "Entrez votre prénom, découvrez votre rôle en secret et lisez son pouvoir avant de passer le téléphone.",
       },
-      { property: "og:title", content: "Distribution des cartes — Loup-Garou" },
+      { property: "og:title", content: "Ma carte secrète de Loup-Garou" },
       {
         property: "og:description",
-        content: "Le téléphone passe de main en main, chaque carte reste secrète.",
+        content: "Chaque joueur découvre sa carte à son tour, à l'abri des regards.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: Distribution,
+  component: EcranJoueur,
 });
 
-function Distribution() {
-  const { state, hydrated, revealCurrent, nextPlayer, takeCenterCard } = useGame();
-  const [ouverte, setOuverte] = useState(false);
+function EcranJoueur() {
+  const navigate = useNavigate();
+  const { game, session, token, hydrated, apply, refresh } = useGame();
+  const [active, setActive] = useState<number | null>(null);
+  const [revele, setRevele] = useState(false);
 
-  if (!hydrated) return null;
+  useEffect(() => {
+    if (hydrated && !session) void navigate({ to: "/rejoindre" });
+  }, [hydrated, session, navigate]);
 
-  if (!state.started || state.players.length === 0) {
+  if (!game) {
     return (
-      <Vide>
-        Aucune partie en cours.{" "}
-        <Link to="/nouvelle-partie" className="text-primary underline">
-          Créer une partie
-        </Link>
-      </Vide>
-    );
-  }
-
-  const termine = state.cursor >= state.players.length;
-
-  if (termine) {
-    return (
-      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-5 text-center">
-        <div className="text-6xl">🌙</div>
-        <h1 className="mt-5 text-3xl font-bold text-gradient-moon">
-          Le village s'endort
-        </h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Toutes les cartes ont été distribuées. Le Maître du Jeu peut ouvrir son écran de
-          contrôle et lancer la première nuit.
-        </p>
-        <Link to="/maitre" className="btn-base btn-primary mt-8 w-full">
-          🎖️ Écran du Maître du Jeu
-        </Link>
-        <Link to="/" className="btn-base btn-ghost mt-3 w-full">
-          Accueil
-        </Link>
+      <main className="mx-auto min-h-screen w-full max-w-md px-5 pt-16 text-center">
+        <p className="text-sm text-muted-foreground">Connexion à la partie…</p>
       </main>
     );
   }
 
-  const player = state.players[state.cursor]!;
-  const role = ROLES_BY_ID[player.roleId]!;
-  const estVoleur = role.id === "voleur" && state.centerCards.length === 2;
+  const mine = game.seats.filter((s) => game.mySeats.includes(s.position));
+  const seat = mine.find((s) => s.position === active) ?? null;
 
-  const suivant = () => {
-    setOuverte(false);
-    nextPlayer();
-  };
+  async function nommer(position: number, name: string) {
+    apply(await setSeatName({ data: { code: game!.code, token, position, name } }));
+  }
+
+  async function ouvrir(s: SeatDTO) {
+    setActive(s.position);
+    setRevele(false);
+    await refresh();
+  }
+
+  async function voirCarte(s: SeatDTO) {
+    setRevele(true);
+    apply(await markSeen({ data: { code: game!.code, token, position: s.position } }));
+  }
+
+  const revealsPourMoi = game.reveals.filter((r) => game.mySeats.includes(r.toPosition));
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col px-5 pt-10 pb-10">
-      <div className="mb-6 text-center">
-        <p className="text-xs tracking-[0.3em] text-muted-foreground uppercase">
-          Carte {state.cursor + 1} / {state.players.length}
-        </p>
-        <h1 className="mt-2 text-3xl font-bold text-gradient-moon">{player.name}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {ouverte ? "Mémorise ta carte, puis referme." : "Personne d'autre ne regarde ?"}
-        </p>
-      </div>
+    <main className="mx-auto min-h-screen w-full max-w-md px-5 pt-10 pb-16">
+      <PageHeader
+        title={`Partie ${game.code}`}
+        subtitle={
+          game.status === "lobby"
+            ? "En attente du Maître du Jeu : renseignez déjà les prénoms."
+            : "Chacun son tour : ouvrez votre place, regardez votre carte, passez le téléphone."
+        }
+        back="/"
+      />
 
-      <div className="flex flex-1 items-center justify-center">
-        {!ouverte ? (
-          <button
-            onClick={() => {
-              revealCurrent();
-              setOuverte(true);
-            }}
-            className="card-back flex aspect-[3/4.4] w-full max-w-[19rem] animate-glow flex-col items-center justify-center gap-4 rounded-3xl"
-          >
-            <span className="text-6xl">🌕</span>
-            <span className="font-display text-lg font-bold tracking-wide">
-              Toucher pour révéler
-            </span>
-            <span className="px-8 text-center text-xs text-muted-foreground">
-              La carte reste visible tant que tu la gardes ouverte
-            </span>
-          </button>
-        ) : (
-          <div className="surface flex aspect-[3/4.4] w-full max-w-[19rem] animate-flip-in flex-col items-center gap-3 rounded-3xl p-4 text-center">
-            <RoleArt role={role} className="min-h-0 flex-1" />
-            <h2 className="font-display text-2xl font-black">{role.name}</h2>
-            <CampBadge camp={role.camp} />
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {role.description}
-            </p>
-          </div>
+      {!seat && (
+        <ul className="flex flex-col gap-3">
+          {mine.map((s) => (
+            <li key={s.position} className="surface p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-muted-foreground">Place {s.position}</span>
+                {s.seen && <span className="text-[11px] text-primary">carte vue</span>}
+              </div>
+              <input
+                value={s.name}
+                onChange={(e) => void nommer(s.position, e.target.value)}
+                placeholder="Prénom"
+                className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2.5 text-sm outline-none focus:border-primary"
+              />
+              {game.status !== "lobby" && (
+                <Button className="mt-3 w-full" onClick={() => void ouvrir(s)}>
+                  {s.seen ? "Revoir ma carte" : "Découvrir ma carte"}
+                </Button>
+              )}
+            </li>
+          ))}
+          {mine.length === 0 && (
+            <li className="surface p-4 text-sm text-muted-foreground">
+              Aucune place attribuée à cet appareil.
+            </li>
+          )}
+        </ul>
+      )}
 
-        )}
-      </div>
-
-      {ouverte && estVoleur && (
-        <div className="surface mt-5 p-4">
-          <p className="text-sm font-semibold">🗝️ Deux cartes au centre</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Choisis-en une : elle devient définitivement ton rôle.
+      {seat && !revele && (
+        <div className="surface card-back animate-rise flex flex-col items-center gap-4 p-8 text-center">
+          <div className="text-5xl">🌑</div>
+          <p className="font-display text-xl font-bold">{seat.name || `Place ${seat.position}`}</p>
+          <p className="text-xs text-muted-foreground">
+            Assurez-vous que personne ne regarde par-dessus votre épaule.
           </p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {state.centerCards.map((cid, i) => {
-              const c = ROLES_BY_ID[cid]!;
+          <Button className="w-full" onClick={() => void voirCarte(seat)}>
+            Retourner la carte
+          </Button>
+          <button className="text-xs text-muted-foreground underline" onClick={() => setActive(null)}>
+            Annuler
+          </button>
+        </div>
+      )}
+
+      {seat && revele && seat.roleId && (
+        <CarteRevelee
+          seat={seat}
+          code={game.code}
+          token={token}
+          centerCards={game.centerCards}
+          seats={game.seats}
+          onApply={apply}
+          onClose={() => {
+            setActive(null);
+            setRevele(false);
+          }}
+        />
+      )}
+
+      {revealsPourMoi.length > 0 && !seat && (
+        <section className="mt-8">
+          <h2 className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
+            Informations reçues
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {revealsPourMoi.map((r) => (
+              <li key={r.id} className="surface p-3 text-sm">
+                Place {r.targetPosition} :{" "}
+                <span className="font-display font-bold text-primary">{r.note}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </main>
+  );
+}
+
+function CarteRevelee({
+  seat,
+  code,
+  token,
+  centerCards,
+  seats,
+  onApply,
+  onClose,
+}: {
+  seat: SeatDTO;
+  code: string;
+  token: string;
+  centerCards: string[];
+  seats: SeatDTO[];
+  onApply: (dto: Awaited<ReturnType<typeof thiefChoose>>) => void;
+  onClose: () => void;
+}) {
+  const role = ROLES_BY_ID[seat.roleId!];
+  if (!role) return null;
+  const voleurCentre = role.id === "voleur" && centerCards.length > 0;
+  const voleurEchange = role.id === "voleur" && centerCards.length === 0;
+
+  return (
+    <div className="animate-flip-in flex flex-col gap-4">
+      <RoleArt role={role} className="aspect-[3/4]" />
+      <div className="surface p-4">
+        <div className="flex items-center gap-2">
+          <h2 className="font-display text-xl font-black">{role.name}</h2>
+          <CampBadge camp={role.camp} />
+        </div>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{role.description}</p>
+      </div>
+
+      {voleurCentre && (
+        <div className="surface p-4">
+          <p className="font-display text-sm font-bold">Deux cartes au centre</p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {centerCards.map((cid: string, i: number) => {
+              const r = ROLES_BY_ID[cid];
               return (
                 <button
                   key={`${cid}-${i}`}
-                  onClick={() => takeCenterCard(player.id, cid)}
-                  className="rounded-xl border border-border bg-secondary p-3 text-center active:scale-[0.97]"
+                  onClick={() =>
+                    void thiefChoose({
+                      data: { code, token, position: seat.position, centerRoleId: cid },
+                    }).then(onApply)
+                  }
+                  className={cn("text-left")}
                 >
-                  <RoleArt role={c} className="mx-auto aspect-[3/4] w-16" />
-                  <div className="mt-1 text-xs font-semibold">{c.name}</div>
+                  {r && <RoleArt role={r} className="aspect-[3/4]" />}
+                  <p className="mt-1 text-center text-xs text-muted-foreground">Prendre</p>
                 </button>
               );
             })}
@@ -138,25 +214,32 @@ function Distribution() {
         </div>
       )}
 
-      <div className="mt-6">
-        {ouverte ? (
-          <Button className="w-full py-4" onClick={suivant}>
-            J'ai vu ma carte — joueur suivant →
-          </Button>
-        ) : (
-          <p className="text-center text-xs text-muted-foreground">
-            Passe le téléphone à {player.name}
-          </p>
-        )}
-      </div>
-    </main>
-  );
-}
+      {voleurEchange && (
+        <div className="surface p-4">
+          <p className="font-display text-sm font-bold">Voler la carte d'un joueur</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {seats
+              .filter((s) => s.position !== seat.position)
+              .map((s) => (
+                <button
+                  key={s.position}
+                  onClick={() =>
+                    void thiefChoose({
+                      data: { code, token, position: seat.position, swapWith: s.position },
+                    }).then(onApply)
+                  }
+                  className="rounded-xl border border-border bg-secondary px-3 py-2 text-xs"
+                >
+                  {s.name || `Place ${s.position}`}
+                </button>
+              ))}
+          </div>
+        </div>
+      )}
 
-function Vide({ children }: { children: React.ReactNode }) {
-  return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md items-center justify-center px-6 text-center text-sm text-muted-foreground">
-      <p>{children}</p>
-    </main>
+      <Button variant="ghost" className="w-full py-4" onClick={onClose}>
+        J'ai compris, cacher la carte
+      </Button>
+    </div>
   );
 }

@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { CAMP_LABEL, type Camp, type Role } from "@/data/roles";
-import { roleImage } from "@/data/role-images";
+
 
 
 export function Button({
@@ -106,62 +106,63 @@ export function CampBadge({ camp, className }: { camp: Camp; className?: string 
   );
 }
 
+/** Fond de carte : clair pour le village, sombre pour les loups, diagonale pour les ambigus. */
+export function campFaceClass(camp: Camp) {
+  switch (camp) {
+    case "villageois":
+      return "role-face-light";
+    case "loups":
+      return "role-face-dark";
+    default:
+      return "role-face-split";
+  }
+}
+
 export function RoleSigil({ role, size = "md" }: { role: Role; size?: "sm" | "md" | "lg" }) {
-  const src = roleImage(role.id);
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border",
-        campClass(role.camp),
-        size === "sm" && "h-10 w-10 text-xl",
-        size === "md" && "h-14 w-14 text-3xl",
-        size === "lg" && "h-28 w-28 text-6xl",
+        "flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-border p-1 text-center",
+        campFaceClass(role.camp),
+        size === "sm" && "h-10 w-10",
+        size === "md" && "h-14 w-14",
+        size === "lg" && "h-28 w-28",
       )}
       aria-hidden
     >
-      {src ? (
-        <img
-          src={src}
-          alt=""
-          loading="lazy"
-          width={768}
-          height={1024}
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        role.emoji
-      )}
+      <span
+        className={cn(
+          "role-face-text font-display leading-tight font-bold",
+          size === "sm" && "text-[7px]",
+          size === "md" && "text-[9px]",
+          size === "lg" && "text-sm",
+        )}
+      >
+        {role.name}
+      </span>
     </div>
   );
 }
 
-/** Illustration plein cadre d'une carte (écran de révélation). */
+/** Face de carte : uniquement le nom, sur un fond typé camp. */
 export function RoleArt({ role, className }: { role: Role; className?: string }) {
-  const src = roleImage(role.id);
   return (
     <div
       className={cn(
-        "relative w-full overflow-hidden rounded-2xl border",
-        campClass(role.camp),
+        "relative flex w-full items-center justify-center overflow-hidden rounded-2xl border border-border p-4",
+        campFaceClass(role.camp),
         className,
       )}
+      role="img"
+      aria-label={`Carte ${role.name}`}
     >
-      {src ? (
-        <img
-          src={src}
-          alt={`Illustration du rôle ${role.name}`}
-          width={768}
-          height={1024}
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center text-6xl">
-          {role.emoji}
-        </div>
-      )}
+      <span className="role-face-text font-display text-center text-2xl leading-tight font-black tracking-wide">
+        {role.name}
+      </span>
     </div>
   );
 }
+
 
 
 export function Modal({
