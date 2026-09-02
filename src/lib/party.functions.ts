@@ -23,20 +23,33 @@ export interface SeatDTO {
   seen: boolean;
 }
 
+export interface HostState {
+  /** Sorcière : potions encore disponibles */
+  potionVie?: boolean;
+  potionMort?: boolean;
+  /** Joueur de Flûte : positions envoûtées */
+  charmed?: number[];
+  /** Pouvoirs à rechargement : roleId -> dernière nuit d'utilisation */
+  lastUsed?: Record<string, number>;
+}
+
 export interface GameDTO {
   code: string;
   status: string;
   phase: string;
   night: number;
   playerCount: number;
+  singleDevice: boolean;
   selection: Record<string, number>;
   centerCards: string[];
   gagHistory: { night: number; position: number }[];
+  hostState: HostState;
   seats: SeatDTO[];
   isHost: boolean;
   mySeats: number[];
   reveals: { id: string; toPosition: number; targetPosition: number; note: string | null }[];
 }
+
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 
