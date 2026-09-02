@@ -186,8 +186,24 @@ function CarteRevelee({
           <h2 className="font-display text-xl font-black">{role.name}</h2>
           <CampBadge camp={role.camp} />
         </div>
+        <p className="mt-2 rounded-xl border border-primary/30 bg-primary/10 p-3 text-sm font-semibold text-primary">
+          {role.short}
+        </p>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{role.description}</p>
+        {role.id === "villageois-villageois" && (
+          <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-xs">
+            Votre carte est publique : le Maître du Jeu annoncera à tout le village que vous êtes
+            un authentique villageois.
+          </p>
+        )}
+        {role.id === "garde-champetre" && (
+          <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-xs">
+            Le joueur que vous bâillonnez pourra encore voter et communiquer par gestes, mais pas
+            parler.
+          </p>
+        )}
       </div>
+
 
       {voleurCentre && (
         <div className="surface p-4">

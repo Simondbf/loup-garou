@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Button, CampBadge, PageHeader, RoleSigil } from "@/components/ui-kit";
-import { ROLES_BY_ID } from "@/data/roles";
+import { Button, LinkButton, PageHeader, RoleSigil } from "@/components/ui-kit";
+import { CAMP_LABEL, ROLES_BY_ID } from "@/data/roles";
 import { useGame } from "@/lib/game-store";
 import {
   clearReveals,
@@ -12,10 +12,12 @@ import {
   pushReveal,
   setCaptain,
   setDead,
+  setHostState,
   setLovers,
   setPhase,
   setPublicRole,
   setSeatName,
+  type HostState,
   type SeatDTO,
 } from "@/lib/party.functions";
 import { cn } from "@/lib/utils";
@@ -87,11 +89,15 @@ function Maitre() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-md px-5 pt-10 pb-16">
       <PageHeader
-        title={`Code ${game.code}`}
+        title={game.singleDevice ? "Un seul téléphone" : `Code ${game.code}`}
         subtitle={
           game.status === "lobby"
-            ? `${prets}/${game.playerCount} places prises. Partagez le code, puis distribuez.`
-            : `Nuit ${game.night} · ${game.phase} · ${vivants} vivants`
+            ? game.singleDevice
+              ? `${game.playerCount} joueurs · votre appareil porte toutes les places et tourne autour de la table.`
+              : `${prets}/${game.playerCount} places prises. Partagez le code, puis distribuez.`
+            : `Nuit ${game.night} · ${game.phase} · ${vivants} vivants${
+                game.singleDevice ? " · un seul téléphone" : ` · code ${game.code}`
+              }`
         }
         back="/"
       />
@@ -100,18 +106,20 @@ function Maitre() {
 
       {game.status === "lobby" ? (
         <section className="flex flex-col gap-3">
-          <div className="surface p-5 text-center">
-            <p className="text-xs tracking-widest text-muted-foreground uppercase">
-              Code de partie
-            </p>
-            <p className="font-display text-5xl font-black tracking-[0.3em] text-gradient-moon">
-              {game.code}
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Chaque joueur ouvre l'application, choisit « Rejoindre » et indique combien de
-              joueurs partagent son téléphone.
-            </p>
-          </div>
+          {!game.singleDevice && (
+            <div className="surface p-5 text-center">
+              <p className="text-xs tracking-widest text-muted-foreground uppercase">
+                Code de partie
+              </p>
+              <p className="font-display text-5xl font-black tracking-[0.3em] text-gradient-moon">
+                {game.code}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Chaque joueur ouvre l'application, choisit « Rejoindre » et indique combien de
+                joueurs partagent son téléphone.
+              </p>
+            </div>
+          )}
 
           <ul className="flex flex-col gap-2">
             {game.seats.map((s) => (
@@ -129,25 +137,25 @@ function Maitre() {
                   placeholder={s.claimed ? "Prénom" : "Place libre"}
                   className="min-w-0 flex-1 rounded-lg border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary"
                 />
-                <button
-                  onClick={() =>
-                    void run(
-                      hostTakeSeat({
-                        data: { code: game.code, token, position: s.position, take: !s.mine },
-                      }),
-                    )
-                  }
-                  className={cn(
-                    "rounded-lg border px-2 py-1.5 text-[11px]",
-                    s.mine
-                      ? "border-primary bg-primary/15 text-primary"
-                      : s.claimed
-                        ? "border-border text-muted-foreground"
+                {!game.singleDevice && (
+                  <button
+                    onClick={() =>
+                      void run(
+                        hostTakeSeat({
+                          data: { code: game.code, token, position: s.position, take: !s.mine },
+                        }),
+                      )
+                    }
+                    className={cn(
+                      "rounded-lg border px-2 py-1.5 text-[11px]",
+                      s.mine
+                        ? "border-primary bg-primary/15 text-primary"
                         : "border-border text-muted-foreground",
-                  )}
-                >
-                  {s.mine ? "sur mon tél." : s.claimed ? "connecté" : "libre"}
-                </button>
+                    )}
+                  >
+                    {s.mine ? "sur mon tél." : s.claimed ? "connecté" : "libre"}
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -156,11 +164,12 @@ function Maitre() {
             className="w-full py-4"
             onClick={() => void run(dealCards({ data: { code: game.code, token } }))}
           >
-            Distribuer les cartes
+            {game.singleDevice ? "Commencer la distribution" : "Distribuer les cartes"}
           </Button>
           <p className="text-center text-[11px] text-muted-foreground">
-            Les places restées libres peuvent être portées par votre téléphone : le village fait
-            tourner l'appareil pour ces joueurs-là.
+            {game.singleDevice
+              ? "Les joueurs saisiront leur prénom et découvriront leur carte chacun leur tour sur cet appareil."
+              : "Les places restées libres peuvent être portées par votre téléphone : le village fait tourner l'appareil pour ces joueurs-là."}
           </p>
         </section>
       ) : (
@@ -187,6 +196,14 @@ function Maitre() {
               </button>
             ))}
           </div>
+
+          {game.singleDevice && (
+            <LinkButton to="/distribution" variant="ghost" className="mb-4 w-full py-3 text-sm">
+              📱 Faire tourner le téléphone (prénoms + cartes)
+            </LinkButton>
+          )}
+
+
 
           {onglet === "village" && (
             <ul className="flex flex-col gap-2">
@@ -291,6 +308,16 @@ function Maitre() {
                   Le Garde Champêtre intervient toujours en dernier, juste avant le lever du jour.
                 </p>
               </div>
+
+              <SuiviPouvoirs
+                seats={game.seats}
+                hostState={game.hostState}
+                onPatch={(patch) =>
+                  void run(setHostState({ data: { code: game.code, token, patch } }))
+                }
+              />
+
+
 
               {game.seats.some((s) => s.roleId === "garde-champetre") && (
                 <div className="surface p-4">
@@ -451,15 +478,19 @@ function JoueurLigne({
           <div className="flex items-center gap-2">
             <span className="truncate text-sm font-semibold">
               {seat.name || `Place ${seat.position}`}
+              <span className="text-muted-foreground"> — </span>
+              <span className="font-display font-black text-primary">{role?.name ?? "carte non distribuée"}</span>
             </span>
             {seat.isCaptain && <span title="Capitaine">🎖️</span>}
             {seat.loverGroup && <span title="Amoureux">❤️</span>}
-            {seat.statuses.includes("baillonne") && <span title="Bâillonné">🤐</span>}
-            {role && <CampBadge camp={role.camp} />}
+            {seat.statuses.includes("baillonne") && <span title="Bâillonné (gestes autorisés)">🤐</span>}
           </div>
           <p className="truncate text-[11px] text-muted-foreground">
-            {role?.name ?? "—"}
+            {role ? CAMP_LABEL[role.camp] : "—"}
             {seat.publicRole ? " · rôle public" : ""}
+            {role?.id === "villageois-villageois" && !seat.publicRole
+              ? " · à annoncer au village"
+              : ""}
             {!seat.alive ? ` · mort (${seat.deathCause})` : ""}
           </p>
         </div>
@@ -504,5 +535,124 @@ function Mini({
     >
       {children}
     </button>
+  );
+}
+
+/** Suivi privé du MJ : potions de la Sorcière, envoûtés du Joueur de Flûte,
+ *  pouvoirs à usage unique ou à rechargement. */
+function SuiviPouvoirs({
+  seats,
+  hostState,
+  onPatch,
+}: {
+  seats: SeatDTO[];
+  hostState: HostState;
+  onPatch: (patch: HostState) => void;
+}) {
+  const aRole = (id: string) => seats.some((s) => s.roleId === id);
+  const charmed = hostState.charmed ?? [];
+  const lastUsed = hostState.lastUsed ?? {};
+
+  const rappels = [
+    aRole("salvateur") && "Salvateur : jamais deux nuits de suite la même personne.",
+    aRole("infect-pere-des-loups") && "Infect Père des Loups : infection possible une seule fois.",
+    aRole("ancien") && "Ancien : survit à la première attaque des Loups.",
+    aRole("juge-begue") && "Juge Bègue : second vote utilisable une seule fois.",
+    aRole("gitane") && "Gitane / rôles à usage unique : appelez-les quand même chaque nuit.",
+  ].filter(Boolean) as string[];
+
+  if (!aRole("sorciere") && !aRole("joueur-de-flute") && rappels.length === 0) return null;
+
+  return (
+    <div className="surface p-4">
+      <h2 className="font-display text-sm font-bold">Suivi des pouvoirs</h2>
+
+      {aRole("sorciere") && (
+        <div className="mt-3">
+          <p className="text-[11px] text-muted-foreground">Potions de la Sorcière</p>
+          <div className="mt-2 flex gap-2">
+            {(
+              [
+                ["potionVie", "🧪 Potion de vie"],
+                ["potionMort", "☠️ Potion de mort"],
+              ] as const
+            ).map(([cle, label]) => {
+              const dispo = hostState[cle] !== false;
+              return (
+                <button
+                  key={cle}
+                  onClick={() => onPatch({ [cle]: !dispo } as HostState)}
+                  className={cn(
+                    "flex-1 rounded-xl border px-3 py-2 text-xs font-semibold",
+                    dispo
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-secondary text-muted-foreground line-through",
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Touchez une potion quand elle est consommée.
+          </p>
+        </div>
+      )}
+
+      {aRole("joueur-de-flute") && (
+        <div className="mt-4">
+          <p className="text-[11px] text-muted-foreground">
+            Joueurs envoûtés ({charmed.length}) — réveillez-les ensemble après le Joueur de Flûte.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {seats
+              .filter((s) => s.alive)
+              .map((s) => {
+                const on = charmed.includes(s.position);
+                return (
+                  <button
+                    key={s.position}
+                    onClick={() =>
+                      onPatch({
+                        charmed: on
+                          ? charmed.filter((p) => p !== s.position)
+                          : [...charmed, s.position],
+                      })
+                    }
+                    className={cn(
+                      "rounded-xl border px-3 py-2 text-xs",
+                      on
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border bg-secondary",
+                    )}
+                  >
+                    🎶 {s.name || `Place ${s.position}`}
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+      )}
+
+      {rappels.length > 0 && (
+        <ul className="mt-4 flex flex-col gap-1">
+          {rappels.map((r) => (
+            <li key={r} className="text-[11px] text-muted-foreground">
+              • {r}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {Object.keys(lastUsed).length > 0 && (
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Derniers usages :{" "}
+          {Object.entries(lastUsed)
+            .map(([id, n]) => `${ROLES_BY_ID[id]?.name ?? id} (nuit ${n})`)
+            .join(" · ")}
+        </p>
+      )}
+    </div>
   );
 }

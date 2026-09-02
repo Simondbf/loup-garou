@@ -23,20 +23,33 @@ export interface SeatDTO {
   seen: boolean;
 }
 
+export interface HostState {
+  /** Sorcière : potions encore disponibles */
+  potionVie?: boolean;
+  potionMort?: boolean;
+  /** Joueur de Flûte : positions envoûtées */
+  charmed?: number[];
+  /** Pouvoirs à rechargement : roleId -> dernière nuit d'utilisation */
+  lastUsed?: Record<string, number>;
+}
+
 export interface GameDTO {
   code: string;
   status: string;
   phase: string;
   night: number;
   playerCount: number;
+  singleDevice: boolean;
   selection: Record<string, number>;
   centerCards: string[];
   gagHistory: { night: number; position: number }[];
+  hostState: HostState;
   seats: SeatDTO[];
   isHost: boolean;
   mySeats: number[];
   reveals: { id: string; toPosition: number; targetPosition: number; note: string | null }[];
 }
+
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";
 
@@ -104,9 +117,11 @@ async function buildDTO(
     phase: game["phase"],
     night: game["night"],
     playerCount: game["player_count"],
+    singleDevice: !!game["single_device"],
     selection: (game["selection"] ?? {}) as Record<string, number>,
     centerCards: isHost || mySeats.length > 0 ? ((game["center_cards"] ?? []) as string[]) : [],
     gagHistory: (game["gag_history"] ?? []) as { night: number; position: number }[],
+    hostState: isHost ? ((game["host_state"] ?? {}) as HostState) : {},
     isHost,
     mySeats,
     reveals: ((revealRows ?? []) as AnyRow[])
@@ -153,11 +168,13 @@ export const createGame = createServerFn({ method: "POST" })
       playerCount: number;
       selection: Record<string, number>;
       thiefVariant?: "centre" | "echange";
+      singleDevice?: boolean;
     }) => d,
   )
   .handler(async ({ data }) => {
     const db = await admin();
     const count = Math.max(7, Math.min(30, Math.floor(data.playerCount)));
+    const single = !!data.singleDevice;
 
     let code = makeCode();
     for (let attempt = 0; attempt < 8; attempt++) {
@@ -180,21 +197,46 @@ export const createGame = createServerFn({ method: "POST" })
         status: "lobby",
         phase: "lobby",
         thief_variant: data.thiefVariant ?? "centre",
+        single_device: single,
+        host_state: {
+          potionVie: true,
+          potionMort: true,
+          charmed: [],
+          lastUsed: {},
+        },
       })
       .select("*")
       .single();
     if (error) throw new Error(error.message);
 
+    // Mode « un seul téléphone » : toutes les places sont portées par l'appareil du MJ.
     await db.from("seats").insert(
       Array.from({ length: count }, (_, i) => ({
         game_id: game["id"],
         position: i + 1,
         name: "",
+        ...(single ? { device_token: data.hostToken } : {}),
       })),
     );
 
     return { code: game["code"] as string };
   });
+
+/** Suivi privé du Maître du Jeu (potions, envoûtés, pouvoirs rechargeables). */
+export const setHostState = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string; patch: HostState }) => d)
+  .handler(async ({ data }) => {
+    const db = await admin();
+    const game = await requireHost(db, data.code, data.token);
+    const current = (game["host_state"] ?? {}) as HostState;
+    await db
+      .from("games")
+      .update({ host_state: { ...current, ...data.patch } })
+      .eq("id", game["id"]);
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
 
 export const fetchGame = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; token: string }) => d)

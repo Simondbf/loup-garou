@@ -20,12 +20,14 @@ export type Database = {
           code: string
           created_at: string
           gag_history: Json
+          host_state: Json
           host_token: string
           id: string
           night: number
           phase: string
           player_count: number
           selection: Json
+          single_device: boolean
           status: string
           thief_variant: string
           updated_at: string
@@ -35,12 +37,14 @@ export type Database = {
           code: string
           created_at?: string
           gag_history?: Json
+          host_state?: Json
           host_token: string
           id?: string
           night?: number
           phase?: string
           player_count?: number
           selection?: Json
+          single_device?: boolean
           status?: string
           thief_variant?: string
           updated_at?: string
@@ -50,12 +54,14 @@ export type Database = {
           code?: string
           created_at?: string
           gag_history?: Json
+          host_state?: Json
           host_token?: string
           id?: string
           night?: number
           phase?: string
           player_count?: number
           selection?: Json
+          single_device?: boolean
           status?: string
           thief_variant?: string
           updated_at?: string

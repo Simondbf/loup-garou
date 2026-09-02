@@ -8,6 +8,8 @@ export interface Role {
   max: number;
   /** Ordre de réveil pendant la nuit (plus petit = plus tôt) */
   wakeOrder?: number;
+  /** Statut découlant d'un autre rôle (Amoureux, Capitaine) : ne se distribue pas. */
+  derived?: boolean;
   short: string;
   description: string;
   emoji: string;
@@ -113,6 +115,7 @@ export const ROLES: Role[] = [
     name: "Capitaine",
     camp: "special",
     max: 1,
+    derived: true,
     emoji: "🎖️",
     short: "Son vote compte double.",
     description:
@@ -490,6 +493,7 @@ export const ROLES: Role[] = [
     name: "Amoureux",
     camp: "special",
     max: 2,
+    derived: true,
     emoji: "❤️",
     short: "Lié à un autre joueur pour la vie et la mort.",
     description:
@@ -506,7 +510,7 @@ export const ROLES: Role[] = [
     emoji: "🚨",
     short: "En fin de nuit, il bâillonne un joueur pour le lendemain.",
     description:
-      "En toute fin de nuit, après tous les autres rôles, le Garde Champêtre désigne au Maître du Jeu un joueur qui ne pourra pas prendre la parole pendant le débat du lendemain. Le joueur bâillonné garde son droit de vote. Le Garde Champêtre ne peut pas re-désigner quelqu'un qu'il a déjà bâillonné : la cible redevient disponible seulement après trois nuits.",
+      "En toute fin de nuit, après tous les autres rôles, le Garde Champêtre désigne au Maître du Jeu un joueur qui ne pourra pas prendre la parole pendant le débat du lendemain. Le joueur bâillonné garde son droit de vote et peut communiquer par gestes ou mimiques, mais aucun son ni aucun mot écrit. Le Garde Champêtre ne peut pas re-désigner quelqu'un qu'il a déjà bâillonné : la cible redevient disponible seulement après trois nuits.",
   },
 ];
 

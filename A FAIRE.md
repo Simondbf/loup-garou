@@ -1,4 +1,4 @@
-# À FAIRE — Lune Rousse (Loup-Garou)
+# À FAIRE — Les Nuits de Thiercelieux (Loup-Garou)
 
 ## Fait
 - Illustrations générées supprimées ; cartes typographiques (fond clair = village, sombre = loups, diagonale = ambigu/solitaire).
@@ -9,7 +9,7 @@
 - MJ : morts + causes, cascade des amoureux, capitaine, rôle rendu public (Villageois-Villageois), ordre de réveil, révélations privées (Voyante, Renard…), phases jour/nuit.
 
 ## À faire
-- Nom définitif de l'app (« Lune Rousse » proposé pour éviter la marque « Thiercelieux »).
+- Nom définitif de l'app (« Les Nuits de Thiercelieux » retenu (titre de roman, distinct du jeu de société)).
 - Emballage Android (Capacitor / TWA) et fiche Play Store ; sous-domaine prévu : lg.soleiljaune.be.
 - Vérification juridique : ne pas utiliser noms d'extensions, visuels ni logos officiels ; rester sur du texte et des rôles génériques.
 - Temps réel : passer du sondage toutes les 3 s à un canal temps réel si besoin.
