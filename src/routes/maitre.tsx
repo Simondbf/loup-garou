@@ -488,6 +488,9 @@ function JoueurLigne({
           <p className="truncate text-[11px] text-muted-foreground">
             {role ? CAMP_LABEL[role.camp] : "—"}
             {seat.publicRole ? " · rôle public" : ""}
+            {role?.id === "villageois-villageois" && !seat.publicRole
+              ? " · à annoncer au village"
+              : ""}
             {!seat.alive ? ` · mort (${seat.deathCause})` : ""}
           </p>
         </div>
