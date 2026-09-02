@@ -304,9 +304,18 @@ function NouvellePartie() {
                 ))}
               </div>
               <p className="mt-2 text-[11px] text-muted-foreground">
-                « Centre » ajoute deux cartes supplémentaires à la pioche. « Échange » : le Voleur
-                prend définitivement la carte d'un joueur, les deux sont prévenus.
+                « Centre » : deux cartes en plus sont mises de côté, le Voleur en choisit une la
+                première nuit et la garde jusqu'à la fin.
               </p>
+              {thiefVariant === "echange" && (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  « Échange » : le Voleur est appelé <strong>chaque nuit</strong> et échange sa carte
+                  avec celle du joueur de son choix ; les deux voient leur nouveau rôle. Avec un seul
+                  téléphone, chaque matin oblige toute la table à revérifier sa carte : mieux vaut
+                  alors que chacun ait un appareil.
+                </p>
+              )}
+
             </div>
           ) : null}
 
