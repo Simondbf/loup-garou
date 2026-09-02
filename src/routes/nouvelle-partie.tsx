@@ -163,6 +163,7 @@ function NouvellePartie() {
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={saisie}
+                onFocus={(e) => e.currentTarget.select()}
                 onChange={(e) => {
                   const v = e.target.value.replace(/[^0-9]/g, "").slice(0, 2);
                   setSaisie(v);
@@ -171,14 +172,14 @@ function NouvellePartie() {
                 }}
                 onBlur={() => {
                   const n = Number(saisie);
-                  const clamp = Number.isFinite(n) ? Math.min(MAX, Math.max(MIN, n)) : count;
+                  const clamp = Number.isFinite(n) && saisie ? Math.min(MAX, Math.max(MIN, n)) : count;
                   setCount(clamp);
                   setSaisie(String(clamp));
                 }}
                 aria-label="Nombre de joueurs"
-                className="w-24 bg-transparent text-center font-display text-5xl font-black text-gradient-moon outline-none"
+                className="w-24 rounded-xl border-2 border-dashed border-border bg-transparent py-1 text-center font-display text-5xl font-black text-gradient-moon outline-none focus:border-primary"
               />
-              <div className="text-xs text-muted-foreground">joueurs</div>
+              <div className="text-xs text-muted-foreground">joueurs · touchez pour saisir</div>
             </div>
             <button
               onClick={() =>
@@ -198,23 +199,34 @@ function NouvellePartie() {
             De {MIN} à {MAX} joueurs.
           </p>
 
-          <label className="surface mt-5 flex w-full cursor-pointer items-center gap-3 p-4">
-            <input
-              type="checkbox"
-              checked={singleDevice}
-              onChange={(e) => setSingleDevice(e.target.checked)}
-              className="h-5 w-5 shrink-0 accent-primary"
-            />
-            <span className="font-display text-sm font-bold">
-              Un seul téléphone pour tout le monde
-            </span>
-          </label>
+          <div className="surface mt-5 flex w-full items-center gap-3 p-4">
+            <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                checked={singleDevice}
+                onChange={(e) => setSingleDevice(e.target.checked)}
+                className="h-5 w-5 shrink-0 accent-primary"
+              />
+              <span className="font-display text-sm font-bold">
+                Un seul téléphone pour tout le monde
+              </span>
+            </label>
+            <button
+              type="button"
+              onClick={() => setAideAppareil(true)}
+              aria-label="En savoir plus sur ce réglage"
+              className="h-7 w-7 shrink-0 rounded-full border border-border text-sm font-bold text-muted-foreground"
+            >
+              ?
+            </button>
+          </div>
 
           <Button className="mt-6 w-full py-4" onClick={() => setStep(2)}>
             Choisir la composition
           </Button>
         </section>
       )}
+
 
       {step === 2 && (
         <section>
