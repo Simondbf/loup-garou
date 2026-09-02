@@ -174,7 +174,8 @@ function NouvellePartie() {
                 }}
                 onBlur={() => {
                   const n = Number(saisie);
-                  const clamp = Number.isFinite(n) && saisie ? Math.min(MAX, Math.max(MIN, n)) : count;
+                  const clamp =
+                    Number.isFinite(n) && saisie ? Math.min(MAX, Math.max(MIN, n)) : count;
                   setCount(clamp);
                   setSaisie(String(clamp));
                 }}
@@ -229,7 +230,6 @@ function NouvellePartie() {
         </section>
       )}
 
-
       {step === 2 && (
         <section>
           <div className="surface sticky top-2 z-10 mb-4 flex items-center justify-between gap-2 p-3 text-sm">
@@ -279,6 +279,11 @@ function NouvellePartie() {
             comptent pas dans les cartes distribuées.
           </p>
 
+          <p className="mb-4 rounded-xl border border-border bg-secondary p-3 text-[11px] text-muted-foreground">
+            D'autres compositions conseillées arriveront dans une prochaine version, avec des tables
+            pour 13, 16 et 17 joueurs. En attendant, « Automatique » compose une table équilibrée
+            pour n'importe quel nombre de joueurs.
+          </p>
 
           {(["loups", "villageois", "special", "solitaire"] as Camp[]).map((camp) => (
             <div key={camp} className="mb-5">
@@ -390,5 +395,4 @@ function NouvellePartie() {
       </Modal>
     </main>
   );
-
 }

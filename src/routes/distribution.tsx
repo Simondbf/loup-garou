@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button, PageHeader, RoleArt, CampBadge } from "@/components/ui-kit";
+import { ChampPrenom } from "@/components/champ-prenom";
 import { ROLES_BY_ID } from "@/data/roles";
 import { useGame } from "@/lib/game-store";
 import { markSeen, setSeatName, thiefChoose, type SeatDTO } from "@/lib/party.functions";
@@ -52,6 +53,10 @@ function EcranJoueur() {
     apply(await setSeatName({ data: { code: game!.code, token, position, name } }));
   }
 
+  // Une carte déjà consultée reste verrouillée : sur un téléphone partagé,
+  // c'est ce qui empêche le joueur suivant de repasser en revue toutes les
+  // places. Le Maître du Jeu peut la rouvrir depuis son écran.
+
   async function ouvrir(s: SeatDTO) {
     setActive(s.position);
     setRevele(false);
@@ -83,19 +88,25 @@ function EcranJoueur() {
             <li key={s.position} className="surface p-4">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs text-muted-foreground">Place {s.position}</span>
-                {s.seen && <span className="text-[11px] text-primary">carte vue</span>}
+                {s.seen && <span className="text-[11px] text-muted-foreground">🔒 carte vue</span>}
               </div>
-              <input
-                value={s.name}
-                onChange={(e) => void nommer(s.position, e.target.value)}
+              <ChampPrenom
+                valeur={s.name}
+                onEnregistrer={(nom) => void nommer(s.position, nom)}
                 placeholder="Prénom"
-                className="mt-2 w-full rounded-xl border border-border bg-input px-3 py-2.5 text-sm outline-none focus:border-primary"
+                className="mt-2 w-full"
               />
-              {game.status !== "lobby" && (
-                <Button className="mt-3 w-full" onClick={() => void ouvrir(s)}>
-                  {s.seen ? "Revoir ma carte" : "Découvrir ma carte"}
-                </Button>
-              )}
+              {game.status !== "lobby" &&
+                (s.seen ? (
+                  <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-center text-xs text-muted-foreground">
+                    🔒 Carte déjà consultée. Pour la revoir, demandez au Maître du Jeu de la
+                    rouvrir.
+                  </p>
+                ) : (
+                  <Button className="mt-3 w-full" onClick={() => void ouvrir(s)}>
+                    Découvrir ma carte
+                  </Button>
+                ))}
             </li>
           ))}
           {mine.length === 0 && (
@@ -116,7 +127,10 @@ function EcranJoueur() {
           <Button className="w-full" onClick={() => void voirCarte(seat)}>
             Retourner la carte
           </Button>
-          <button className="text-xs text-muted-foreground underline" onClick={() => setActive(null)}>
+          <button
+            className="text-xs text-muted-foreground underline"
+            onClick={() => setActive(null)}
+          >
             Annuler
           </button>
         </div>
@@ -192,8 +206,8 @@ function CarteRevelee({
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{role.description}</p>
         {role.id === "villageois-villageois" && (
           <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-xs">
-            Votre carte est publique : le Maître du Jeu annoncera à tout le village que vous êtes
-            un authentique villageois.
+            Votre carte est publique : le Maître du Jeu annoncera à tout le village que vous êtes un
+            authentique villageois.
           </p>
         )}
         {role.id === "garde-champetre" && (
@@ -203,7 +217,6 @@ function CarteRevelee({
           </p>
         )}
       </div>
-
 
       {voleurCentre && (
         <div className="surface p-4">

@@ -42,7 +42,7 @@ services:
     # Écoute uniquement sur la boucle locale du VPS : c'est le nginx de
     # l'hôte qui termine le TLS et transmet les requêtes.
     ports:
-      - "127.0.0.1:3005:3000"
+      - "127.0.0.1:3010:3000"
     networks:
       - lg
 

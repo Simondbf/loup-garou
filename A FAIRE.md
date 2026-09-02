@@ -8,6 +8,14 @@
 - Multi-appareils : code de partie à 4 lettres, 1 à 6 joueurs par téléphone, places libres portées par le téléphone du MJ.
 - MJ : morts + causes, cascade des amoureux, capitaine, rôle rendu public (Villageois-Villageois), ordre de réveil, révélations privées (Voyante, Renard…), phases jour/nuit.
 
+## Reporté en v2
+- Voleur : faire de la variante « échange » (le Voleur vole la carte d'un
+  joueur à chaque tour) l'option principale. Implique que chacun revérifie sa
+  carte le matin, et cette variante restera indisponible en mode un seul
+  téléphone.
+- Compositions préenregistrées : rééquilibrage et ajout des tables 13, 16 et
+  17 joueurs.
+
 ## À faire
 - Nom définitif de l'app (« Les Nuits de Thiercelieux » retenu (titre de roman, distinct du jeu de société)).
 - Emballage Android (Capacitor / TWA) et fiche Play Store ; sous-domaine prévu : lg.soleiljaune.be.

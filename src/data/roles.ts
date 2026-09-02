@@ -10,6 +10,13 @@ export interface Role {
   wakeOrder?: number;
   /** Statut découlant d'un autre rôle (Amoureux, Capitaine) : ne se distribue pas. */
   derived?: boolean;
+  /**
+   * Rôle qui ne doit JAMAIS être appelé à voix haute pendant la nuit : le
+   * nommer suffirait à le trahir, ou il n'a tout simplement pas de réveil
+   * propre. Le texte est affiché au Maître du Jeu comme rappel, en dehors
+   * de l'ordre d'appel.
+   */
+  sansAppel?: string;
   short: string;
   description: string;
   emoji: string;
@@ -32,7 +39,6 @@ export const PREMIERE_NUIT_SEULEMENT = new Set([
   "soeurs",
   "freres",
 ]);
-
 
 export const ROLES: Role[] = [
   // ---------------- BASE ----------------
@@ -105,8 +111,9 @@ export const ROLES: Role[] = [
     name: "Petite Fille",
     camp: "villageois",
     max: 1,
-    wakeOrder: 31,
     emoji: "👧",
+    sansAppel:
+      "Ne l'appelez jamais : elle entrouvre les yeux pendant le tour des Loups-Garous, sans être nommée. Si un Loup la surprend, faites-le-lui savoir d'un geste.",
     short: "Espionne les Loups-Garous pendant la nuit.",
     description:
       "La Petite Fille peut entrouvrir les yeux pendant le tour des Loups-Garous pour tenter de les identifier. Si un Loup la surprend, elle est dévorée sur-le-champ (variante) ou devient une cible évidente.",
@@ -226,6 +233,8 @@ export const ROLES: Role[] = [
     camp: "villageois",
     max: 1,
     emoji: "🐻",
+    sansAppel:
+      "Rien à faire la nuit. Au lever du jour, faites grogner l'ours si l'un de ses deux voisins vivants est un Loup-Garou (ou assimilé).",
     short: "Son ours grogne si un Loup est à côté de lui.",
     description:
       "Chaque matin, le Maître du Jeu fait grogner l'ours si au moins un des deux voisins directs du Montreur d'Ours est un Loup-Garou (ou l'assimilé). Un détecteur redoutable mais imprécis.",
@@ -473,8 +482,9 @@ export const ROLES: Role[] = [
     name: "Loup-Garou Noir",
     camp: "loups",
     max: 1,
-    wakeOrder: 37,
     emoji: "🖤",
+    sansAppel:
+      "Aucun réveil à lui : il se réveille et dévore avec la meute. Aux pouvoirs de détection (Voyante, Renard…), annoncez-le comme Simple Villageois.",
     short: "Invisible aux pouvoirs de détection.",
     description:
       "Le Loup-Garou Noir apparaît comme un simple villageois à la Voyante et aux autres pouvoirs de détection. Il dévore normalement avec la meute.",
@@ -527,10 +537,7 @@ export const ROLES: Role[] = [
   },
 ];
 
-export const ROLES_BY_ID = Object.fromEntries(ROLES.map((r) => [r.id, r])) as Record<
-  string,
-  Role
->;
+export const ROLES_BY_ID = Object.fromEntries(ROLES.map((r) => [r.id, r])) as Record<string, Role>;
 
 export function isWolfSide(role: Role) {
   return role.camp === "loups";

@@ -127,7 +127,12 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
     singleDevice: !!game["single_device"],
     thiefVariant: (game["thief_variant"] || "centre") as string,
     selection: (game["selection"] ?? {}) as Record<string, number>,
-    centerCards: isHost || mySeats.length > 0 ? ((game["center_cards"] ?? []) as string[]) : [],
+    // Les deux cartes du centre n'appartiennent qu'au Voleur : elles ne sont
+    // envoyées qu'à l'appareil qui porte sa place, et au Maître du Jeu.
+    centerCards:
+      isHost || seats.some((s) => s["role_id"] === "voleur" && s["device_token"] === token)
+        ? ((game["center_cards"] ?? []) as string[])
+        : [],
     gagHistory: (game["gag_history"] ?? []) as { night: number; position: number }[],
     hostState: isHost ? ((game["host_state"] ?? {}) as HostState) : {},
     isHost,
@@ -360,6 +365,20 @@ export const markSeen = createServerFn({ method: "POST" })
     return buildDTO(db, game, data.token);
   });
 
+/** Le MJ rouvre une carte déjà consultée, pour un joueur qui a oublié la sienne.
+ *  Sans cela, une carte vue reste verrouillée : c'est ce qui empêche un joueur
+ *  de repasser en revue toutes les places sur un téléphone partagé. */
+export const resetSeen = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string; position: number }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    const seats = await seatsDe(db, game["id"]);
+    const cible = seats.find((s) => s["position"] === data.position);
+    if (cible) await db.pb.modifier("seats", cible["id"], { seen: false });
+    return buildDTO(db, game, data.token);
+  });
+
 /** Voleur : prend une des deux cartes du centre (variante « centre »)
  *  ou échange sa carte avec un joueur (variante « échange »). */
 export const thiefChoose = createServerFn({ method: "POST" })
@@ -378,6 +397,11 @@ export const thiefChoose = createServerFn({ method: "POST" })
     const seats = await seatsDe(db, game["id"]);
     const me = seats.find((s) => s["position"] === data.position);
     if (!me || me["role_id"] !== "voleur") throw new Error("Action réservée au Voleur");
+    // Porter la carte ne suffit pas : il faut aussi tenir l'appareil qui porte
+    // cette place (ou être le Maître du Jeu), sinon n'importe quel joueur
+    // connaissant le code de partie pourrait voler à la place du Voleur.
+    const proprietaire = me["device_token"] === data.token || game["host_token"] === data.token;
+    if (!proprietaire) throw new Error("Action réservée au Voleur");
 
     if (data.centerRoleId) {
       const center = [...((game["center_cards"] ?? []) as string[])];

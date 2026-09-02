@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Button, LinkButton, PageHeader, RoleSigil } from "@/components/ui-kit";
+import { ChampPrenom } from "@/components/champ-prenom";
 import { CAMP_LABEL, PREMIERE_NUIT_SEULEMENT, ROLES_BY_ID } from "@/data/roles";
 import { useGame } from "@/lib/game-store";
 import {
@@ -10,6 +11,7 @@ import {
   gagPlayer,
   hostTakeSeat,
   pushReveal,
+  resetSeen,
   setCaptain,
   setDead,
   setHostState,
@@ -84,6 +86,11 @@ function Maitre() {
       .sort((a, b) => (a.wakeOrder ?? 0) - (b.wakeOrder ?? 0));
   }, [game]);
 
+  const sansAppel = useMemo(() => {
+    if (!game) return [];
+    const ids = new Set(game.seats.map((s) => s.roleId).filter(Boolean) as string[]);
+    return [...ids].map((id) => ROLES_BY_ID[id]!).filter((r) => r?.sansAppel);
+  }, [game]);
 
   if (!game) {
     return (
@@ -135,17 +142,17 @@ function Maitre() {
             {game.seats.map((s) => (
               <li key={s.position} className="surface flex items-center gap-3 p-3">
                 <span className="w-6 text-xs text-muted-foreground">{s.position}</span>
-                <input
-                  value={s.name}
-                  onChange={(e) =>
+                <ChampPrenom
+                  valeur={s.name}
+                  onEnregistrer={(nom) =>
                     void run(
                       setSeatName({
-                        data: { code: game.code, token, position: s.position, name: e.target.value },
+                        data: { code: game.code, token, position: s.position, name: nom },
                       }),
                     )
                   }
                   placeholder={s.claimed ? "Prénom" : "Place libre"}
-                  className="min-w-0 flex-1 rounded-lg border border-border bg-input px-3 py-2 text-sm outline-none focus:border-primary"
+                  className="min-w-0 flex-1"
                 />
                 {!game.singleDevice && (
                   <button
@@ -213,8 +220,6 @@ function Maitre() {
             </LinkButton>
           )}
 
-
-
           {onglet === "village" && (
             <ul className="flex flex-col gap-2">
               {game.seats.map((s) => (
@@ -229,7 +234,9 @@ function Maitre() {
                   }
                   onDead={(alive, cause) =>
                     void run(
-                      setDead({ data: { code: game.code, token, position: s.position, alive, cause } }),
+                      setDead({
+                        data: { code: game.code, token, position: s.position, alive, cause },
+                      }),
                     )
                   }
                   onCaptain={() =>
@@ -242,9 +249,17 @@ function Maitre() {
                   onPublic={() =>
                     void run(
                       setPublicRole({
-                        data: { code: game.code, token, position: s.position, value: !s.publicRole },
+                        data: {
+                          code: game.code,
+                          token,
+                          position: s.position,
+                          value: !s.publicRole,
+                        },
                       }),
                     )
+                  }
+                  onRouvrir={() =>
+                    void run(resetSeen({ data: { code: game.code, token, position: s.position } }))
                   }
                 />
               ))}
@@ -324,7 +339,9 @@ function Maitre() {
                           <p className="truncate text-[11px] text-muted-foreground">
                             {game.seats
                               .filter((s) => s.roleId === r.id)
-                              .map((s) => `${s.name || `Place ${s.position}`}${s.alive ? "" : " †"}`)
+                              .map(
+                                (s) => `${s.name || `Place ${s.position}`}${s.alive ? "" : " †"}`,
+                              )
                               .join(", ")}
                           </p>
                         </div>
@@ -339,6 +356,36 @@ function Maitre() {
                 </p>
               </div>
 
+              {sansAppel.length > 0 && (
+                <div className="surface border border-destructive/40 p-4">
+                  <h2 className="font-display text-sm font-bold text-destructive">
+                    À ne jamais appeler à voix haute
+                  </h2>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Ces rôles sont en jeu mais n'ont pas de tour à eux. Prononcer leur nom suffirait
+                    à les griller.
+                  </p>
+                  <ul className="mt-3 flex flex-col gap-3">
+                    {sansAppel.map((r) => (
+                      <li key={r.id} className="flex items-start gap-3">
+                        <RoleSigil role={r} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">{r.name}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {game.seats
+                              .filter((s) => s.roleId === r.id)
+                              .map(
+                                (s) => `${s.name || `Place ${s.position}`}${s.alive ? "" : " †"}`,
+                              )
+                              .join(", ")}
+                          </p>
+                          <p className="mt-1 text-[11px] leading-relaxed">{r.sansAppel}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <SuiviPouvoirs
                 seats={game.seats}
@@ -347,8 +394,6 @@ function Maitre() {
                   void run(setHostState({ data: { code: game.code, token, patch } }))
                 }
               />
-
-
 
               {game.seats.some((s) => s.roleId === "garde-champetre") && (
                 <div className="surface p-4">
@@ -370,7 +415,9 @@ function Maitre() {
                             disabled={recent}
                             onClick={() =>
                               void run(
-                                gagPlayer({ data: { code: game.code, token, position: s.position } }),
+                                gagPlayer({
+                                  data: { code: game.code, token, position: s.position },
+                                }),
                               )
                             }
                             className={cn(
@@ -409,8 +456,8 @@ function Maitre() {
                 <h2 className="font-display text-sm font-bold">Montrer une carte</h2>
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   Pour la Voyante, le Renard, le Médium… choisissez d'abord qui reçoit
-                  l'information, puis la carte à révéler. Elle apparaît sur le téléphone du
-                  joueur — s'il n'en a pas, montrez-lui simplement votre écran.
+                  l'information, puis la carte à révéler. Elle apparaît sur le téléphone du joueur —
+                  s'il n'en a pas, montrez-lui simplement votre écran.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {game.seats.map((s) => (
@@ -492,6 +539,7 @@ function JoueurLigne({
   onDead,
   onCaptain,
   onPublic,
+  onRouvrir,
 }: {
   seat: SeatDTO;
   loversSel: number[];
@@ -499,6 +547,7 @@ function JoueurLigne({
   onDead: (alive: boolean, cause?: string) => void;
   onCaptain: () => void;
   onPublic: () => void;
+  onRouvrir: () => void;
 }) {
   const role = seat.roleId ? ROLES_BY_ID[seat.roleId] : undefined;
   return (
@@ -510,11 +559,15 @@ function JoueurLigne({
             <span className="truncate text-sm font-semibold">
               {seat.name || `Place ${seat.position}`}
               <span className="text-muted-foreground"> — </span>
-              <span className="font-display font-black text-primary">{role?.name ?? "carte non distribuée"}</span>
+              <span className="font-display font-black text-primary">
+                {role?.name ?? "carte non distribuée"}
+              </span>
             </span>
             {seat.isCaptain && <span title="Capitaine">🎖️</span>}
             {seat.loverGroup && <span title="Amoureux">❤️</span>}
-            {seat.statuses.includes("baillonne") && <span title="Bâillonné (gestes autorisés)">🤐</span>}
+            {seat.statuses.includes("baillonne") && (
+              <span title="Bâillonné (gestes autorisés)">🤐</span>
+            )}
           </div>
           <p className="truncate text-[11px] text-muted-foreground">
             {role ? CAMP_LABEL[role.camp] : "—"}
@@ -542,6 +595,7 @@ function JoueurLigne({
         <Mini onClick={() => onLover(seat.position)} active={loversSel.includes(seat.position)}>
           ❤️ amoureux
         </Mini>
+        {seat.seen && <Mini onClick={onRouvrir}>🔓 rouvrir sa carte</Mini>}
       </div>
     </li>
   );
