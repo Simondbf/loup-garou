@@ -105,10 +105,11 @@ export function CampBadge({ camp, className }: { camp: Camp; className?: string 
 }
 
 export function RoleSigil({ role, size = "md" }: { role: Role; size?: "sm" | "md" | "lg" }) {
+  const src = roleImage(role.id);
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-2xl border",
+        "flex shrink-0 items-center justify-center overflow-hidden rounded-2xl border",
         campClass(role.camp),
         size === "sm" && "h-10 w-10 text-xl",
         size === "md" && "h-14 w-14 text-3xl",
@@ -116,10 +117,50 @@ export function RoleSigil({ role, size = "md" }: { role: Role; size?: "sm" | "md
       )}
       aria-hidden
     >
-      {role.emoji}
+      {src ? (
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          width={768}
+          height={1024}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        role.emoji
+      )}
     </div>
   );
 }
+
+/** Illustration plein cadre d'une carte (écran de révélation). */
+export function RoleArt({ role, className }: { role: Role; className?: string }) {
+  const src = roleImage(role.id);
+  return (
+    <div
+      className={cn(
+        "relative w-full overflow-hidden rounded-2xl border",
+        campClass(role.camp),
+        className,
+      )}
+    >
+      {src ? (
+        <img
+          src={src}
+          alt={`Illustration du rôle ${role.name}`}
+          width={768}
+          height={1024}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-6xl">
+          {role.emoji}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 export function Modal({
   open,
