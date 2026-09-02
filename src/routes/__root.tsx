@@ -81,7 +81,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         name: "viewport",
         content: "width=device-width, initial-scale=1, viewport-fit=cover",
       },
-      { title: "Loup-Garou — Maître du Jeu" },
+      { title: "Les Nuits de Thiercelieux — Maître du Jeu" },
       {
         name: "description",
         content:
