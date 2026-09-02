@@ -470,14 +470,15 @@ function JoueurLigne({
           <div className="flex items-center gap-2">
             <span className="truncate text-sm font-semibold">
               {seat.name || `Place ${seat.position}`}
+              <span className="text-muted-foreground"> — </span>
+              <span className="font-display font-black text-primary">{role?.name ?? "carte non distribuée"}</span>
             </span>
             {seat.isCaptain && <span title="Capitaine">🎖️</span>}
             {seat.loverGroup && <span title="Amoureux">❤️</span>}
-            {seat.statuses.includes("baillonne") && <span title="Bâillonné">🤐</span>}
-            {role && <CampBadge camp={role.camp} />}
+            {seat.statuses.includes("baillonne") && <span title="Bâillonné (gestes autorisés)">🤐</span>}
           </div>
           <p className="truncate text-[11px] text-muted-foreground">
-            {role?.name ?? "—"}
+            {role ? CAMP_LABEL[role.camp] : "—"}
             {seat.publicRole ? " · rôle public" : ""}
             {!seat.alive ? ` · mort (${seat.deathCause})` : ""}
           </p>
