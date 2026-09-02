@@ -40,6 +40,7 @@ export interface GameDTO {
   night: number;
   playerCount: number;
   singleDevice: boolean;
+  thiefVariant: string;
   selection: Record<string, number>;
   centerCards: string[];
   gagHistory: { night: number; position: number }[];
@@ -118,6 +119,7 @@ async function buildDTO(
     night: game["night"],
     playerCount: game["player_count"],
     singleDevice: !!game["single_device"],
+    thiefVariant: (game["thief_variant"] ?? "centre") as string,
     selection: (game["selection"] ?? {}) as Record<string, number>,
     centerCards: isHost || mySeats.length > 0 ? ((game["center_cards"] ?? []) as string[]) : [],
     gagHistory: (game["gag_history"] ?? []) as { night: number; position: number }[],
