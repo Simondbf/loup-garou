@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button, PageHeader, RoleArt, CampBadge } from "@/components/ui-kit";
 import { ChampPrenom } from "@/components/champ-prenom";
-import { ROLES_BY_ID } from "@/data/roles";
+import { CAMP_LABEL, ROLES_BY_ID } from "@/data/roles";
 import { useGame } from "@/lib/game-store";
 import { markSeen, setSeatName, thiefChoose, type SeatDTO } from "@/lib/party.functions";
 import { cn } from "@/lib/utils";
@@ -155,6 +155,8 @@ function EcranJoueur() {
         />
       )}
 
+      {game.voitLeCimetiere && !seat && <Cimetiere seats={game.seats} />}
+
       {revealsPourMoi.length > 0 && !seat && (
         <section className="mt-8">
           <h2 className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
@@ -171,6 +173,69 @@ function EcranJoueur() {
         </section>
       )}
     </main>
+  );
+}
+
+/**
+ * Cimetière — réservé aux joueurs éliminés.
+ *
+ * Dans une partie physique, un joueur mort garde les yeux ouverts et suit
+ * tout. Ici il retrouve la liste des cartes tombées, mise à jour en direct :
+ * il peut se rendre compte lui-même que la partie est jouée, même si le
+ * Maître du Jeu tarde à l'annoncer.
+ */
+function Cimetiere({ seats }: { seats: SeatDTO[] }) {
+  const morts = seats.filter((s) => !s.alive);
+  const vivants = seats.length - morts.length;
+  const CAUSES: Record<string, string> = {
+    loups: "dévoré",
+    vote: "exécuté par le village",
+    poison: "empoisonné",
+    chasseur: "abattu par le Chasseur",
+    chagrin: "mort de chagrin",
+    "loup blanc": "égorgé par le Loup-Garou Blanc",
+  };
+
+  return (
+    <section className="mt-8">
+      <h2 className="mb-1 text-xs tracking-widest text-muted-foreground uppercase">Cimetière</h2>
+      <p className="mb-3 text-[11px] text-muted-foreground">
+        Vous êtes éliminé : vous voyez maintenant les cartes tombées, en direct. Ne dites rien aux
+        vivants — ni à voix haute, ni par gestes.
+      </p>
+
+      {morts.length === 0 ? (
+        <p className="surface p-3 text-sm text-muted-foreground">Personne n'est encore tombé.</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {morts.map((s) => {
+            const role = s.roleId ? ROLES_BY_ID[s.roleId] : undefined;
+            return (
+              <li key={s.position} className="surface flex items-center gap-3 p-3">
+                <span className="text-2xl">{role?.emoji ?? "❔"}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">
+                    {s.name || `Place ${s.position}`}
+                    <span className="text-muted-foreground"> — </span>
+                    <span className="font-display font-black text-primary">
+                      {role?.name ?? "carte inconnue"}
+                    </span>
+                  </p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {role ? CAMP_LABEL[role.camp] : "—"}
+                    {s.deathCause ? ` · ${CAUSES[s.deathCause] ?? s.deathCause}` : ""}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <p className="mt-3 text-center text-[11px] text-muted-foreground">
+        {vivants} joueur{vivants > 1 ? "s" : ""} encore en vie sur {seats.length}.
+      </p>
+    </section>
   );
 }
 

@@ -276,6 +276,7 @@ function Maitre() {
                 <JoueurLigne
                   key={s.position}
                   seat={s}
+                  converti={(game.hostState.devenusLoups ?? []).includes(s.position)}
                   loversSel={lovers}
                   onLover={(p) =>
                     setLoversSel((cur) =>
@@ -621,6 +622,7 @@ function Maitre() {
 
 function JoueurLigne({
   seat,
+  converti,
   loversSel,
   onLover,
   onDead,
@@ -629,6 +631,7 @@ function JoueurLigne({
   onRouvrir,
 }: {
   seat: SeatDTO;
+  converti: boolean;
   loversSel: number[];
   onLover: (p: number) => void;
   onDead: (alive: boolean, cause?: string) => void;
@@ -650,6 +653,7 @@ function JoueurLigne({
                 {role?.name ?? "carte non distribuée"}
               </span>
             </span>
+            {converti && <span title="Passé côté Loups-Garous">🩸</span>}
             {seat.isCaptain && <span title="Capitaine">🎖️</span>}
             {seat.loverGroup && <span title="Amoureux">❤️</span>}
             {seat.statuses.includes("baillonne") && (
@@ -657,7 +661,7 @@ function JoueurLigne({
             )}
           </div>
           <p className="truncate text-[11px] text-muted-foreground">
-            {role ? CAMP_LABEL[role.camp] : "—"}
+            {converti ? "Loups-Garous (converti)" : role ? CAMP_LABEL[role.camp] : "—"}
             {seat.publicRole ? " · rôle public" : ""}
             {role?.id === "villageois-villageois" && !seat.publicRole
               ? " · à annoncer au village"
@@ -855,9 +859,8 @@ function MontreurOurs({ seats }: { seats: SeatDTO[] }) {
         {grogne ? "FAITES GROGNER L'OURS" : "L'ours reste silencieux"}
       </p>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Annoncez-le à voix haute, avant le débat, sans dire de quel côté vient le grognement.
-        Attention : un joueur infecté par l'Infect Père ou un Enfant Sauvage transformé compte comme
-        Loup-Garou, mais l'application ne les suit pas encore — à vous d'en tenir compte.
+        Annoncez-le à voix haute, avant le débat, sans dire de quel côté vient le grognement. Les
+        joueurs passés côté Loups en cours de partie (infection, Enfant Sauvage) sont comptés.
       </p>
     </div>
   );
@@ -878,6 +881,23 @@ function SuiviPouvoirs({
   const charmed = hostState.charmed ?? [];
   const lastUsed = hostState.lastUsed ?? {};
 
+  const utilises = hostState.pouvoirsUtilises ?? [];
+  // Pouvoirs qui ne servent qu'une fois dans la partie, ou qui peuvent se
+  // perdre. Sans suivi, c'est au MJ de s'en souvenir de tête pendant deux
+  // heures — c'est exactement ce qu'on oublie.
+  const USAGE_UNIQUE: [string, string][] = [
+    ["infect-pere-des-loups", "Infection"],
+    ["juge-begue", "Second vote"],
+    ["assassin", "Coup de poignard"],
+    ["pyromane", "Mise à feu"],
+    ["prete", "Eau bénite"],
+    ["loup-feral", "Transformation"],
+    ["servante-devouee", "Échange de carte"],
+    ["renard", "Pouvoir (perdu sur un « non »)"],
+    ["chevalier-epee-rouillee", "Gangrène"],
+  ];
+  const uniques = USAGE_UNIQUE.filter(([id]) => aRole(id));
+
   const rappels = [
     aRole("salvateur") && "Salvateur : jamais deux nuits de suite la même personne.",
     aRole("infect-pere-des-loups") && "Infect Père des Loups : infection possible une seule fois.",
@@ -886,7 +906,13 @@ function SuiviPouvoirs({
     aRole("gitane") && "Gitane / rôles à usage unique : appelez-les quand même chaque nuit.",
   ].filter(Boolean) as string[];
 
-  if (!aRole("sorciere") && !aRole("joueur-de-flute") && rappels.length === 0) return null;
+  if (
+    !aRole("sorciere") &&
+    !aRole("joueur-de-flute") &&
+    rappels.length === 0 &&
+    uniques.length === 0
+  )
+    return null;
 
   return (
     <div className="surface p-4">
@@ -956,6 +982,39 @@ function SuiviPouvoirs({
                   </button>
                 );
               })}
+          </div>
+        </div>
+      )}
+
+      {uniques.length > 0 && (
+        <div className="mt-4">
+          <p className="text-[11px] text-muted-foreground">
+            Pouvoirs à usage unique — touchez quand c'est consommé
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {uniques.map(([id, label]) => {
+              const consomme = utilises.includes(id);
+              return (
+                <button
+                  key={id}
+                  onClick={() =>
+                    onPatch({
+                      pouvoirsUtilises: consomme
+                        ? utilises.filter((x) => x !== id)
+                        : [...utilises, id],
+                    })
+                  }
+                  className={cn(
+                    "rounded-xl border px-3 py-2 text-xs",
+                    consomme
+                      ? "border-border bg-secondary text-muted-foreground line-through"
+                      : "border-primary bg-primary/15 text-primary",
+                  )}
+                >
+                  {ROLES_BY_ID[id]?.emoji} {label}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

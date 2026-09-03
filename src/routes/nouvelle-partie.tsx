@@ -358,7 +358,7 @@ function NouvellePartie() {
                         </div>
                         <p className="mt-2 text-[11px] text-muted-foreground">
                           {singleDevice
-                            ? "Le vol de rôle demande à chacun de revérifier sa carte le matin : indisponible quand la table n'a qu'un seul téléphone."
+                            ? "Avec un seul téléphone : automatiquement 2 cartes au milieu. Le vol de rôle obligerait chacun à repasser voir sa carte chaque matin."
                             : varianteVoleur === "echange"
                               ? "Chaque nuit, le Voleur échange sa carte avec celle d'un joueur. Les deux devront revoir leur carte au lever du jour."
                               : "Deux cartes de plus sont mises au centre. La première nuit, le Voleur en prend une définitivement."}

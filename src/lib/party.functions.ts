@@ -41,6 +41,8 @@ export interface HostState {
   modele?: number;
   /** Positions passées côté Loups en cours de partie (infection, transformation) */
   devenusLoups?: number[];
+  /** Rôles dont le pouvoir à usage unique a été consommé (roleId) */
+  pouvoirsUtilises?: string[];
 }
 
 /**
@@ -66,6 +68,8 @@ export interface NuitEnCours {
   /** Sorcière */
   soin?: number;
   poison?: number;
+  /** Enfant Sauvage : modèle désigné la première nuit, recopié dans hostState */
+  modele?: number;
   /** Morts ajoutées à la main (Assassin, Pyromane, variantes maison) */
   autres?: { position: number; cause: string }[];
 }
@@ -87,6 +91,8 @@ export interface GameDTO {
   seats: SeatDTO[];
   isHost: boolean;
   mySeats: number[];
+  /** L'appareil a au moins une place éliminée : il peut consulter le cimetière. */
+  voitLeCimetiere: boolean;
   reveals: { id: string; toPosition: number; targetPosition: number; note: string | null }[];
 }
 
@@ -177,6 +183,11 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
     .filter((s) => s["device_token"] && s["device_token"] === token)
     .map((s) => s["position"] as number);
 
+  // Un joueur éliminé a le droit de suivre la partie : dans le jeu physique,
+  // il garde les yeux ouverts et voit tout. Dès qu'une de ses places est
+  // morte, cet appareil voit le rôle de tous les joueurs éliminés.
+  const voitLeCimetiere = isHost || seats.some((s) => s["device_token"] === token && !s["alive"]);
+
   return {
     code: game["code"],
     status: game["status"],
@@ -197,6 +208,7 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
     nuit: isHost ? ((game["nuit"] ?? {}) as NuitEnCours) : {},
     isHost,
     mySeats,
+    voitLeCimetiere,
     reveals: revealRows
       .filter((r) => isHost || mySeats.includes(r["to_position"]))
       .map((r) => ({
@@ -207,7 +219,7 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
       })),
     seats: seats.map((s) => {
       const mine = !!s["device_token"] && s["device_token"] === token;
-      const visible = isHost || mine || s["public_role"];
+      const visible = isHost || mine || s["public_role"] || (voitLeCimetiere && !s["alive"]);
       return {
         position: s["position"],
         name: s["name"] ?? "",
@@ -248,6 +260,24 @@ export const createGame = createServerFn({ method: "POST" })
     const db = await base();
     const count = Math.max(7, Math.min(30, Math.floor(data.playerCount)));
     const single = !!data.singleDevice;
+
+    // Ménage : une partie ne vit qu'une soirée. Sans cela la base grossit
+    // indéfiniment. On profite de la création d'une nouvelle partie pour
+    // effacer celles qui n'ont pas bougé depuis une semaine ; la suppression
+    // en cascade emporte les places et les révélations associées.
+    try {
+      const limite = new Date(Date.now() - 7 * 24 * 3600 * 1000)
+        .toISOString()
+        .replace("T", " ")
+        .slice(0, 19);
+      const perimees = await db.pb.liste("games", {
+        filtre: `updated < ${db.litteral(limite)}`,
+        parPage: 50,
+      });
+      for (const vieille of perimees) await db.pb.supprimer("games", vieille["id"]);
+    } catch {
+      // Le ménage ne doit jamais empêcher de lancer une partie.
+    }
 
     let code = makeCode();
     for (let attempt = 0; attempt < 8; attempt++) {
@@ -610,6 +640,22 @@ export const setDead = createServerFn({ method: "POST" })
       });
     }
 
+    // Le modèle de l'Enfant Sauvage peut aussi tomber au vote du village :
+    // la transformation doit être détectée en plein jour, pas seulement à
+    // la résolution de la nuit.
+    const etat = (game["host_state"] ?? {}) as HostState;
+    if (!data.alive && etat.modele === data.position) {
+      const enfant = seats.find((s) => s["role_id"] === "enfant-sauvage");
+      if (enfant && !(etat.devenusLoups ?? []).includes(enfant["position"] as number)) {
+        await db.pb.modifier("games", game["id"], {
+          host_state: {
+            ...etat,
+            devenusLoups: [...(etat.devenusLoups ?? []), enfant["position"] as number],
+          },
+        });
+      }
+    }
+
     const fresh = await loadGame(db, data.code);
     return buildDTO(db, fresh, data.token);
   });
@@ -849,6 +895,11 @@ export const resolveNight = createServerFn({ method: "POST" })
     if (infecte !== undefined) {
       patchEtat.devenusLoups = [...(patchEtat.devenusLoups ?? etat.devenusLoups ?? []), infecte];
     }
+
+    // Le modèle de l'Enfant Sauvage est désigné la première nuit, mais il
+    // doit survivre à l'effacement du journal : on le recopie dans l'état
+    // durable de la partie.
+    if (nuit.modele !== undefined) patchEtat.modele = nuit.modele;
 
     // Le Salvateur ne pourra pas reprendre la même cible la nuit prochaine.
     patchEtat.protectionPrecedente = nuit.protection ?? 0;
