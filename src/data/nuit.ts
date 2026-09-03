@@ -101,7 +101,7 @@ export const ETAPES: Record<string, EtapeNuit> = {
   comedien: {
     appel: "« Le Comédien se réveille et choisit une carte au centre. »",
     consigne:
-      "Il joue ce pouvoir pour cette nuit et la journée qui suit. Retirez ensuite la carte du jeu." +
+      "Il choisit parmi les trois cartes de villageois que vous avez posées au centre avant la partie — ce ne sont pas les cartes des joueurs, personne n'est dépossédé de son pouvoir. Il joue ce pouvoir pour cette nuit et la journée qui suit, puis retirez la carte du jeu." +
       RENDORMIR,
     action: "aucune",
   },
@@ -223,8 +223,8 @@ export const ETAPES: Record<string, EtapeNuit> = {
     action: "cible",
     cle: "petrifie",
   },
-  "garde-champetre": {
-    appel: "« Le Garde Champêtre se réveille et désigne un joueur à bâillonner. »",
+  "crieur-public": {
+    appel: "« Le Crieur Public se réveille et désigne un habitant à museler. »",
     consigne:
       "Le joueur désigné ne parlera pas pendant le débat de demain, mais il votera et peut communiquer par gestes. Une même cible n'est de nouveau visable qu'après trois nuits." +
       RENDORMIR,

@@ -759,7 +759,7 @@ export const setPublicRole = createServerFn({ method: "POST" })
     return buildDTO(db, game, data.token);
   });
 
-/** Garde Champêtre : bâillonne un joueur pour le débat du lendemain.
+/** Crieur Public : bâillonne un joueur pour le débat du lendemain.
  *  Interdit de re-viser quelqu'un bâillonné lors des 3 dernières nuits. */
 export const gagPlayer = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; token: string; position: number }) => d)

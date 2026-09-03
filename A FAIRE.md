@@ -8,17 +8,21 @@
 - Multi-appareils : code de partie à 4 lettres, 1 à 6 joueurs par téléphone, places libres portées par le téléphone du MJ.
 - MJ : morts + causes, cascade des amoureux, capitaine, rôle rendu public (Villageois-Villageois), ordre de réveil, révélations privées (Voyante, Renard…), phases jour/nuit.
 
-## Audit règles officielles — à trancher
-- « Garde Champêtre » : notre version (bâillon, délai de trois nuits) est une
-  variante maison. Le Garde Champêtre officiel de l'extension Personnages est
-  une fonction publique nommée par le Capitaine, qui joue des cartes Événement
-  de Nouvelle Lune. Le nom porte à confusion : le renommer, ou l'aligner ?
-- « Le Sectaire » fait doublon avec « Abominable Sectaire ». À supprimer.
-- Rôles dont je n'ai pas retrouvé de source officielle : Assassin, Gargouille,
-  Prêtre, Loup Féral, Loup Chamane, Loup-Garou Noir, Ombre, Mercenaire. À
-  garder comme variantes maison, ou à retirer.
+## Audit règles officielles — en cours
+Réglé : le faux « Garde Champêtre » devient le Crieur Public, rôle maison
+assumé. Le vrai Garde Champêtre et les autres attributions du Capitaine sont
+écartés tant qu'on ne gère pas les cartes Événement.
+
+En attente des photos de la règle envoyées par Simon :
+- Ajouter une catégorie de camp « ambigu ».
+- « Le Sectaire » fait doublon avec « Abominable Sectaire » (officiel,
+  confirmé). À supprimer.
+- Assassin : confirmé officiel. Gargouille : pas de source trouvée.
+- Restent à confirmer : Prêtre, Loup Féral, Loup Chamane, Loup-Garou Noir,
+  Ombre, Mercenaire.
 - Comédien : la règle demande trois cartes de villageois supplémentaires au
   centre. L'application ne les gère pas, c'est au MJ de les poser physiquement.
+- Gitane : cartes Spiritisme non gérées, question posée de vive voix.
 
 ## Reporté en v2
 - Compositions préenregistrées : rééquilibrage et ajout des tables 13, 16 et

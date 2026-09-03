@@ -323,7 +323,7 @@ function CarteRevelee({
             authentique villageois.
           </p>
         )}
-        {role.id === "garde-champetre" && (
+        {role.id === "crieur-public" && (
           <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-xs">
             Le joueur que vous bâillonnez pourra encore voter et communiquer par gestes, mais pas
             parler.

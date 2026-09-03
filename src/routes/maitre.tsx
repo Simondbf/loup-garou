@@ -37,7 +37,7 @@ export const Route = createFileRoute("/maitre")({
       {
         name: "description",
         content:
-          "Ordre de réveil, morts, capitaine, amoureux, révélations privées et bâillon du Garde Champêtre : tout le village en un écran.",
+          "Ordre de réveil, morts, capitaine, amoureux, révélations privées et bâillon du Crieur Public : tout le village en un écran.",
       },
       { property: "og:title", content: "Maître du Jeu — Loup-Garou" },
       {
@@ -532,9 +532,11 @@ function Maitre() {
                     ⚰️ L'Ancien a été éliminé par le village
                   </h2>
                   <p className="mt-1 text-xs leading-relaxed">
-                    Par dépit, tous les villageois perdent leur pouvoir pour le reste de la partie :
-                    Voyante, Sorcière, Salvateur, Renard, Chasseur… n'agissent plus. Continuez à les
-                    appeler pour ne pas les trahir, mais leurs actions n'ont plus aucun effet.
+                    Annoncez-le à voix haute au village : par dépit, tous les villageois perdent
+                    leur pouvoir pour le reste de la partie. Voyante, Sorcière, Salvateur, Renard,
+                    Chasseur… n'agissent plus, et inutile de continuer à les appeler la nuit — tout
+                    le monde a vu l'Ancien tomber au vote. Les Loups-Garous et les rôles solitaires,
+                    eux, jouent normalement.
                   </p>
                 </div>
               )}
@@ -553,9 +555,9 @@ function Maitre() {
                 }
               />
 
-              {game.seats.some((s) => s.roleId === "garde-champetre") && (
+              {game.seats.some((s) => s.roleId === "crieur-public") && (
                 <div className="surface p-4">
-                  <h2 className="font-display text-sm font-bold">Bâillon du Garde Champêtre</h2>
+                  <h2 className="font-display text-sm font-bold">Bâillon du Crieur Public</h2>
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     Le joueur désigné ne pourra pas parler demain, mais votera. Une même cible ne
                     peut pas être re-désignée avant trois nuits.

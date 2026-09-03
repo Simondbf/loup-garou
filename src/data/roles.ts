@@ -411,7 +411,7 @@ export const ROLES: Role[] = [
     emoji: "🃏",
     short: "Ouvre le Spiritisme avec les morts.",
     description:
-      "La Gitane permet au village d'interroger les morts. Chaque nuit, le Maître du Jeu lui lit les questions d'une carte Spiritisme ; elle en choisit une d'un geste et désigne l'habitant qui la posera au réveil. C'est le premier joueur éliminé de la partie qui répond, par oui ou par non.",
+      "Chaque nuit, la Gitane organise une séance de spiritisme : un joueur mort répond par oui ou par non à une question posée par le village.\n\nLa version officielle passe par des cartes Spiritisme, parmi lesquelles le Maître du Jeu lit quatre questions au choix. Ces cartes ne sont pas encore gérées ici : posez la question de vive voix.",
   },
   {
     id: "chevalier-epee-rouillee",
@@ -554,15 +554,15 @@ export const ROLES: Role[] = [
 
   // ---------------- VARIANTES ----------------
   {
-    id: "garde-champetre",
-    name: "Garde Champêtre (variante)",
+    id: "crieur-public",
+    name: "Crieur Public",
     camp: "villageois",
     max: 1,
     wakeOrder: 99,
     emoji: "🚨",
-    short: "En fin de nuit, il bâillonne un joueur pour le lendemain.",
+    short: "En fin de nuit, il musèle un habitant pour le lendemain. Rôle maison.",
     description:
-      "⚠️ Variante maison, à ne pas confondre avec le Garde Champêtre officiel de l'extension « Personnages », qui est une fonction publique nommée par le Capitaine et qui joue des cartes Événement. Ici : en toute fin de nuit, après tous les autres rôles, le Garde Champêtre désigne au Maître du Jeu un joueur qui ne pourra pas prendre la parole pendant le débat du lendemain. Le joueur bâillonné garde son droit de vote et peut communiquer par gestes ou mimiques, mais aucun son ni aucun mot écrit. Le Garde Champêtre ne peut pas re-désigner quelqu'un qu'il a déjà bâillonné : la cible redevient disponible seulement après trois nuits.",
+      "⚠️ Rôle maison, absent du jeu officiel. Il remplace le « Garde Champêtre » que Lovable avait inventé : le vrai Garde Champêtre de l'extension « Personnages » n'est pas une carte mais une fonction publique nommée par le Capitaine, qui joue des cartes Événement — hors du périmètre de cette application pour l'instant.\n\nEn toute fin de nuit, après tous les autres rôles, le Crieur Public désigne au Maître du Jeu un habitant qui n'aura pas droit à la parole pendant le débat du lendemain. Le muselé garde son droit de vote et peut communiquer par gestes ou mimiques, mais ne prononce aucun mot et n'écrit rien. Le Crieur Public ne peut pas re-désigner quelqu'un qu'il a muselé lors des trois dernières nuits.",
   },
 ];
 
