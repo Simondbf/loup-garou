@@ -3,7 +3,7 @@
  *
  * PocketBase n'est jamais exposé sur Internet : il n'écoute que sur le réseau
  * Docker interne, et les collections n'ont aucune règle d'accès publique
- * (équivalent du « deny all » des politiques RLS de l'ancienne base Supabase).
+ * (équivalent d'une politique « tout refuser » côté base).
  * Seul ce module s'y connecte, avec un compte superuser dédié.
  *
  * Ne jamais importer ce fichier depuis un composant ou une route : il doit

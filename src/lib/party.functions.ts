@@ -365,7 +365,9 @@ export const claimSeats = createServerFn({ method: "POST" })
 
     const seats = await seatsDe(db, game["id"]);
     const already = seats.filter((s) => s["device_token"] === data.token);
-    const wanted = Math.max(1, Math.min(6, Math.floor(data.count)));
+    // Trois places maximum par appareil : au-delà, le téléphone circule trop
+    // dans la même main et le secret des cartes ne tient plus.
+    const wanted = Math.max(1, Math.min(3, Math.floor(data.count)));
     const missing = wanted - already.length;
 
     if (missing > 0) {

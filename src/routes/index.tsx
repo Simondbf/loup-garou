@@ -66,9 +66,8 @@ function Accueil() {
         7 joueurs minimum · cartes, compositions et règles dans le menu ☰
       </p>
       <p className="mt-4 text-center text-[10px] leading-relaxed text-muted-foreground/70">
-        Application personnelle sans aucun lien avec les éditions Lui-même. Les cartes et les règles
-        s'inspirent des Loups-Garous de Thiercelieux, créé par Philippe des Pallières et Hervé
-        Marly.
+        Application fortement inspirée, mais sans aucun lien, du jeu des Loups-Garous de
+        Thiercelieux créé par Philippe des Pallières et Hervé Marly.
       </p>
     </main>
   );

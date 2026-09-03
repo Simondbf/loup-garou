@@ -68,11 +68,12 @@ function Rejoindre() {
       />
 
       <div className="surface mt-6 p-4">
-        <p className="font-display text-sm font-bold">
-          Combien de joueurs sur ce téléphone ?
+        <p className="font-display text-sm font-bold">Combien de joueurs sur ce téléphone ?</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          Trois au maximum : au-delà, le téléphone tourne trop et les cartes finissent par se voir.
         </p>
         <div className="mt-3 flex gap-2">
-          {[1, 2, 3, 4, 5, 6].map((n) => (
+          {[1, 2, 3].map((n) => (
             <button
               key={n}
               onClick={() => setCount(n)}

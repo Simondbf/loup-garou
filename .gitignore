@@ -38,3 +38,8 @@ dist-ssr
 
 # Donnees PocketBase (volume Docker)
 pb_data/
+
+# Fichiers de l'éditeur Lovable, plus utilisé
+.lovable/
+bun.lock
+bunfig.toml

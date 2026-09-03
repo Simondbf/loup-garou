@@ -9,7 +9,7 @@
  *
  * Aucune collection n'a de règle d'accès (listRule, viewRule… restent nulles) :
  * elles ne sont donc lisibles et modifiables que par un superuser. C'est
- * l'équivalent du « deny all » des politiques RLS de l'ancienne base Supabase.
+ * l'équivalent d'une politique « tout refuser » côté base.
  */
 
 migrate(

@@ -23,6 +23,13 @@ Retirés car dépendants des tuiles Bâtiment : Pyromane (tuile Feu) et
 Corbeau (tuile Corbeau). À reprendre en v3 si on gère un jour les
 bâtiments du jeu « Le Village ».
 
+## Dépendance Lovable restante
+Le build passe encore par `@lovable.dev/vite-tanstack-config`, qui regroupe
+les plugins Vite. Si ce paquet disparaît de npm, la construction Docker
+casse. Le remplacer par les plugins d'origine (tanstackStart, viteReact,
+tailwindcss, tsConfigPaths, nitro) est faisable mais mérite d'être fait à
+tête reposée, pas pendant un déploiement.
+
 ## Reporté en v3
 - Tuiles Bâtiment du jeu « Le Village » : réintroduirait le Pyromane et le
   Corbeau.
