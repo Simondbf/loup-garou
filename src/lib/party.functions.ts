@@ -145,6 +145,13 @@ function shuffle<T>(arr: T[]): T[] {
 
 type AnyRow = Record<string, any>;
 
+/**
+ * Nombre de places qu'un même appareil peut porter, hors mode « un seul
+ * téléphone » où le Maître du Jeu les porte toutes. Au-delà de trois, la
+ * carte du voisin finit toujours par être vue.
+ */
+export const PLACES_MAX_PAR_APPAREIL = 3;
+
 async function base() {
   const { pb, litteral } = await import("@/lib/pocketbase.server");
   return { pb, litteral };
@@ -366,8 +373,15 @@ export const claimSeats = createServerFn({ method: "POST" })
     const seats = await seatsDe(db, game["id"]);
     const already = seats.filter((s) => s["device_token"] === data.token);
     // Trois places maximum par appareil : au-delà, le téléphone circule trop
-    // dans la même main et le secret des cartes ne tient plus.
-    const wanted = Math.max(1, Math.min(3, Math.floor(data.count)));
+    // dans la même main et le secret des cartes ne tient plus. On refuse la
+    // demande au lieu de la rogner en silence : un client qui demande plus a
+    // un bug ou tente de contourner la limite, dans les deux cas il doit le
+    // savoir.
+    const demande = Math.floor(data.count);
+    if (!Number.isFinite(demande) || demande < 1 || demande > PLACES_MAX_PAR_APPAREIL) {
+      throw new Error(`Un téléphone porte au maximum ${PLACES_MAX_PAR_APPAREIL} joueurs`);
+    }
+    const wanted = demande;
     const missing = wanted - already.length;
 
     if (missing > 0) {

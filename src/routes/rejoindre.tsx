@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button, PageHeader } from "@/components/ui-kit";
-import { claimSeats } from "@/lib/party.functions";
+import { PLACES_MAX_PAR_APPAREIL, claimSeats } from "@/lib/party.functions";
 import { useGame } from "@/lib/game-store";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +73,7 @@ function Rejoindre() {
           Trois au maximum : au-delà, le téléphone tourne trop et les cartes finissent par se voir.
         </p>
         <div className="mt-3 flex gap-2">
-          {[1, 2, 3].map((n) => (
+          {Array.from({ length: PLACES_MAX_PAR_APPAREIL }, (_, i) => i + 1).map((n) => (
             <button
               key={n}
               onClick={() => setCount(n)}

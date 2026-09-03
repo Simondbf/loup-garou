@@ -167,9 +167,18 @@ Crée une partie de test à 7 joueurs pour confirmer que la base répond.
 ## Mise à jour
 
 ```bash
-cd /srv/lg
-git pull
-docker compose up -d --build
+cd /srv/lg   # ou ~/lg
+./maj.sh
+```
+
+Le script récupère le code, reconstruit l'image, redémarre, puis vérifie que
+le serveur répond avant de rendre la main. Il lit le port publié directement
+dans `docker-compose.yml`, donc rien à ajuster si tu le changes.
+
+À la main, c'est l'équivalent de :
+
+```bash
+git pull && docker compose up -d --build
 ```
 
 Le schéma PocketBase se met à jour tout seul : les fichiers de `pb_migrations/`
