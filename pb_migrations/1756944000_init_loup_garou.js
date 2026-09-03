@@ -85,6 +85,8 @@ migrate(
         { type: "text", name: "role_id", max: 40 },
         { type: "bool", name: "alive" },
         { type: "text", name: "death_cause", max: 32 },
+        { type: "text", name: "death_phase", max: 8 },
+        { type: "text", name: "death_phase", max: 8 },
         { type: "number", name: "death_order", onlyInt: true },
         { type: "bool", name: "is_captain" },
         { type: "number", name: "lover_group", onlyInt: true },

@@ -16,7 +16,10 @@ export interface SeatDTO {
   roleId: string | null;
   publicRole: boolean;
   alive: boolean;
+  /** Cause précise — réservée au Maître du Jeu. */
   deathCause: string | null;
+  /** « nuit » ou « jour » : le seul détail que voient les joueurs éliminés. */
+  deathPhase: string | null;
   isCaptain: boolean;
   loverGroup: number | null;
   statuses: string[];
@@ -43,6 +46,8 @@ export interface HostState {
   devenusLoups?: number[];
   /** Rôles dont le pouvoir à usage unique a été consommé (roleId) */
   pouvoirsUtilises?: string[];
+  /** Chien-Loup : camp choisi la première nuit, définitif et secret */
+  chienLoup?: "villageois" | "loups";
 }
 
 /**
@@ -70,6 +75,8 @@ export interface NuitEnCours {
   poison?: number;
   /** Enfant Sauvage : modèle désigné la première nuit, recopié dans hostState */
   modele?: number;
+  /** Chien-Loup : camp choisi la première nuit, recopié dans hostState */
+  chienLoup?: "villageois" | "loups";
   /** Morts ajoutées à la main (Assassin, Pyromane, variantes maison) */
   autres?: { position: number; cause: string }[];
 }
@@ -228,7 +235,8 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
         roleId: visible ? vide(s["role_id"]) : null,
         publicRole: !!s["public_role"],
         alive: !!s["alive"],
-        deathCause: vide(s["death_cause"]),
+        deathCause: isHost ? vide(s["death_cause"]) : null,
+        deathPhase: vide(s["death_phase"]),
         isCaptain: !!s["is_captain"],
         loverGroup: (s["lover_group"] as number) || null,
         statuses: (s["statuses"] ?? []) as string[],
@@ -261,12 +269,12 @@ export const createGame = createServerFn({ method: "POST" })
     const count = Math.max(7, Math.min(30, Math.floor(data.playerCount)));
     const single = !!data.singleDevice;
 
-    // Ménage : une partie ne vit qu'une soirée. Sans cela la base grossit
-    // indéfiniment. On profite de la création d'une nouvelle partie pour
-    // effacer celles qui n'ont pas bougé depuis une semaine ; la suppression
-    // en cascade emporte les places et les révélations associées.
+    // Ménage : une partie ne vit qu'une soirée, jamais plusieurs jours. On
+    // profite de la création d'une nouvelle partie pour effacer celles qui
+    // n'ont pas bougé depuis vingt-quatre heures ; la suppression en cascade
+    // emporte les places et les révélations associées.
     try {
-      const limite = new Date(Date.now() - 7 * 24 * 3600 * 1000)
+      const limite = new Date(Date.now() - 24 * 3600 * 1000)
         .toISOString()
         .replace("T", " ")
         .slice(0, 19);
@@ -483,7 +491,15 @@ export const dealCards = createServerFn({ method: "POST" })
     for (let i = 0; i < count; i++) {
       const cible = seats.find((s) => s["position"] === i + 1);
       if (cible) {
-        await db.pb.modifier("seats", cible["id"], { role_id: dealt[i], seen: false });
+        // Le Villageois-Villageois a deux faces de villageois : sa carte est
+        // publique par nature. On la révèle d'emblée à toute la table plutôt
+        // que de compter sur une annonce orale du MJ.
+        await db.pb.modifier("seats", cible["id"], {
+          role_id: dealt[i],
+          seen: false,
+          public_role: dealt[i] === "villageois-villageois",
+          death_phase: "",
+        });
       }
     }
     await db.pb.modifier("games", game["id"], {
@@ -611,10 +627,30 @@ export const setDead = createServerFn({ method: "POST" })
 
     const maxOrder = Math.max(0, ...seats.map((s) => (s["death_order"] as number) ?? 0));
 
+    // Idiot du Village : la première fois que le village vote contre lui, sa
+    // carte est révélée à tous et il est gracié. Il reste en jeu mais perd
+    // définitivement son droit de vote. Une fois révélé, il n'est plus
+    // protégé : un second vote l'élimine normalement.
+    if (
+      !data.alive &&
+      data.cause === "vote" &&
+      target["role_id"] === "idiot-du-village" &&
+      !target["public_role"]
+    ) {
+      const statuts = ((target["statuses"] ?? []) as string[]).filter((x) => x !== "sans-vote");
+      await db.pb.modifier("seats", target["id"], {
+        public_role: true,
+        statuses: [...statuts, "sans-vote"],
+      });
+      const apres = await loadGame(db, data.code);
+      return buildDTO(db, apres, data.token);
+    }
+
     if (!data.alive) {
       await db.pb.modifier("seats", target["id"], {
         alive: false,
         death_cause: data.cause ?? "inconnue",
+        death_phase: (game["phase"] as string) === "nuit" ? "nuit" : "jour",
         death_order: maxOrder + 1,
       });
 
@@ -628,6 +664,7 @@ export const setDead = createServerFn({ method: "POST" })
           await db.pb.modifier("seats", l["id"], {
             alive: false,
             death_cause: "chagrin",
+            death_phase: (game["phase"] as string) === "nuit" ? "nuit" : "jour",
             death_order: maxOrder + 2,
           });
         }
@@ -636,6 +673,7 @@ export const setDead = createServerFn({ method: "POST" })
       await db.pb.modifier("seats", target["id"], {
         alive: true,
         death_cause: "",
+        death_phase: "",
         death_order: 0,
       });
     }
@@ -862,6 +900,7 @@ export const resolveNight = createServerFn({ method: "POST" })
       await db.pb.modifier("seats", siege["id"], {
         alive: false,
         death_cause: cause,
+        death_phase: "nuit",
         death_order: ordre,
       });
       siege["alive"] = false;
@@ -900,6 +939,21 @@ export const resolveNight = createServerFn({ method: "POST" })
     // doit survivre à l'effacement du journal : on le recopie dans l'état
     // durable de la partie.
     if (nuit.modele !== undefined) patchEtat.modele = nuit.modele;
+
+    // Chien-Loup : son camp est choisi la première nuit et ne change plus.
+    // S'il a choisi les Loups, il compte comme tel pour le Montreur d'Ours.
+    if (nuit.chienLoup !== undefined) {
+      patchEtat.chienLoup = nuit.chienLoup;
+      if (nuit.chienLoup === "loups") {
+        const chien = seats.find((s) => s["role_id"] === "chien-loup");
+        if (chien) {
+          patchEtat.devenusLoups = [
+            ...(patchEtat.devenusLoups ?? etat.devenusLoups ?? []),
+            chien["position"] as number,
+          ];
+        }
+      }
+    }
 
     // Le Salvateur ne pourra pas reprendre la même cible la nuit prochaine.
     patchEtat.protectionPrecedente = nuit.protection ?? 0;

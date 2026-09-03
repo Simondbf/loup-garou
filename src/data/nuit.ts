@@ -29,7 +29,9 @@ export type TypeAction =
   /** Envoûter jusqu'à deux joueurs. */
   | "flute"
   /** Bâillonner un joueur pour le débat du lendemain. */
-  | "baillon";
+  | "baillon"
+  /** Le Chien-Loup choisit son camp, une fois pour toutes. */
+  | "chienLoup";
 
 export interface EtapeNuit {
   /** Phrase à lire à voix haute pour réveiller le rôle. */
@@ -74,9 +76,9 @@ export const ETAPES: Record<string, EtapeNuit> = {
   "chien-loup": {
     appel: "« Le Chien-Loup se réveille et choisit son camp. »",
     consigne:
-      "Il indique d'un signe s'il joue Villageois ou Loup-Garou. Choix définitif et secret : notez-le, personne d'autre ne doit le savoir." +
+      "Il indique d'un signe s'il joue Villageois ou Loup-Garou. Choix définitif et secret : enregistrez-le ci-dessous, personne d'autre ne doit le savoir. S'il choisit les Loups, il se réveillera avec eux dès cette nuit." +
       RENDORMIR,
-    action: "aucune",
+    action: "chienLoup",
   },
   soeurs: {
     appel: "« Les Deux Sœurs se réveillent et se reconnaissent. »",

@@ -155,6 +155,8 @@ function EcranJoueur() {
         />
       )}
 
+      {!seat && <CartesPubliques seats={game.seats} />}
+
       {game.voitLeCimetiere && !seat && <Cimetiere seats={game.seats} />}
 
       {revealsPourMoi.length > 0 && !seat && (
@@ -177,6 +179,49 @@ function EcranJoueur() {
 }
 
 /**
+ * Cartes que toute la table connaît.
+ *
+ * Le Villageois-Villageois a deux faces de villageois : son innocence est
+ * publique par nature. L'Idiot du Village gracié révèle aussi sa carte. Les
+ * afficher sur chaque téléphone évite au Maître du Jeu une annonce orale
+ * que les joueurs novices comprennent mal.
+ */
+function CartesPubliques({ seats }: { seats: SeatDTO[] }) {
+  const publiques = seats.filter((s) => s.publicRole && s.roleId);
+  if (publiques.length === 0) return null;
+
+  return (
+    <section className="mt-8">
+      <h2 className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
+        Cartes connues de tous
+      </h2>
+      <ul className="flex flex-col gap-2">
+        {publiques.map((s) => {
+          const role = s.roleId ? ROLES_BY_ID[s.roleId] : undefined;
+          return (
+            <li key={s.position} className="surface flex items-center gap-3 p-3">
+              <span className="text-2xl">{role?.emoji ?? "❔"}</span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">
+                  {s.name || `Place ${s.position}`}
+                  <span className="text-muted-foreground"> — </span>
+                  <span className="font-display font-black text-primary">{role?.name}</span>
+                </p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {s.statuses.includes("sans-vote")
+                    ? "Gracié par le village : il reste en jeu mais ne vote plus."
+                    : "Sa carte est publique : la table entière sait qui il est."}
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+/**
  * Cimetière — réservé aux joueurs éliminés.
  *
  * Dans une partie physique, un joueur mort garde les yeux ouverts et suit
@@ -187,13 +232,12 @@ function EcranJoueur() {
 function Cimetiere({ seats }: { seats: SeatDTO[] }) {
   const morts = seats.filter((s) => !s.alive);
   const vivants = seats.length - morts.length;
-  const CAUSES: Record<string, string> = {
-    loups: "dévoré",
-    vote: "exécuté par le village",
-    poison: "empoisonné",
-    chasseur: "abattu par le Chasseur",
-    chagrin: "mort de chagrin",
-    "loup blanc": "égorgé par le Loup-Garou Blanc",
+  // Les joueurs n'ont droit qu'au moment de la mort. Savoir si quelqu'un est
+  // tombé sous le poison plutôt que sous les crocs révélerait la présence de
+  // la Sorcière : le détail reste au Maître du Jeu.
+  const MOMENT: Record<string, string> = {
+    nuit: "mort pendant la nuit",
+    jour: "éliminé pendant le jour",
   };
 
   return (
@@ -223,7 +267,7 @@ function Cimetiere({ seats }: { seats: SeatDTO[] }) {
                   </p>
                   <p className="truncate text-[11px] text-muted-foreground">
                     {role ? CAMP_LABEL[role.camp] : "—"}
-                    {s.deathCause ? ` · ${CAUSES[s.deathCause] ?? s.deathCause}` : ""}
+                    {s.deathPhase ? ` · ${MOMENT[s.deathPhase] ?? ""}` : ""}
                   </p>
                 </div>
               </li>

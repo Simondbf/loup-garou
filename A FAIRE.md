@@ -11,8 +11,6 @@
 ## Reporté en v2
 - Compositions préenregistrées : rééquilibrage et ajout des tables 13, 16 et
   17 joueurs.
-- Chien-Loup : son choix de camp la première nuit n'est pas encore enregistré
-  (le MJ le note de tête). Enfant Sauvage et Infect Père, eux, sont suivis.
 - Renard : le pouvoir perdu sur une réponse « non » se coche à la main dans
   « Pouvoirs à usage unique ». Le calcul automatique des trois voisins reste
   à faire.
@@ -20,6 +18,8 @@
 - Détection automatique de la fin de partie. Remplacée pour l'instant par le
   cimetière : les joueurs éliminés voient les cartes tombées en direct et
   peuvent constater eux-mêmes que la partie est jouée.
+- Option, sur le téléphone d'un joueur éliminé seul (jamais partagé), pour
+  suivre les désignations de la nuit en direct.
 
 ## À faire
 - Nom définitif de l'app (« Les Nuits de Thiercelieux » retenu (titre de roman, distinct du jeu de société)).

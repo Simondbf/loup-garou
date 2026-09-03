@@ -398,6 +398,41 @@ function ActionEtape({
     );
   }
 
+  if (etape.action === "chienLoup") {
+    const choix = nuit.chienLoup ?? etat.chienLoup;
+    return (
+      <div className="mt-4">
+        <p className="text-xs text-muted-foreground">Quel camp choisit-il ?</p>
+        <div className="mt-2 flex gap-2">
+          {(
+            [
+              ["villageois", "🧑‍🌾 Villageois"],
+              ["loups", "🐺 Loup-Garou"],
+            ] as const
+          ).map(([valeur, label]) => (
+            <button
+              key={valeur}
+              onClick={() => onAction({ chienLoup: valeur } as NuitEnCours)}
+              className={cn(
+                "flex-1 rounded-xl border px-3 py-3 text-xs font-semibold",
+                choix === valeur
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border bg-secondary",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {choix && (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Choix enregistré et définitif. Il n'aura plus à être rappelé.
+          </p>
+        )}
+      </div>
+    );
+  }
+
   if (etape.action === "baillon") {
     return (
       <ChoixJoueur

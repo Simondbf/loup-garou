@@ -60,6 +60,7 @@ function Maitre() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [lovers, setLoversSel] = useState<number[]>([]);
   const [revealFrom, setRevealFrom] = useState<number | null>(null);
+  const [rangement, setRangement] = useState(false);
   const [bilan, setBilan] = useState<{
     morts: { position: number; cause: string }[];
     sauves: { position: number; raison: string }[];
@@ -166,7 +167,7 @@ function Maitre() {
                   placeholder={s.claimed ? "Prénom" : "Place libre"}
                   className="min-w-0 flex-1"
                 />
-                {!game.singleDevice && (
+                {!game.singleDevice && rangement && (
                   <div className="flex shrink-0 flex-col">
                     <button
                       aria-label="Monter d'une place"
@@ -220,11 +221,26 @@ function Maitre() {
           </ul>
 
           {!game.singleDevice && (
-            <p className="rounded-xl border border-border bg-secondary p-3 text-[11px] text-muted-foreground">
-              Les flèches ↑ ↓ rangent la liste dans l'ordre réel autour de la table. C'est
-              indispensable au Renard et au Montreur d'Ours, dont les pouvoirs portent sur les
-              voisins. En mode un seul téléphone, l'ordre est déjà le bon.
-            </p>
+            <div className="surface p-3">
+              <button
+                onClick={() => setRangement((v) => !v)}
+                className="flex w-full items-center justify-between gap-3 text-left"
+              >
+                <span className="font-display text-sm font-bold">
+                  Ranger dans l'ordre de la table
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  {rangement ? "masquer" : "facultatif"}
+                </span>
+              </button>
+              {rangement && (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Les flèches ↑ ↓ font remonter ou descendre un joueur. Utile seulement si vous
+                  jouez le Montreur d'Ours ou le Renard, dont les pouvoirs portent sur les voisins
+                  directs. Sinon, laissez la liste telle quelle.
+                </p>
+              )}
+            </div>
           )}
 
           <Button
@@ -473,7 +489,11 @@ function Maitre() {
                 </div>
               )}
 
-              <MontreurOurs seats={game.seats} />
+              <MontreurOurs
+                seats={game.seats}
+                etat={game.hostState}
+                unSeulTelephone={game.singleDevice}
+              />
 
               <SuiviPouvoirs
                 seats={game.seats}
@@ -656,6 +676,9 @@ function JoueurLigne({
             {converti && <span title="Passé côté Loups-Garous">🩸</span>}
             {seat.isCaptain && <span title="Capitaine">🎖️</span>}
             {seat.loverGroup && <span title="Amoureux">❤️</span>}
+            {seat.statuses.includes("sans-vote") && (
+              <span title="Idiot gracié : ne vote plus">🤡</span>
+            )}
             {seat.statuses.includes("baillonne") && (
               <span title="Bâillonné (gestes autorisés)">🤐</span>
             )}
@@ -666,6 +689,7 @@ function JoueurLigne({
             {role?.id === "villageois-villageois" && !seat.publicRole
               ? " · à annoncer au village"
               : ""}
+            {seat.statuses.includes("sans-vote") ? " · gracié, sans droit de vote" : ""}
             {!seat.alive ? ` · mort (${seat.deathCause})` : ""}
           </p>
         </div>
@@ -822,7 +846,15 @@ function BilanNuit({
  * est un Loup-Garou. Les morts ne comptent pas : on saute jusqu'au prochain
  * joueur vivant de chaque côté de la table.
  */
-function MontreurOurs({ seats }: { seats: SeatDTO[] }) {
+function MontreurOurs({
+  seats,
+  etat,
+  unSeulTelephone,
+}: {
+  seats: SeatDTO[];
+  etat: HostState;
+  unSeulTelephone: boolean;
+}) {
   const montreur = seats.find((s) => s.roleId === "montreur-ours");
   if (!montreur || !montreur.alive) return null;
 
@@ -833,14 +865,45 @@ function MontreurOurs({ seats }: { seats: SeatDTO[] }) {
   const gauche = vivants[(index - 1 + vivants.length) % vivants.length]!;
   const droite = vivants[(index + 1) % vivants.length]!;
 
+  // Un joueur infecté par l'Infect Père, un Enfant Sauvage transformé ou un
+  // Chien-Loup passé côté meute comptent comme Loups-Garous, même si leur
+  // carte dit autre chose.
+  const convertis = etat.devenusLoups ?? [];
   const estLoup = (s: SeatDTO) => {
     const role = s.roleId ? ROLES_BY_ID[s.roleId] : undefined;
-    return role?.camp === "loups" || role?.id === "loup-garou-blanc";
+    return (
+      role?.camp === "loups" || role?.id === "loup-garou-blanc" || convertis.includes(s.position)
+    );
   };
 
   const voisins = [gauche, droite];
   const grogne = voisins.some(estLoup);
   const nom = (s: SeatDTO) => s.name || `Place ${s.position}`;
+
+  // Avec plusieurs téléphones, l'ordre des places vient de l'ordre où les
+  // appareils les ont réclamées : il n'a aucune raison de correspondre à la
+  // table. Donner un verdict serait donc du hasard. On se contente de
+  // rappeler au MJ de regarder ses joueurs.
+  if (!unSeulTelephone) {
+    const loups = vivants.filter(estLoup);
+    return (
+      <div className="surface border border-border p-4">
+        <h2 className="font-display text-sm font-bold">🐻 Montreur d'Ours — au lever du jour</h2>
+        <p className="mt-1 text-[11px] text-muted-foreground">{nom(montreur)} porte l'ours.</p>
+        <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-xs">
+          Regardez qui est <strong>physiquement assis</strong> de chaque côté de {nom(montreur)}. Si
+          l'un des deux est côté Loups, faites grogner l'ours ; sinon l'ours reste silencieux.
+        </p>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Côté Loups en ce moment : {loups.map((s) => nom(s)).join(", ") || "personne"}.
+        </p>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          L'ordre de cette liste ne suit pas forcément votre table. Pour que l'application calcule
+          elle-même le grognement, rangez la liste depuis l'écran d'attente.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("surface border p-4", grogne ? "border-destructive/60" : "border-border")}>
