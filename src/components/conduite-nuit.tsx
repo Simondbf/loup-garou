@@ -174,10 +174,16 @@ function construireEtapes(game: GameDTO): EtapeCalculee[] {
         if (r.id === "voleur" && game.thiefVariant === "echange") return true;
         return game.night <= 1;
       }
-      // Grand Méchant Loup : muet dès qu'un Loup est mort.
+      // Grand Méchant Loup : muet dès qu'un Loup est mort. La règle officielle
+      // compte aussi l'Enfant Sauvage et le Chien-Loup passés côté meute, pas
+      // seulement les cartes de Loup d'origine.
       if (r.id === "grand-mechant-loup") {
+        const convertis = game.hostState.devenusLoups ?? [];
         return !game.seats.some(
-          (s) => !s.alive && s.roleId && ROLES_BY_ID[s.roleId]?.camp === "loups",
+          (s) =>
+            !s.alive &&
+            ((s.roleId && ROLES_BY_ID[s.roleId]?.camp === "loups") ||
+              convertis.includes(s.position)),
         );
       }
       // Loup-Garou Blanc : une nuit sur deux.

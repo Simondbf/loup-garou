@@ -48,6 +48,8 @@ export interface HostState {
   pouvoirsUtilises?: string[];
   /** Chien-Loup : camp choisi la première nuit, définitif et secret */
   chienLoup?: "villageois" | "loups";
+  /** L'Ancien a été éliminé au vote : tous les villageois perdent leur pouvoir */
+  villageSansPouvoirs?: boolean;
 }
 
 /**
@@ -650,7 +652,14 @@ export const setDead = createServerFn({ method: "POST" })
       await db.pb.modifier("seats", target["id"], {
         alive: false,
         death_cause: data.cause ?? "inconnue",
-        death_phase: (game["phase"] as string) === "nuit" ? "nuit" : "jour",
+        // Le Chasseur tire au vu de tous : c'est le seul détail de cause que
+        // les joueurs éliminés ont le droit de voir, avec le jour et la nuit.
+        death_phase:
+          data.cause === "chasseur"
+            ? "chasseur"
+            : (game["phase"] as string) === "nuit"
+              ? "nuit"
+              : "jour",
         death_order: maxOrder + 1,
       });
 
@@ -675,6 +684,15 @@ export const setDead = createServerFn({ method: "POST" })
         death_cause: "",
         death_phase: "",
         death_order: 0,
+      });
+    }
+
+    // Ancien éliminé par le vote du village : par dépit, tous les villageois
+    // perdent leur pouvoir pour le reste de la partie.
+    if (!data.alive && data.cause === "vote" && target["role_id"] === "ancien") {
+      const avant = (game["host_state"] ?? {}) as HostState;
+      await db.pb.modifier("games", game["id"], {
+        host_state: { ...avant, villageSansPouvoirs: true },
       });
     }
 
@@ -900,7 +918,7 @@ export const resolveNight = createServerFn({ method: "POST" })
       await db.pb.modifier("seats", siege["id"], {
         alive: false,
         death_cause: cause,
-        death_phase: "nuit",
+        death_phase: cause === "chasseur" ? "chasseur" : "nuit",
         death_order: ordre,
       });
       siege["alive"] = false;

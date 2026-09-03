@@ -238,6 +238,7 @@ function Cimetiere({ seats }: { seats: SeatDTO[] }) {
   const MOMENT: Record<string, string> = {
     nuit: "mort pendant la nuit",
     jour: "éliminé pendant le jour",
+    chasseur: "abattu par le Chasseur",
   };
 
   return (

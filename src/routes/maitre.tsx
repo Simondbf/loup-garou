@@ -99,6 +99,12 @@ function Maitre() {
       .sort((a, b) => (a.wakeOrder ?? 0) - (b.wakeOrder ?? 0));
   }, [game]);
 
+  const rappelsJour = useMemo(() => {
+    if (!game) return [];
+    const ids = new Set(game.seats.map((s) => s.roleId).filter(Boolean) as string[]);
+    return [...ids].map((id) => ROLES_BY_ID[id]!).filter((r) => r?.rappelJour);
+  }, [game]);
+
   const sansAppel = useMemo(() => {
     if (!game) return [];
     const ids = new Set(game.seats.map((s) => s.roleId).filter(Boolean) as string[]);
@@ -486,6 +492,50 @@ function Maitre() {
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {rappelsJour.length > 0 && (
+                <details className="surface p-4">
+                  <summary className="cursor-pointer font-display text-sm font-bold">
+                    Pouvoirs de jour et déclenchements à la mort
+                  </summary>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Ces rôles n'ont pas d'appel de nuit, mais se déclenchent au vote ou à la mort
+                    d'un joueur. Gardez-les en tête.
+                  </p>
+                  <ul className="mt-3 flex flex-col gap-3">
+                    {rappelsJour.map((r) => (
+                      <li key={r.id} className="flex items-start gap-3">
+                        <RoleSigil role={r} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold">{r.name}</p>
+                          <p className="truncate text-[11px] text-muted-foreground">
+                            {game.seats
+                              .filter((s) => s.roleId === r.id)
+                              .map(
+                                (s) => `${s.name || `Place ${s.position}`}${s.alive ? "" : " †"}`,
+                              )
+                              .join(", ")}
+                          </p>
+                          <p className="mt-1 text-[11px] leading-relaxed">{r.rappelJour}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+
+              {game.hostState.villageSansPouvoirs && (
+                <div className="surface border border-destructive/60 p-4">
+                  <h2 className="font-display text-sm font-bold text-destructive">
+                    ⚰️ L'Ancien a été éliminé par le village
+                  </h2>
+                  <p className="mt-1 text-xs leading-relaxed">
+                    Par dépit, tous les villageois perdent leur pouvoir pour le reste de la partie :
+                    Voyante, Sorcière, Salvateur, Renard, Chasseur… n'agissent plus. Continuez à les
+                    appeler pour ne pas les trahir, mais leurs actions n'ont plus aucun effet.
+                  </p>
                 </div>
               )}
 

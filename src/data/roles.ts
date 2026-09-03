@@ -17,6 +17,11 @@ export interface Role {
    * de l'ordre d'appel.
    */
   sansAppel?: string;
+  /**
+   * Pouvoir qui se déclenche de jour, ou à la mort du joueur : il n'a pas
+   * d'appel de nuit, mais le Maître du Jeu doit y penser au bon moment.
+   */
+  rappelJour?: string;
   short: string;
   description: string;
   emoji: string;
@@ -91,6 +96,8 @@ export const ROLES: Role[] = [
     camp: "villageois",
     max: 1,
     emoji: "🎯",
+    rappelJour:
+      "Dès qu'il meurt — dévoré, exécuté ou empoisonné — et juste après la révélation de sa carte, il élimine immédiatement un joueur de son choix. C'est obligatoire, et cela peut relancer une cascade (Amoureux, Chasseur…).",
     short: "En mourant, il abat un joueur de son choix.",
     description:
       "Quand le Chasseur meurt — dévoré, exécuté ou empoisonné — il tire immédiatement une dernière balle et élimine le joueur de son choix. Sa vengeance est obligatoire.",
@@ -148,6 +155,8 @@ export const ROLES: Role[] = [
     camp: "villageois",
     max: 1,
     emoji: "🧓",
+    rappelJour:
+      "Il encaisse la première attaque des Loups sans mourir (l'application le gère). En revanche, si le VILLAGE l'élimine au vote, tous les villageois perdent leur pouvoir sur-le-champ : plus de Voyante, plus de Sorcière, plus de Salvateur.",
     short: "Survit à la première attaque des Loups.",
     description:
       "L'Ancien résiste à la première attaque des Loups-Garous : il survit et reste en jeu (il ne survit pas au poison ni au vote). Si le village l'élimine par vote, tous les villageois perdent leur pouvoir par dépit.",
@@ -158,6 +167,8 @@ export const ROLES: Role[] = [
     camp: "villageois",
     max: 1,
     emoji: "🐐",
+    rappelJour:
+      "En cas d'égalité au vote du village, c'est lui qui est éliminé à la place. En mourant, il désigne qui aura le droit de voter le lendemain.",
     short: "Meurt en cas d'égalité au vote.",
     description:
       "En cas d'égalité lors du vote du village, c'est le Bouc Émissaire qui est éliminé à la place. En mourant, il décide qui aura le droit de voter le lendemain.",
@@ -168,6 +179,8 @@ export const ROLES: Role[] = [
     camp: "villageois",
     max: 1,
     emoji: "🤡",
+    rappelJour:
+      "Si le village vote contre lui, il n'est pas éliminé : révélez sa carte, il reste en jeu mais perd définitivement son droit de vote. L'application le fait pour vous. Il n'est protégé qu'une fois.",
     short: "Survit à son exécution mais perd son vote.",
     description:
       "Si le village vote contre l'Idiot, sa carte est révélée : il est gracié et reste en vie, mais il perd définitivement le droit de vote et ne peut plus être élu Capitaine.",
@@ -225,7 +238,7 @@ export const ROLES: Role[] = [
     emoji: "🐕",
     short: "Choisit son camp la première nuit.",
     description:
-      "La première nuit, le Chien-Loup décide s'il joue comme Simple Villageois ou comme Loup-Garou. Ce choix est définitif et secret.",
+      "La première nuit, le Chien-Loup décide s'il joue comme Simple Villageois ou comme Loup-Garou. Ce choix est définitif et secret, et son camp n'est pas révélé non plus lorsqu'il est éliminé.",
   },
   {
     id: "montreur-ours",
@@ -289,9 +302,11 @@ export const ROLES: Role[] = [
     camp: "villageois",
     max: 1,
     emoji: "🧹",
+    rappelJour:
+      "Juste avant que vous ne révéliez la carte d'un joueur éliminé, elle peut se dévoiler et prendre cette carte sans la montrer. Laissez-lui toujours ce temps avant de retourner une carte.",
     short: "Prend la place d'un joueur éliminé.",
     description:
-      "Juste avant qu'une carte éliminée ne soit révélée, la Servante Dévouée peut se dévoiler et échanger son rôle contre celui de la victime : elle prend son personnage (sans ses éventuels effets passés) et repart en jeu.",
+      "Juste avant que la carte d'un joueur éliminé ne soit révélée, la Servante Dévouée peut se dévoiler et prendre cette carte sans la montrer à personne. Elle perd sa propre carte : il n'y a pas d'échange, l'éliminé ne reçoit rien en retour. Elle joue ce nouveau rôle jusqu'à la fin, en repartant de zéro (pouvoirs déjà utilisés remis à neuf).",
   },
   {
     id: "juge-begue",
@@ -299,6 +314,8 @@ export const ROLES: Role[] = [
     camp: "villageois",
     max: 1,
     emoji: "⚖️",
+    rappelJour:
+      "Une fois dans la partie, au signe convenu avec vous, un second vote a lieu immédiatement après le premier.",
     short: "Peut déclencher un second vote.",
     description:
       "Une fois dans la partie, le Juge Bègue peut faire signe (grâce à un signe convenu avec le Maître du Jeu) pour qu'un second vote ait lieu immédiatement après le premier.",
@@ -309,6 +326,8 @@ export const ROLES: Role[] = [
     camp: "villageois",
     max: 1,
     emoji: "✅",
+    rappelJour:
+      "Sa carte est publique dès la distribution : l'application l'affiche sur tous les téléphones, vous n'avez rien à annoncer.",
     short: "Sa carte prouve qu'il est innocent.",
     description:
       "Sa carte a deux faces de villageois : tout le monde sait qu'il est authentiquement du village. C'est le candidat parfait au poste de Capitaine.",
@@ -353,6 +372,8 @@ export const ROLES: Role[] = [
     camp: "solitaire",
     max: 1,
     emoji: "😇",
+    rappelJour:
+      "S'il est éliminé lors du tout premier vote (ou de la première nuit selon votre variante), il gagne seul et la partie s'arrête. Sinon il redevient un simple villageois.",
     short: "Veut mourir dès le premier tour.",
     description:
       "L'Ange gagne immédiatement s'il est éliminé lors du tout premier vote du village (ou dès la première nuit selon la variante). S'il échoue, il redevient un simple villageois.",
@@ -373,7 +394,9 @@ export const ROLES: Role[] = [
     name: "Comédien",
     camp: "villageois",
     max: 1,
-    wakeOrder: 16,
+    // Règle officielle : le Comédien ouvre le tour de nuit, avant tous les
+    // autres, puisqu'il emprunte le pouvoir qu'il jouera ensuite.
+    wakeOrder: 12,
     emoji: "🎭",
     short: "Emprunte un pouvoir chaque nuit.",
     description:
@@ -388,7 +411,7 @@ export const ROLES: Role[] = [
     emoji: "🃏",
     short: "Ouvre le Spiritisme avec les morts.",
     description:
-      "La Gitane permet au village d'interroger les morts : chaque nuit, elle organise une séance de spiritisme où un joueur mort répond par oui ou par non à une question posée.",
+      "La Gitane permet au village d'interroger les morts. Chaque nuit, le Maître du Jeu lui lit les questions d'une carte Spiritisme ; elle en choisit une d'un geste et désigne l'habitant qui la posera au réveil. C'est le premier joueur éliminé de la partie qui répond, par oui ou par non.",
   },
   {
     id: "chevalier-epee-rouillee",
@@ -396,6 +419,8 @@ export const ROLES: Role[] = [
     camp: "villageois",
     max: 1,
     emoji: "⚔️",
+    rappelJour:
+      "S'il est dévoré par les Loups, le premier Loup-Garou assis à sa gauche meurt de la gangrène la nuit suivante. À vous de le marquer.",
     short: "En mourant, il infecte un Loup.",
     description:
       "Quand le Chevalier est dévoré par les Loups-Garous, le premier Loup-Garou situé à sa gauche meurt de la gangrène la nuit suivante.",
@@ -508,6 +533,8 @@ export const ROLES: Role[] = [
     camp: "solitaire",
     max: 1,
     emoji: "💰",
+    rappelJour:
+      "Sa cible lui a été donnée en début de partie. Si elle est éliminée au premier vote, il gagne seul et la partie s'arrête. Sinon il redevient un simple villageois.",
     short: "Doit éliminer une cible précise dès le premier jour.",
     description:
       "Le Mercenaire reçoit une cible (souvent son voisin de gauche). Si cette cible est éliminée lors du premier vote, il gagne immédiatement et seul. Sinon, il devient un simple villageois.",
@@ -528,14 +555,14 @@ export const ROLES: Role[] = [
   // ---------------- VARIANTES ----------------
   {
     id: "garde-champetre",
-    name: "Garde Champêtre",
+    name: "Garde Champêtre (variante)",
     camp: "villageois",
     max: 1,
     wakeOrder: 99,
     emoji: "🚨",
     short: "En fin de nuit, il bâillonne un joueur pour le lendemain.",
     description:
-      "En toute fin de nuit, après tous les autres rôles, le Garde Champêtre désigne au Maître du Jeu un joueur qui ne pourra pas prendre la parole pendant le débat du lendemain. Le joueur bâillonné garde son droit de vote et peut communiquer par gestes ou mimiques, mais aucun son ni aucun mot écrit. Le Garde Champêtre ne peut pas re-désigner quelqu'un qu'il a déjà bâillonné : la cible redevient disponible seulement après trois nuits.",
+      "⚠️ Variante maison, à ne pas confondre avec le Garde Champêtre officiel de l'extension « Personnages », qui est une fonction publique nommée par le Capitaine et qui joue des cartes Événement. Ici : en toute fin de nuit, après tous les autres rôles, le Garde Champêtre désigne au Maître du Jeu un joueur qui ne pourra pas prendre la parole pendant le débat du lendemain. Le joueur bâillonné garde son droit de vote et peut communiquer par gestes ou mimiques, mais aucun son ni aucun mot écrit. Le Garde Champêtre ne peut pas re-désigner quelqu'un qu'il a déjà bâillonné : la cible redevient disponible seulement après trois nuits.",
   },
 ];
 
