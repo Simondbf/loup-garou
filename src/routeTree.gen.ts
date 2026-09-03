@@ -10,22 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as CompositionsRouteImport } from './routes/compositions'
 import { Route as DistributionRouteImport } from './routes/distribution'
 import { Route as MaitreRouteImport } from './routes/maitre'
 import { Route as NouvellePartieRouteImport } from './routes/nouvelle-partie'
 import { Route as ReglesRouteImport } from './routes/regles'
 import { Route as RejoindreRouteImport } from './routes/rejoindre'
 import { Route as RolesRouteImport } from './routes/roles'
+import { Route as TourDeTableRouteImport } from './routes/tour-de-table'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CompositionsRoute = CompositionsRouteImport.update({
-  id: '/compositions',
-  path: '/compositions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DistributionRoute = DistributionRouteImport.update({
@@ -58,80 +53,85 @@ const RolesRoute = RolesRouteImport.update({
   path: '/roles',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TourDeTableRoute = TourDeTableRouteImport.update({
+  id: '/tour-de-table',
+  path: '/tour-de-table',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/compositions': typeof CompositionsRoute
   '/distribution': typeof DistributionRoute
   '/maitre': typeof MaitreRoute
   '/nouvelle-partie': typeof NouvellePartieRoute
   '/regles': typeof ReglesRoute
   '/rejoindre': typeof RejoindreRoute
   '/roles': typeof RolesRoute
+  '/tour-de-table': typeof TourDeTableRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/compositions': typeof CompositionsRoute
   '/distribution': typeof DistributionRoute
   '/maitre': typeof MaitreRoute
   '/nouvelle-partie': typeof NouvellePartieRoute
   '/regles': typeof ReglesRoute
   '/rejoindre': typeof RejoindreRoute
   '/roles': typeof RolesRoute
+  '/tour-de-table': typeof TourDeTableRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/compositions': typeof CompositionsRoute
   '/distribution': typeof DistributionRoute
   '/maitre': typeof MaitreRoute
   '/nouvelle-partie': typeof NouvellePartieRoute
   '/regles': typeof ReglesRoute
   '/rejoindre': typeof RejoindreRoute
   '/roles': typeof RolesRoute
+  '/tour-de-table': typeof TourDeTableRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/compositions'
     | '/distribution'
     | '/maitre'
     | '/nouvelle-partie'
     | '/regles'
     | '/rejoindre'
     | '/roles'
+    | '/tour-de-table'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/compositions'
     | '/distribution'
     | '/maitre'
     | '/nouvelle-partie'
     | '/regles'
     | '/rejoindre'
     | '/roles'
+    | '/tour-de-table'
   id:
     | '__root__'
     | '/'
-    | '/compositions'
     | '/distribution'
     | '/maitre'
     | '/nouvelle-partie'
     | '/regles'
     | '/rejoindre'
     | '/roles'
+    | '/tour-de-table'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  CompositionsRoute: typeof CompositionsRoute
   DistributionRoute: typeof DistributionRoute
   MaitreRoute: typeof MaitreRoute
   NouvellePartieRoute: typeof NouvellePartieRoute
   ReglesRoute: typeof ReglesRoute
   RejoindreRoute: typeof RejoindreRoute
   RolesRoute: typeof RolesRoute
+  TourDeTableRoute: typeof TourDeTableRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -141,13 +141,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/compositions': {
-      id: '/compositions'
-      path: '/compositions'
-      fullPath: '/compositions'
-      preLoaderRoute: typeof CompositionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/distribution': {
@@ -192,18 +185,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RolesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tour-de-table': {
+      id: '/tour-de-table'
+      path: '/tour-de-table'
+      fullPath: '/tour-de-table'
+      preLoaderRoute: typeof TourDeTableRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  CompositionsRoute: CompositionsRoute,
   DistributionRoute: DistributionRoute,
   MaitreRoute: MaitreRoute,
   NouvellePartieRoute: NouvellePartieRoute,
   ReglesRoute: ReglesRoute,
   RejoindreRoute: RejoindreRoute,
   RolesRoute: RolesRoute,
+  TourDeTableRoute: TourDeTableRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

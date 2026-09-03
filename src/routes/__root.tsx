@@ -83,7 +83,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Distribuez les cartes du Loup-Garou : un téléphone qui tourne ou un téléphone par joueur, compositions conseillées et règles.",
+          "Distribuez les cartes du Loup-Garou : un téléphone qui tourne ou un téléphone par joueur, conduite de la nuit guidée et règles.",
       },
       { name: "theme-color", content: "#101728" },
       { property: "og:type", content: "website" },

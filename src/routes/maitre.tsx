@@ -56,7 +56,9 @@ type Onglet = "village" | "nuit" | "reveals";
 function Maitre() {
   const navigate = useNavigate();
   const { game, session, token, hydrated, apply, saveSession } = useGame();
-  const [onglet, setOnglet] = useState<Onglet>("village");
+  // Le MJ passe l'essentiel de la partie à conduire la nuit : c'est l'onglet
+  // qui doit s'ouvrir en premier une fois les cartes distribuées.
+  const [onglet, setOnglet] = useState<Onglet>("nuit");
   const [erreur, setErreur] = useState<string | null>(null);
   const [lovers, setLoversSel] = useState<number[]>([]);
   const [revealFrom, setRevealFrom] = useState<number | null>(null);
@@ -135,7 +137,6 @@ function Maitre() {
                 game.singleDevice ? " · un seul téléphone" : ` · code ${game.code}`
               }`
         }
-        back="/"
       />
 
       {erreur && <p className="mb-3 text-center text-xs text-destructive">{erreur}</p>}
@@ -266,9 +267,9 @@ function Maitre() {
           <div className="mb-4 flex gap-2">
             {(
               [
-                ["village", "Village"],
-                ["nuit", "Nuit"],
-                ["reveals", "Montrer"],
+                ["nuit", "🌙 Conduire"],
+                ["village", "👥 Joueurs"],
+                ["reveals", "👁️ Montrer"],
               ] as [Onglet, string][]
             ).map(([id, label]) => (
               <button
@@ -357,9 +358,16 @@ function Maitre() {
           {onglet === "nuit" && (
             <section className="flex flex-col gap-3">
               <div className="surface flex items-center justify-between p-4">
-                <span className="text-sm">
-                  Nuit {game.night} — {game.phase}
-                </span>
+                <div>
+                  <p className="font-display text-base font-black">
+                    {game.phase === "nuit" ? `🌙 Nuit ${game.night}` : `☀️ Jour ${game.night}`}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {game.phase === "nuit"
+                      ? "Suivez les étapes ci-dessous, puis lever du jour."
+                      : "Débat et vote du village. Marquez les morts dans l'onglet Joueurs."}
+                  </p>
+                </div>
                 <div className="flex gap-2">
                   {game.phase === "nuit" ? (
                     <Button
@@ -389,6 +397,35 @@ function Maitre() {
 
               {bilan && (
                 <BilanNuit bilan={bilan} seats={game.seats} onFermer={() => setBilan(null)} />
+              )}
+
+              {game.phase === "jour" && !bilan && (
+                <div className="surface p-5">
+                  <h2 className="font-display text-sm font-bold">Déroulé de la journée</h2>
+                  <ol className="mt-3 flex flex-col gap-2 text-xs leading-relaxed">
+                    <li>
+                      <strong>1.</strong> Annoncez les morts de la nuit, sans jamais dire la cause.
+                      Les éliminés retournent leur carte et ne parlent plus.
+                    </li>
+                    <li>
+                      <strong>2.</strong> Si le Chasseur est tombé, il tire immédiatement.
+                    </li>
+                    <li>
+                      <strong>3.</strong> Première journée seulement : faites élire le Capitaine. Sa
+                      voix compte double.
+                    </li>
+                    <li>
+                      <strong>4.</strong> Ouvrez le débat, puis le vote à main levée.
+                    </li>
+                    <li>
+                      <strong>5.</strong> Marquez l'éliminé dans l'onglet 👥 Joueurs, avec la cause
+                      « vote ».
+                    </li>
+                    <li>
+                      <strong>6.</strong> Revenez ici et lancez la nuit suivante.
+                    </li>
+                  </ol>
+                </div>
               )}
 
               {game.phase === "nuit" && (

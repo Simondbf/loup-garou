@@ -1,24 +1,16 @@
 import { useState } from "react";
 import { RolesPanel } from "@/components/panels/roles-panel";
-import { CompositionsPanel } from "@/components/panels/compositions-panel";
 import { ReglesPanel } from "@/components/panels/regles-panel";
 
-type Vue = "menu" | "roles" | "compositions" | "regles";
+type Vue = "menu" | "roles" | "regles";
 
 const ENTREES: { vue: Vue; emoji: string; label: string; detail: string }[] = [
   { vue: "roles", emoji: "🃏", label: "Les cartes", detail: "Tous les rôles et leurs pouvoirs" },
-  {
-    vue: "compositions",
-    emoji: "🧩",
-    label: "Compositions",
-    detail: "Préréglages selon le nombre de joueurs",
-  },
   { vue: "regles", emoji: "📖", label: "Règles", detail: "Déroulé d'une nuit, d'un jour, du vote" },
 ];
 
 const TITRES: Record<Exclude<Vue, "menu">, string> = {
   roles: "Les cartes",
-  compositions: "Compositions",
   regles: "Les règles",
 };
 
@@ -93,7 +85,6 @@ export function AppMenu() {
             </header>
             <div className="flex-1 overflow-y-auto px-5 py-4">
               {vue === "roles" && <RolesPanel />}
-              {vue === "compositions" && <CompositionsPanel />}
               {vue === "regles" && <ReglesPanel />}
             </div>
           </div>

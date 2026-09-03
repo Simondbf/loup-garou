@@ -2,8 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Modal, PageHeader, RoleDetail, RoleSigil } from "@/components/ui-kit";
 import { CAMP_LABEL, ROLES, ROLES_BY_ID, type Camp, type Role } from "@/data/roles";
-import { COMPOSITIONS } from "@/data/compositions";
-import { createGame } from "@/lib/party.functions";
+import { createGame, dealCards } from "@/lib/party.functions";
 import { useGame } from "@/lib/game-store";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +18,7 @@ export const Route = createFileRoute("/nouvelle-partie")({
       { property: "og:title", content: "Créer une partie de Loup-Garou" },
       {
         property: "og:description",
-        content: "Compositions équilibrées de 7 à 30 joueurs et code de partie à partager.",
+        content: "Composez votre table de 7 à 30 joueurs et partagez le code de partie.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -78,13 +77,11 @@ function NouvellePartie() {
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
-  const propositions = useMemo(() => COMPOSITIONS.filter((c) => c.players === count), [count]);
-
   // La composition conseillée est pré-remplie dès l'arrivée sur l'étape 2.
   useEffect(() => {
     if (step !== 2) return;
-    setSelection(propositions[0] ? { ...propositions[0].roles } : compositionAuto(count));
-  }, [step, count, propositions]);
+    setSelection(compositionAuto(count));
+  }, [step, count]);
 
   // La variante « vol de rôle » oblige chaque joueur à revérifier sa carte le
   // matin : impossible quand tout le monde partage un seul téléphone.
@@ -129,7 +126,15 @@ function NouvellePartie() {
         },
       });
       saveSession({ code, host: true });
-      await navigate({ to: "/maitre" });
+      // Mode un seul téléphone : on distribue tout de suite et on enchaîne sur
+      // le tour de table. Le téléphone ne circule qu'une fois — prénom puis
+      // carte pour chacun — au lieu de deux tours successifs.
+      if (singleDevice) {
+        await dealCards({ data: { code, token } });
+        await navigate({ to: "/tour-de-table" });
+      } else {
+        await navigate({ to: "/maitre" });
+      }
     } catch (e) {
       setErreur(e instanceof Error ? e.message : "Impossible de créer la partie");
     } finally {
@@ -262,38 +267,17 @@ function NouvellePartie() {
             </div>
           </div>
 
-          <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-            {propositions.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setSelection({ ...c.roles })}
-                className="shrink-0 rounded-xl border border-border bg-secondary px-3 py-2 text-left text-[11px]"
-              >
-                <span className="block font-display font-bold">{c.name}</span>
-                <span className="block text-muted-foreground">{c.difficulty}</span>
-              </button>
-            ))}
-            <button
-              onClick={() => setSelection(compositionAuto(count))}
-              className="shrink-0 rounded-xl border border-border bg-secondary px-3 py-2 text-left text-[11px]"
-            >
-              <span className="block font-display font-bold">Automatique</span>
-              <span className="block text-muted-foreground">équilibrée</span>
-            </button>
-          </div>
+          <button
+            onClick={() => setSelection(compositionAuto(count))}
+            className="mb-4 w-full rounded-xl border border-border bg-secondary px-3 py-3 text-left text-xs"
+          >
+            <span className="block font-display font-bold">✨ Composer automatiquement</span>
+            <span className="block text-muted-foreground">
+              Une table équilibrée pour {count} joueurs, que vous pouvez ensuite retoucher.
+            </span>
+          </button>
 
-          <p className="mb-4 text-[11px] text-muted-foreground">
-            Le Capitaine (élu) et les Amoureux (Cupidon) s'ajoutent en cours de partie : ils ne
-            comptent pas dans les cartes distribuées.
-          </p>
-
-          <p className="mb-4 rounded-xl border border-border bg-secondary p-3 text-[11px] text-muted-foreground">
-            D'autres compositions conseillées arriveront dans une prochaine version, avec des tables
-            pour 13, 16 et 17 joueurs. En attendant, « Automatique » compose une table équilibrée
-            pour n'importe quel nombre de joueurs.
-          </p>
-
-          {(["loups", "villageois", "special", "solitaire"] as Camp[]).map((camp) => (
+          {(["loups", "villageois", "ambigu", "solitaire"] as Camp[]).map((camp) => (
             <div key={camp} className="mb-5">
               <h2 className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
                 {CAMP_LABEL[camp]}

@@ -79,7 +79,8 @@ function EcranJoueur() {
             ? "En attente du Maître du Jeu : renseignez déjà les prénoms."
             : "Chacun son tour : ouvrez votre place, regardez votre carte, passez le téléphone."
         }
-        back="/"
+        back={game.isHost ? "/maitre" : undefined}
+        backLabel="Tableau du Maître du Jeu"
       />
 
       {!seat && (
