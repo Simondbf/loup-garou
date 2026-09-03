@@ -51,7 +51,6 @@ function compositionAuto(count: number): Record<string, number> {
     "renard",
     "idiot-du-village",
     "bouc-emissaire",
-    "corbeau",
     "montreur-ours",
     "juge-begue",
     "servante-devouee",

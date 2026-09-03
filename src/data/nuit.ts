@@ -157,19 +157,6 @@ export const ETAPES: Record<string, EtapeNuit> = {
       RENDORMIR,
     action: "sorciere",
   },
-  pyromane: {
-    appel: "« Le Pyromane se réveille. »",
-    consigne:
-      "Il asperge d'essence un ou plusieurs joueurs, que vous marquez de la tuile Feu. Une fois dans la partie, il peut enflammer : tous les joueurs aspergés meurent d'un coup. Ce personnage se joue avec les bâtiments." +
-      RENDORMIR,
-    action: "aucune",
-  },
-  corbeau: {
-    appel: "« Le Corbeau se réveille et désigne un joueur. »",
-    consigne: "Ce joueur commencera le vote de demain avec deux voix contre lui." + RENDORMIR,
-    action: "cible",
-    cle: "corbeau",
-  },
   "joueur-de-flute": {
     appel: "« Le Joueur de Flûte se réveille et envoûte deux joueurs. »",
     consigne:

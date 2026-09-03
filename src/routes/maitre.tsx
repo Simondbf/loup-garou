@@ -1012,7 +1012,6 @@ function SuiviPouvoirs({
     ["infect-pere-des-loups", "Infection"],
     ["juge-begue", "Second vote"],
     ["assassin", "Coup de poignard"],
-    ["pyromane", "Mise à feu"],
     ["prete", "Eau bénite"],
     ["loup-feral", "Transformation"],
     ["servante-devouee", "Échange de carte"],

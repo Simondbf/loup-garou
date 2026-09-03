@@ -14,8 +14,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Les Nuits de Thiercelieux — jeu de Loup-Garou" },
       {
         property: "og:description",
-        content:
-          "Compositions conseillées, cartes secrètes et tableau de bord du Maître du Jeu.",
+        content: "Compositions conseillées, cartes secrètes et tableau de bord du Maître du Jeu.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -65,6 +64,11 @@ function Accueil() {
 
       <p className="mt-10 text-center text-xs text-muted-foreground">
         7 joueurs minimum · cartes, compositions et règles dans le menu ☰
+      </p>
+      <p className="mt-4 text-center text-[10px] leading-relaxed text-muted-foreground/70">
+        Application personnelle sans aucun lien avec les éditions Lui-même. Les cartes et les règles
+        s'inspirent des Loups-Garous de Thiercelieux, créé par Philippe des Pallières et Hervé
+        Marly.
       </p>
     </main>
   );

@@ -287,17 +287,6 @@ export const ROLES: Role[] = [
       "Les Trois Frères se réveillent ensemble la première nuit pour se reconnaître. Ils forment un noyau de confiance dans le village.",
   },
   {
-    id: "corbeau",
-    name: "Corbeau",
-    camp: "villageois",
-    max: 1,
-    wakeOrder: 50,
-    emoji: "🐦‍⬛",
-    short: "Ajoute deux votes contre un joueur.",
-    description:
-      "Chaque nuit, le Corbeau désigne un joueur : le lendemain, ce joueur commence le vote avec deux voix contre lui.",
-  },
-  {
     id: "servante-devouee",
     name: "Servante Dévouée",
     camp: "ambigu",
@@ -378,17 +367,6 @@ export const ROLES: Role[] = [
     short: "Veut mourir dès le premier tour.",
     description:
       "Quand l'Ange est en jeu, la partie ne commence pas par une nuit : elle débute par un débat et un vote d'élimination, puis vient la première nuit.\n\nL'Ange gagne seul et immédiatement s'il est éliminé lors de ce premier vote ou lors de la première nuit. S'il échoue, il redevient un Simple Villageois pour le reste de la partie.",
-  },
-  {
-    id: "pyromane",
-    name: "Pyromane",
-    camp: "villageois",
-    max: 1,
-    wakeOrder: 55,
-    emoji: "🔥",
-    short: "Asperge puis enflamme.",
-    description:
-      "Chaque nuit, le Pyromane asperge d'essence un ou plusieurs joueurs. Une fois dans la partie, il peut choisir d'enflammer : tous les joueurs aspergés meurent d'un coup.",
   },
   {
     id: "comedien",

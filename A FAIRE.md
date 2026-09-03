@@ -19,8 +19,15 @@ Loup-Garou Noir, Ombre, Mercenaire, Chaman.
 Retirés car dépendants des cartes Événement / Spiritisme : Gitane, Garde
 Champêtre officiel. À reprendre si un jour on gère ces cartes.
 
-Conservés malgré une dépendance aux tuiles Bâtiment : Pyromane (tuile Feu),
-Corbeau (tuile Corbeau). Le Maître du Jeu pose les tuiles lui-même.
+Retirés car dépendants des tuiles Bâtiment : Pyromane (tuile Feu) et
+Corbeau (tuile Corbeau). À reprendre en v3 si on gère un jour les
+bâtiments du jeu « Le Village ».
+
+## Reporté en v3
+- Tuiles Bâtiment du jeu « Le Village » : réintroduirait le Pyromane et le
+  Corbeau.
+- Cartes Événement et Spiritisme de « Nouvelle Lune » : réintroduirait la
+  Gitane et le vrai Garde Champêtre, ainsi que les attributions du Capitaine.
 
 ## Reporté en v2
 - Compositions préenregistrées : rééquilibrage et ajout des tables 13, 16 et
