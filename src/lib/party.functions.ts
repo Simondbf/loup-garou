@@ -687,9 +687,11 @@ export const setDead = createServerFn({ method: "POST" })
       });
     }
 
-    // Ancien éliminé par le vote du village : par dépit, tous les villageois
-    // perdent leur pouvoir pour le reste de la partie.
-    if (!data.alive && data.cause === "vote" && target["role_id"] === "ancien") {
+    // Ancien tombé sous un coup VILLAGEOIS — vote, poison de la Sorcière ou
+    // tir du Chasseur : par dépit, tous les villageois perdent leur pouvoir
+    // pour le reste de la partie. Dévoré par les Loups, aucun effet.
+    const COUPS_VILLAGEOIS = new Set(["vote", "poison", "chasseur"]);
+    if (!data.alive && COUPS_VILLAGEOIS.has(data.cause ?? "") && target["role_id"] === "ancien") {
       const avant = (game["host_state"] ?? {}) as HostState;
       await db.pb.modifier("games", game["id"], {
         host_state: { ...avant, villageSansPouvoirs: true },
@@ -759,7 +761,7 @@ export const setPublicRole = createServerFn({ method: "POST" })
     return buildDTO(db, game, data.token);
   });
 
-/** Crieur Public : bâillonne un joueur pour le débat du lendemain.
+/** Magicien : bâillonne un joueur pour le débat du lendemain.
  *  Interdit de re-viser quelqu'un bâillonné lors des 3 dernières nuits. */
 export const gagPlayer = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; token: string; position: number }) => d)
@@ -857,18 +859,25 @@ export const resolveNight = createServerFn({ method: "POST" })
     const patchEtat: HostState = {};
     let infecte: number | undefined;
 
-    /** Une attaque de Loups, avec toutes ses parades. */
+    /**
+     * Une attaque de Loups, avec toutes ses parades, dans l'ordre du livret.
+     *
+     * L'Ancien passe en premier : à sa première morsure il résiste, et n'est
+     * pas non plus affecté par l'Infect Père des Loups. L'infection vient
+     * ensuite, car le Salvateur ne protège pas de l'infection. Et sa
+     * protection ne donne aucun résultat sur la Petite Fille.
+     */
     function attaqueLoups(cible: number | undefined, peutEtreInfecte: boolean) {
       if (cible === undefined) return;
       const siege = parPosition(cible);
       if (!siege || !siege["alive"]) return;
 
-      if (nuit.protection === cible) {
-        sauves.push({ position: cible, raison: "protégé par le Salvateur" });
-        return;
-      }
-      if (nuit.soin === cible) {
-        sauves.push({ position: cible, raison: "soigné par la Sorcière" });
+      if (siege["role_id"] === "ancien" && !etat.ancienDejaAttaque) {
+        patchEtat.ancienDejaAttaque = true;
+        sauves.push({
+          position: cible,
+          raison: "l'Ancien encaisse sa première morsure (et résiste à l'infection)",
+        });
         return;
       }
       if (peutEtreInfecte && nuit.infection && !etat.infectionUtilisee) {
@@ -877,9 +886,18 @@ export const resolveNight = createServerFn({ method: "POST" })
         sauves.push({ position: cible, raison: "infecté : il rejoint les Loups-Garous" });
         return;
       }
-      if (siege["role_id"] === "ancien" && !etat.ancienDejaAttaque) {
-        patchEtat.ancienDejaAttaque = true;
-        sauves.push({ position: cible, raison: "l'Ancien encaisse sa première attaque" });
+      if (nuit.protection === cible && siege["role_id"] !== "petite-fille") {
+        sauves.push({ position: cible, raison: "protégé par le Salvateur" });
+        return;
+      }
+      if (nuit.protection === cible && siege["role_id"] === "petite-fille") {
+        sauves.push({
+          position: cible,
+          raison: "protection sans effet : le Salvateur ne protège pas la Petite Fille",
+        });
+      }
+      if (nuit.soin === cible) {
+        sauves.push({ position: cible, raison: "soigné par la Sorcière" });
         return;
       }
       morts.push({ position: cible, cause: "loups" });
@@ -951,6 +969,13 @@ export const resolveNight = createServerFn({ method: "POST" })
 
     if (infecte !== undefined) {
       patchEtat.devenusLoups = [...(patchEtat.devenusLoups ?? etat.devenusLoups ?? []), infecte];
+    }
+
+    // Ancien empoisonné par la Sorcière : coup villageois, le village perd
+    // ses pouvoirs, exactement comme au vote.
+    if (nuit.poison !== undefined) {
+      const empoisonne = parPosition(nuit.poison);
+      if (empoisonne?.["role_id"] === "ancien") patchEtat.villageSansPouvoirs = true;
     }
 
     // Le modèle de l'Enfant Sauvage est désigné la première nuit, mais il

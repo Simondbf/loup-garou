@@ -49,7 +49,7 @@ export const ETAPES: Record<string, EtapeNuit> = {
   voleur: {
     appel: "« Le Voleur se réveille. »",
     consigne:
-      "Montrez-lui discrètement les cartes disponibles, puis enregistrez son choix ci-dessous. Sa carte et celle de sa victime sont échangées : les deux joueurs devront revoir leur carte au lever du jour." +
+      "Montrez-lui discrètement les cartes disponibles, puis enregistrez son choix ci-dessous. Dans la variante officielle (deux cartes au centre), s'il tombe sur deux Loups-Garous il est OBLIGÉ d'en prendre un. En vol de rôle, sa carte et celle de sa victime sont échangées : les deux devront revoir leur carte au lever du jour." +
       RENDORMIR,
     action: "voleur",
   },
@@ -93,7 +93,7 @@ export const ETAPES: Record<string, EtapeNuit> = {
   salvateur: {
     appel: "« Le Salvateur se réveille et désigne qui il protège cette nuit. »",
     consigne:
-      "Il peut se protéger lui-même, mais jamais la même personne deux nuits de suite. La protection arrête les Loups-Garous, pas le poison de la Sorcière." +
+      "Il peut se protéger lui-même, mais jamais la même personne deux nuits de suite. Sa protection arrête les Loups-Garous mais reste sans effet contre le poison de la Sorcière, le charme du Joueur de Flûte, l'infection de l'Infect Père — et elle ne donne aucun résultat sur la Petite Fille." +
       RENDORMIR,
     action: "cible",
     cle: "protection",
@@ -115,22 +115,15 @@ export const ETAPES: Record<string, EtapeNuit> = {
   renard: {
     appel: "« Le Renard se réveille et désigne un joueur. »",
     consigne:
-      "Répondez par oui ou non d'un signe de tête : y a-t-il au moins un Loup-Garou parmi ce joueur et ses deux voisins ? Si la réponse est non, il perd son pouvoir pour le reste de la partie." +
+      "Il désigne le joueur central d'un groupe de trois voisins ENCORE EN JEU ; les éliminés ne comptent pas. Répondez oui ou non d'un signe : y a-t-il au moins un Loup-Garou parmi les trois ? Si non, il perd définitivement son pouvoir. Il n'est jamais obligé de flairer." +
       RENDORMIR,
     action: "cible",
     cle: "renard",
   },
-  chaman: {
-    appel: "« Le Chaman se réveille. »",
-    consigne:
-      "Il pose une question sur un rôle présent ou absent de la partie. Répondez par oui ou non." +
-      RENDORMIR,
-    action: "aucune",
-  },
   "loup-garou": {
     appel: "« Les Loups-Garous se réveillent, se reconnaissent et désignent leur victime. »",
     consigne:
-      "Laissez-leur le temps de se mettre d'accord en silence. Enregistrez la victime : elle ne mourra qu'au lever du jour, une fois la Sorcière passée." +
+      "Laissez-leur le temps de se mettre d'accord en silence. Enregistrez la victime : elle ne mourra qu'au lever du jour, une fois la Sorcière passée. Si la Petite Fille se fait surprendre en train d'espionner, elle peut être dévorée à la place de la victime désignée." +
       RENDORMIR,
     action: "loups",
   },
@@ -145,37 +138,17 @@ export const ETAPES: Record<string, EtapeNuit> = {
   "infect-pere-des-loups": {
     appel: "« L'Infect Père des Loups peut infecter la victime. »",
     consigne:
-      "Une seule fois dans la partie. S'il infecte : la victime survit, garde son pouvoir, et rejoint secrètement les Loups-Garous. Prévenez-la discrètement au lever du jour." +
+      "Une seule fois dans la partie. S'il infecte : la victime survit, garde son pouvoir et rejoint secrètement les Loups-Garous — touchez-la discrètement. Ni le Salvateur ni la Sorcière n'empêchent l'infection, mais l'Ancien y résiste à sa première morsure." +
       RENDORMIR,
     action: "aucune",
   },
   "grand-mechant-loup": {
     appel: "« Le Grand Méchant Loup se réveille et dévore une seconde victime. »",
     consigne:
-      "Uniquement tant qu'aucun Loup-Garou n'est mort. Si un Loup est déjà tombé, ne l'appelez pas du tout." +
+      "Uniquement tant qu'aucun Loup-Garou, Enfant Sauvage ou Chien-Loup n'a été éliminé. Sa seconde victime ne peut pas être un Loup-Garou." +
       RENDORMIR,
     action: "cible",
     cle: "secondeVictime",
-  },
-  "loup-feral": {
-    appel: "« Le Loup Féral se réveille. »",
-    consigne:
-      "Une fois par partie, il désigne un joueur qui devient Loup Féral à son tour, à l'insu des autres Loups-Garous." +
-      RENDORMIR,
-    action: "aucune",
-  },
-  "loup-shaman": {
-    appel: "« Le Loup Chamane se réveille et désigne un joueur. »",
-    consigne: "Le pouvoir de ce joueur est inactif pour le tour à venir." + RENDORMIR,
-    action: "cible",
-    cle: "pouvoirNeutralise",
-  },
-  ombre: {
-    appel: "« L'Ombre se réveille et se glisse derrière un joueur. »",
-    consigne:
-      "Si l'Ombre est attaquée cette nuit, l'attaque frappe son hôte à sa place." + RENDORMIR,
-    action: "cible",
-    cle: "ombre",
   },
   sorciere: {
     appel: "« La Sorcière se réveille. »",
@@ -184,47 +157,28 @@ export const ETAPES: Record<string, EtapeNuit> = {
       RENDORMIR,
     action: "sorciere",
   },
+  pyromane: {
+    appel: "« Le Pyromane se réveille. »",
+    consigne:
+      "Il asperge d'essence un ou plusieurs joueurs, que vous marquez de la tuile Feu. Une fois dans la partie, il peut enflammer : tous les joueurs aspergés meurent d'un coup. Ce personnage se joue avec les bâtiments." +
+      RENDORMIR,
+    action: "aucune",
+  },
   corbeau: {
     appel: "« Le Corbeau se réveille et désigne un joueur. »",
     consigne: "Ce joueur commencera le vote de demain avec deux voix contre lui." + RENDORMIR,
     action: "cible",
     cle: "corbeau",
   },
-  pyromane: {
-    appel: "« Le Pyromane se réveille. »",
-    consigne:
-      "Il asperge un ou plusieurs joueurs. Une fois dans la partie, il peut enflammer : tous les joueurs aspergés meurent d'un coup." +
-      RENDORMIR,
-    action: "aucune",
-  },
-  assassin: {
-    appel: "« L'Assassin se réveille. »",
-    consigne: "Une fois dans la partie, il peut poignarder un joueur." + RENDORMIR,
-    action: "cible",
-    cle: "assassin",
-  },
-  gitane: {
-    appel: "« La Gitane ouvre la séance de spiritisme. »",
-    consigne:
-      "Elle désigne un joueur mort, qui répond par oui ou par non à une question posée." +
-      RENDORMIR,
-    action: "aucune",
-  },
   "joueur-de-flute": {
     appel: "« Le Joueur de Flûte se réveille et envoûte deux joueurs. »",
     consigne:
-      "Il gagne seul dès que tous les survivants sont envoûtés. Réveillez ensuite les envoûtés pour qu'ils se reconnaissent, sans savoir qui les a charmés." +
+      "Deux NOUVEAUX joueurs chaque nuit ; il ne peut pas s'auto-charmer. Réveillez ensuite tous les envoûtés, anciens et nouveaux, pour qu'ils se reconnaissent. Ni le Salvateur ni la Sorcière ne protègent du charme, et les Loups-Garous n'y sont pas immunisés. Il gagne seul dès qu'il ne reste que des envoûtés." +
       RENDORMIR,
     action: "flute",
   },
-  gargouille: {
-    appel: "« La Gargouille se réveille et pétrifie un joueur. »",
-    consigne: "Ce joueur ne pourra ni parler ni voter demain." + RENDORMIR,
-    action: "cible",
-    cle: "petrifie",
-  },
-  "crieur-public": {
-    appel: "« Le Crieur Public se réveille et désigne un habitant à museler. »",
+  magicien: {
+    appel: "« Le Magicien se réveille et désigne un habitant à faire taire. »",
     consigne:
       "Le joueur désigné ne parlera pas pendant le débat de demain, mais il votera et peut communiquer par gestes. Une même cible n'est de nouveau visable qu'après trois nuits." +
       RENDORMIR,

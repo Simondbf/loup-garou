@@ -23,7 +23,7 @@ export const SECTIONS = [
       "« Le village s'endort, tout le monde ferme les yeux. »",
       "Le Maître du Jeu appelle les rôles un par un, dans l'ordre affiché sur son écran. Chaque joueur appelé ouvre les yeux, agit en silence, puis les referme.",
       "Certains rôles n'interviennent que lors de la toute première nuit : ils sont signalés comme tels sur l'écran du Maître du Jeu.",
-      "Le Crieur Public est toujours le dernier appelé, juste avant le lever du jour.",
+      "Le Magicien est toujours le dernier appelé, juste avant le lever du jour.",
     ],
   },
   {
@@ -60,11 +60,11 @@ export const SECTIONS = [
     ],
   },
   {
-    titre: "🚨 Le Crieur Public",
+    titre: "🚨 Le Magicien",
     contenu: [
       "Il agit en toute fin de nuit, après tous les autres rôles : il désigne au Maître du Jeu un joueur qui ne pourra pas prendre la parole pendant le débat du lendemain.",
       "Le joueur bâillonné conserve son droit de vote et peut communiquer par gestes, mimiques ou hochements de tête — mais il ne prononce aucun mot et n'écrit rien.",
-      "Le Crieur Public ne peut pas re-désigner une même personne : elle redevient une cible possible seulement après trois nuits.",
+      "Le Magicien ne peut pas re-désigner une même personne : elle redevient une cible possible seulement après trois nuits.",
     ],
   },
 ];

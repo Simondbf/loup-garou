@@ -37,7 +37,7 @@ export const Route = createFileRoute("/maitre")({
       {
         name: "description",
         content:
-          "Ordre de réveil, morts, capitaine, amoureux, révélations privées et bâillon du Crieur Public : tout le village en un écran.",
+          "Ordre de réveil, morts, capitaine, amoureux, révélations privées et bâillon du Magicien : tout le village en un écran.",
       },
       { property: "og:title", content: "Maître du Jeu — Loup-Garou" },
       {
@@ -555,9 +555,9 @@ function Maitre() {
                 }
               />
 
-              {game.seats.some((s) => s.roleId === "crieur-public") && (
+              {game.seats.some((s) => s.roleId === "magicien") && (
                 <div className="surface p-4">
-                  <h2 className="font-display text-sm font-bold">Bâillon du Crieur Public</h2>
+                  <h2 className="font-display text-sm font-bold">Bâillon du Magicien</h2>
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     Le joueur désigné ne pourra pas parler demain, mais votera. Une même cible ne
                     peut pas être re-désignée avant trois nuits.
@@ -929,7 +929,10 @@ function MontreurOurs({
   };
 
   const voisins = [gauche, droite];
-  const grogne = voisins.some(estLoup);
+  // Cas particulier du livret : si le Montreur d'Ours est lui-même infecté,
+  // l'ours grogne à chaque tour jusqu'à son élimination.
+  const montreurInfecte = convertis.includes(montreur.position);
+  const grogne = montreurInfecte || voisins.some(estLoup);
   const nom = (s: SeatDTO) => s.name || `Place ${s.position}`;
 
   // Avec plusieurs téléphones, l'ordre des places vient de l'ordre où les
@@ -972,6 +975,11 @@ function MontreurOurs({
         )}
       >
         {grogne ? "FAITES GROGNER L'OURS" : "L'ours reste silencieux"}
+      </p>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        {montreurInfecte
+          ? "Le Montreur d'Ours est lui-même infecté : l'ours grognera à chaque tour jusqu'à son élimination."
+          : "Seuls les voisins encore en jeu comptent."}
       </p>
       <p className="mt-2 text-[11px] text-muted-foreground">
         Annoncez-le à voix haute, avant le débat, sans dire de quel côté vient le grognement. Les

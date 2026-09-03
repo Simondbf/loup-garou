@@ -178,12 +178,16 @@ function construireEtapes(game: GameDTO): EtapeCalculee[] {
       // compte aussi l'Enfant Sauvage et le Chien-Loup passés côté meute, pas
       // seulement les cartes de Loup d'origine.
       if (r.id === "grand-mechant-loup") {
-        const convertis = game.hostState.devenusLoups ?? [];
+        // Le livret est explicite : « tant qu'aucun Loup-Garou, Enfant Sauvage
+        // ou Chien-Loup n'est éliminé ». Ces deux-là comptent quel que soit le
+        // camp qu'ils avaient finalement choisi.
         return !game.seats.some(
           (s) =>
             !s.alive &&
-            ((s.roleId && ROLES_BY_ID[s.roleId]?.camp === "loups") ||
-              convertis.includes(s.position)),
+            s.roleId &&
+            (ROLES_BY_ID[s.roleId]?.camp === "loups" ||
+              s.roleId === "enfant-sauvage" ||
+              s.roleId === "chien-loup"),
         );
       }
       // Loup-Garou Blanc : une nuit sur deux.

@@ -8,21 +8,19 @@
 - Multi-appareils : code de partie à 4 lettres, 1 à 6 joueurs par téléphone, places libres portées par le téléphone du MJ.
 - MJ : morts + causes, cascade des amoureux, capitaine, rôle rendu public (Villageois-Villageois), ordre de réveil, révélations privées (Voyante, Renard…), phases jour/nuit.
 
-## Audit règles officielles — en cours
-Réglé : le faux « Garde Champêtre » devient le Crieur Public, rôle maison
-assumé. Le vrai Garde Champêtre et les autres attributions du Capitaine sont
-écartés tant qu'on ne gère pas les cartes Événement.
+## Audit règles officielles — terminé
+Catalogue aligné sur le livret (photos du 3 septembre) : 34 rôles, quatre
+catégories du livret (Loups-Garous, Villageois, Ambigus, Solitaires).
 
-En attente des photos de la règle envoyées par Simon :
-- Ajouter une catégorie de camp « ambigu ».
-- « Le Sectaire » fait doublon avec « Abominable Sectaire » (officiel,
-  confirmé). À supprimer.
-- Assassin : confirmé officiel. Gargouille : pas de source trouvée.
-- Restent à confirmer : Prêtre, Loup Féral, Loup Chamane, Loup-Garou Noir,
-  Ombre, Mercenaire.
-- Comédien : la règle demande trois cartes de villageois supplémentaires au
-  centre. L'application ne les gère pas, c'est au MJ de les poser physiquement.
-- Gitane : cartes Spiritisme non gérées, question posée de vive voix.
+Retirés faute de source officielle : Le Sectaire (doublon de l'Abominable
+Sectaire), Assassin, Gargouille, Prêtre, Loup Féral, Loup Chamane,
+Loup-Garou Noir, Ombre, Mercenaire, Chaman.
+
+Retirés car dépendants des cartes Événement / Spiritisme : Gitane, Garde
+Champêtre officiel. À reprendre si un jour on gère ces cartes.
+
+Conservés malgré une dépendance aux tuiles Bâtiment : Pyromane (tuile Feu),
+Corbeau (tuile Corbeau). Le Maître du Jeu pose les tuiles lui-même.
 
 ## Reporté en v2
 - Compositions préenregistrées : rééquilibrage et ajout des tables 13, 16 et

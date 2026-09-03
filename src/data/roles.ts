@@ -1,4 +1,4 @@
-export type Camp = "villageois" | "loups" | "solitaire" | "special";
+export type Camp = "villageois" | "loups" | "ambigu" | "solitaire" | "special";
 
 export interface Role {
   id: string;
@@ -30,6 +30,7 @@ export interface Role {
 export const CAMP_LABEL: Record<Camp, string> = {
   villageois: "Village",
   loups: "Loups-Garous",
+  ambigu: "Ambigu",
   solitaire: "Solitaire",
   special: "Camp inconnu",
 };
@@ -100,7 +101,7 @@ export const ROLES: Role[] = [
       "Dès qu'il meurt — dévoré, exécuté ou empoisonné — et juste après la révélation de sa carte, il élimine immédiatement un joueur de son choix. C'est obligatoire, et cela peut relancer une cascade (Amoureux, Chasseur…).",
     short: "En mourant, il abat un joueur de son choix.",
     description:
-      "Quand le Chasseur meurt — dévoré, exécuté ou empoisonné — il tire immédiatement une dernière balle et élimine le joueur de son choix. Sa vengeance est obligatoire.",
+      "Quand le Chasseur meurt — dévoré, exécuté ou empoisonné — il tire immédiatement une dernière balle et élimine le joueur de son choix. Sa vengeance est obligatoire.\n\nCas particulier : s'il meurt de chagrin parce que son Amoureux vient d'être éliminé, il tire quand même avant de quitter la partie. Il peut alors ne rester aucun survivant : dans ce cas, la victoire ne revient à aucun camp.",
   },
   {
     id: "cupidon",
@@ -111,7 +112,7 @@ export const ROLES: Role[] = [
     emoji: "💘",
     short: "Désigne deux amoureux la première nuit.",
     description:
-      "La première nuit, Cupidon désigne deux joueurs (éventuellement lui-même) qui deviennent Amoureux. Si l'un meurt, l'autre meurt de chagrin. Si les Amoureux sont dans des camps opposés, ils forment un troisième camp et doivent être les deux derniers survivants.",
+      "La première nuit, Cupidon désigne deux joueurs (éventuellement lui-même) qui deviennent Amoureux à jamais. Si l'un est éliminé, l'autre meurt de chagrin immédiatement.\n\nUn Amoureux ne doit jamais éliminer son aimé ni lui porter préjudice, même pour faire semblant. Si le couple est mixte — un Villageois avec un Loup-Garou ou avec le Joueur de Flûte — le but de la partie change pour eux : ils doivent éliminer TOUS les autres joueurs, Loups-Garous comme Villageois, pour vivre leur amour en paix.",
   },
   {
     id: "petite-fille",
@@ -128,7 +129,7 @@ export const ROLES: Role[] = [
   {
     id: "voleur",
     name: "Voleur",
-    camp: "villageois",
+    camp: "ambigu",
     max: 1,
     wakeOrder: 1,
     emoji: "🗝️",
@@ -159,7 +160,7 @@ export const ROLES: Role[] = [
       "Il encaisse la première attaque des Loups sans mourir (l'application le gère). En revanche, si le VILLAGE l'élimine au vote, tous les villageois perdent leur pouvoir sur-le-champ : plus de Voyante, plus de Sorcière, plus de Salvateur.",
     short: "Survit à la première attaque des Loups.",
     description:
-      "L'Ancien résiste à la première attaque des Loups-Garous : il survit et reste en jeu (il ne survit pas au poison ni au vote). Si le village l'élimine par vote, tous les villageois perdent leur pouvoir par dépit.",
+      "L'Ancien résiste à la première morsure des Loups-Garous : il survit, et le Maître du Jeu ne retourne pas sa carte. Il n'est pas non plus affecté par l'Infect Père des Loups à cette première morsure. Il n'est éliminé qu'à la seconde.\n\nEn revanche le vote du village, le poison de la Sorcière et le tir du Chasseur l'éliminent du premier coup. Et dans ce cas, désespérés d'avoir tué un tel puits de science, tous les villageois perdent leurs pouvoirs spéciaux jusqu'à la fin de la partie.",
   },
   {
     id: "bouc-emissaire",
@@ -183,7 +184,7 @@ export const ROLES: Role[] = [
       "Si le village vote contre lui, il n'est pas éliminé : révélez sa carte, il reste en jeu mais perd définitivement son droit de vote. L'application le fait pour vous. Il n'est protégé qu'une fois.",
     short: "Survit à son exécution mais perd son vote.",
     description:
-      "Si le village vote contre l'Idiot, sa carte est révélée : il est gracié et reste en vie, mais il perd définitivement le droit de vote et ne peut plus être élu Capitaine.",
+      "Si le village vote contre l'Idiot, il retourne sa carte : les villageois comprennent leur erreur et le gracient immédiatement. Il reste en jeu mais perd définitivement son droit de vote, et il n'y a pas de nouveau vote ce tour-là.\n\nIl n'est protégé que du vote : les Loups-Garous le dévorent normalement et le tir du Chasseur l'élimine. S'il était Capitaine, il ne transmet pas sa fonction — la charge est définitivement perdue.",
   },
   {
     id: "joueur-de-flute",
@@ -216,12 +217,12 @@ export const ROLES: Role[] = [
     emoji: "🌕",
     short: "Loup solitaire qui doit rester seul survivant.",
     description:
-      "Le Loup-Garou Blanc se réveille avec les autres Loups-Garous et dévore avec eux. Mais une nuit sur deux, il se réveille seul après eux et peut éliminer un Loup-Garou. Il ne gagne que s'il est l'unique survivant de la partie.",
+      "Le Loup-Garou Blanc se réveille avec les autres Loups-Garous et dévore avec eux. Mais une nuit sur deux, il se réveille seul après eux et PEUT éliminer un Loup-Garou — il n'y est jamais obligé. Il ne gagne que s'il est l'unique survivant du village.",
   },
   {
     id: "enfant-sauvage",
     name: "Enfant Sauvage",
-    camp: "special",
+    camp: "ambigu",
     max: 1,
     wakeOrder: 5,
     emoji: "🐒",
@@ -232,7 +233,7 @@ export const ROLES: Role[] = [
   {
     id: "chien-loup",
     name: "Chien-Loup",
-    camp: "special",
+    camp: "ambigu",
     max: 1,
     wakeOrder: 6,
     emoji: "🐕",
@@ -299,7 +300,7 @@ export const ROLES: Role[] = [
   {
     id: "servante-devouee",
     name: "Servante Dévouée",
-    camp: "villageois",
+    camp: "ambigu",
     max: 1,
     emoji: "🧹",
     rappelJour:
@@ -376,7 +377,7 @@ export const ROLES: Role[] = [
       "S'il est éliminé lors du tout premier vote (ou de la première nuit selon votre variante), il gagne seul et la partie s'arrête. Sinon il redevient un simple villageois.",
     short: "Veut mourir dès le premier tour.",
     description:
-      "L'Ange gagne immédiatement s'il est éliminé lors du tout premier vote du village (ou dès la première nuit selon la variante). S'il échoue, il redevient un simple villageois.",
+      "Quand l'Ange est en jeu, la partie ne commence pas par une nuit : elle débute par un débat et un vote d'élimination, puis vient la première nuit.\n\nL'Ange gagne seul et immédiatement s'il est éliminé lors de ce premier vote ou lors de la première nuit. S'il échoue, il redevient un Simple Villageois pour le reste de la partie.",
   },
   {
     id: "pyromane",
@@ -392,7 +393,7 @@ export const ROLES: Role[] = [
   {
     id: "comedien",
     name: "Comédien",
-    camp: "villageois",
+    camp: "ambigu",
     max: 1,
     // Règle officielle : le Comédien ouvre le tour de nuit, avant tous les
     // autres, puisqu'il emprunte le pouvoir qu'il jouera ensuite.
@@ -401,17 +402,6 @@ export const ROLES: Role[] = [
     short: "Emprunte un pouvoir chaque nuit.",
     description:
       "Trois cartes de villageois à pouvoir sont posées au centre. Chaque nuit, le Comédien en choisit une et joue ce pouvoir pour la nuit et le jour suivants. La carte est ensuite retirée du jeu.",
-  },
-  {
-    id: "gitane",
-    name: "La Gitane",
-    camp: "villageois",
-    max: 1,
-    wakeOrder: 58,
-    emoji: "🃏",
-    short: "Ouvre le Spiritisme avec les morts.",
-    description:
-      "Chaque nuit, la Gitane organise une séance de spiritisme : un joueur mort répond par oui ou par non à une question posée par le village.\n\nLa version officielle passe par des cartes Spiritisme, parmi lesquelles le Maître du Jeu lit quatre questions au choix. Ces cartes ne sont pas encore gérées ici : posez la question de vive voix.",
   },
   {
     id: "chevalier-epee-rouillee",
@@ -423,122 +413,12 @@ export const ROLES: Role[] = [
       "S'il est dévoré par les Loups, le premier Loup-Garou assis à sa gauche meurt de la gangrène la nuit suivante. À vous de le marquer.",
     short: "En mourant, il infecte un Loup.",
     description:
-      "Quand le Chevalier est dévoré par les Loups-Garous, le premier Loup-Garou situé à sa gauche meurt de la gangrène la nuit suivante.",
-  },
-  {
-    id: "loup-feral",
-    name: "Loup Féral",
-    camp: "loups",
-    max: 1,
-    wakeOrder: 35,
-    emoji: "🌑",
-    short: "Peut transformer la victime en Loup Féral.",
-    description:
-      "Une fois par partie, le Loup Féral peut se réveiller après le repas et choisir un joueur : ce joueur devient lui aussi Loup Féral, sans le savoir des autres Loups-Garous classiques.",
-  },
-  {
-    id: "loup-shaman",
-    name: "Loup Chamane",
-    camp: "loups",
-    max: 1,
-    wakeOrder: 36,
-    emoji: "🪄",
-    short: "Neutralise le pouvoir d'un villageois.",
-    description:
-      "Chaque nuit, le Loup Chamane désigne un joueur : le pouvoir de ce joueur est inactif pour le tour à venir.",
+      "Quand le Chevalier est dévoré par les Loups-Garous, le premier Loup-Garou situé à sa gauche est contaminé par l'épée rouillée : il meurt de la maladie au début de la nuit suivante, et vous l'annoncez au matin.\n\nConséquence à garder en tête : le village pourra en déduire que tous les habitants situés entre le Chevalier et le Loup malade sont d'innocents villageois.",
   },
 
   // ---------------- LE VILLAGE ----------------
-  {
-    id: "chaman",
-    name: "Chaman",
-    camp: "villageois",
-    max: 1,
-    wakeOrder: 22,
-    emoji: "🪶",
-    short: "Parle aux esprits une fois par nuit.",
-    description:
-      "Le Chaman peut chaque nuit demander au Maître du Jeu une information sur un rôle présent ou absent de la partie. Un rôle d'enquête plus subtil que la Voyante.",
-  },
-  {
-    id: "prete",
-    name: "Le Prêtre",
-    camp: "villageois",
-    max: 1,
-    emoji: "⛪",
-    short: "Bénit un joueur, l'eau bénite tue les Loups.",
-    description:
-      "Une fois par partie, le Prêtre jette de l'eau bénite sur un joueur : si c'est un Loup-Garou, il meurt sur-le-champ ; sinon le Prêtre meurt à sa place.",
-  },
-  {
-    id: "gargouille",
-    name: "La Gargouille",
-    camp: "solitaire",
-    max: 1,
-    wakeOrder: 61,
-    emoji: "🗿",
-    short: "Pétrifie les villageois un par un.",
-    description:
-      "Chaque nuit, la Gargouille pétrifie un joueur qui ne pourra ni parler ni voter le jour suivant. Elle gagne seule si elle survit jusqu'à la fin.",
-  },
-  {
-    id: "sectaire-blanc",
-    name: "Le Sectaire",
-    camp: "solitaire",
-    max: 1,
-    emoji: "🔺",
-    short: "Rallie le village à sa cause.",
-    description:
-      "Le Sectaire tente de convertir les villageois à sa doctrine. Il gagne si, à la fin, tous les survivants appartiennent à sa secte.",
-  },
-  {
-    id: "assassin",
-    name: "L'Assassin",
-    camp: "solitaire",
-    max: 1,
-    wakeOrder: 56,
-    emoji: "🗡️",
-    short: "Tue une fois par partie, en solitaire.",
-    description:
-      "L'Assassin joue seul. Une fois par partie il peut poignarder un joueur pendant la nuit. Il gagne s'il est encore vivant à la fin de la partie, quel que soit le camp vainqueur.",
-  },
 
   // ---------------- NOUVELLE ÉDITION / PACTE ----------------
-  {
-    id: "loup-garou-noir",
-    name: "Loup-Garou Noir",
-    camp: "loups",
-    max: 1,
-    emoji: "🖤",
-    sansAppel:
-      "Aucun réveil à lui : il se réveille et dévore avec la meute. Aux pouvoirs de détection (Voyante, Renard…), annoncez-le comme Simple Villageois.",
-    short: "Invisible aux pouvoirs de détection.",
-    description:
-      "Le Loup-Garou Noir apparaît comme un simple villageois à la Voyante et aux autres pouvoirs de détection. Il dévore normalement avec la meute.",
-  },
-  {
-    id: "ombre",
-    name: "L'Ombre",
-    camp: "loups",
-    max: 1,
-    wakeOrder: 38,
-    emoji: "👤",
-    short: "Se cache derrière un joueur pour survivre.",
-    description:
-      "Chaque nuit, l'Ombre se glisse derrière un joueur : si elle est attaquée cette nuit-là, l'attaque frappe son hôte à sa place.",
-  },
-  {
-    id: "mercenaire",
-    name: "Le Mercenaire",
-    camp: "solitaire",
-    max: 1,
-    emoji: "💰",
-    rappelJour:
-      "Sa cible lui a été donnée en début de partie. Si elle est éliminée au premier vote, il gagne seul et la partie s'arrête. Sinon il redevient un simple villageois.",
-    short: "Doit éliminer une cible précise dès le premier jour.",
-    description:
-      "Le Mercenaire reçoit une cible (souvent son voisin de gauche). Si cette cible est éliminée lors du premier vote, il gagne immédiatement et seul. Sinon, il devient un simple villageois.",
-  },
   {
     id: "amoureux",
     name: "Amoureux",
@@ -554,15 +434,15 @@ export const ROLES: Role[] = [
 
   // ---------------- VARIANTES ----------------
   {
-    id: "crieur-public",
-    name: "Crieur Public",
+    id: "magicien",
+    name: "Magicien",
     camp: "villageois",
     max: 1,
     wakeOrder: 99,
-    emoji: "🚨",
-    short: "En fin de nuit, il musèle un habitant pour le lendemain. Rôle maison.",
+    emoji: "🪄",
+    short: "Il fait taire un habitant pour la journée du lendemain. Rôle maison.",
     description:
-      "⚠️ Rôle maison, absent du jeu officiel. Il remplace le « Garde Champêtre » que Lovable avait inventé : le vrai Garde Champêtre de l'extension « Personnages » n'est pas une carte mais une fonction publique nommée par le Capitaine, qui joue des cartes Événement — hors du périmètre de cette application pour l'instant.\n\nEn toute fin de nuit, après tous les autres rôles, le Crieur Public désigne au Maître du Jeu un habitant qui n'aura pas droit à la parole pendant le débat du lendemain. Le muselé garde son droit de vote et peut communiquer par gestes ou mimiques, mais ne prononce aucun mot et n'écrit rien. Le Crieur Public ne peut pas re-désigner quelqu'un qu'il a muselé lors des trois dernières nuits.",
+      "⚠️ Rôle maison, absent du jeu officiel : il n'existe dans aucune boîte des Loups-Garous de Thiercelieux.\n\nEn toute fin de nuit, après tous les autres rôles, le Magicien jette un sort de mutisme sur un habitant de son choix. Le lendemain, le joueur ensorcelé ne prononce pas un mot et n'écrit rien pendant tout le débat. Il garde son droit de vote et peut communiquer par gestes ou mimiques. Le Magicien ne peut pas re-viser quelqu'un qu'il a déjà fait taire lors des trois dernières nuits.",
   },
 ];
 
