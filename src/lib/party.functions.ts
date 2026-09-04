@@ -20,10 +20,58 @@ export interface SeatDTO {
   deathCause: string | null;
   /** « nuit » ou « jour » : le seul détail que voient les joueurs éliminés. */
   deathPhase: string | null;
+  /**
+   * Rang de la mort dans la partie, réservé au Maître du Jeu.
+   *
+   * C'est ce qui permet au fil de la journée de distinguer les morts de la
+   * nuit passée de celles qui viennent de tomber au vote, et de les traiter
+   * dans l'ordre où elles sont survenues.
+   */
+  deathOrder: number;
   isCaptain: boolean;
   loverGroup: number | null;
   statuses: string[];
   seen: boolean;
+}
+
+/**
+ * Ce qu'un joueur a le droit de retrouver sur son propre téléphone.
+ *
+ * Jusqu'ici, tout ce qui n'était pas sa carte vivait dans la tête du Maître
+ * du Jeu : combien de potions restait-il, qui le Salvateur ne pouvait plus
+ * protéger. Le MJ devait le redire à voix basse à chaque réveil, et se
+ * tromper une fois suffisait à fausser la partie.
+ *
+ * Chaque appareil ne reçoit que l'état de ses propres places, et jamais un
+ * secret qui se transmet par le Maître du Jeu.
+ */
+export interface EtatPersonnel {
+  position: number;
+  /** Sorcière : potions encore en main. */
+  potionVie?: boolean;
+  potionMort?: boolean;
+  /** Salvateur : prénom de celui qu'il ne peut pas reprotéger cette nuit. */
+  protectionInterdite?: string;
+  /** Loup-Garou Blanc : se réveille-t-il seul la nuit qui vient ? */
+  loupBlancCetteNuit?: boolean;
+  /** Joueur de Flûte : prénoms des joueurs déjà envoûtés. */
+  envoutes?: string[];
+  /** Enfant Sauvage : prénom de son modèle. */
+  modele?: string;
+  /** Chien-Loup : camp choisi la première nuit. */
+  chienLoup?: "villageois" | "loups";
+  /** Pouvoir à usage unique déjà consommé. */
+  pouvoirConsomme?: boolean;
+  /** L'Ancien est tombé sous un coup du village : plus aucun pouvoir villageois. */
+  villageSansPouvoirs?: boolean;
+  /** Porte l'écharpe du Capitaine. */
+  capitaine?: boolean;
+  /** Bâillonné pour le débat d'aujourd'hui. */
+  baillonne?: boolean;
+  /** Gracié par le village : ne vote plus jamais. */
+  sansVote?: boolean;
+  /** Privé de vote pour la journée en cours par le Bouc Émissaire. */
+  priveDeVote?: boolean;
 }
 
 export interface HostState {
@@ -50,7 +98,66 @@ export interface HostState {
   chienLoup?: "villageois" | "loups";
   /** L'Ancien a été éliminé au vote : tous les villageois perdent leur pouvoir */
   villageSansPouvoirs?: boolean;
+  /**
+   * Chevalier à l'Épée Rouillée : Loup-Garou contaminé par l'épée. Il meurt
+   * de la gangrène au début de la nuit suivante. 0 ou absent = personne.
+   */
+  gangrene?: number;
+  /** Bouc Émissaire : joueurs privés de vote, et jour où la privation s'applique. */
+  privesDeVote?: number[];
+  privesJour?: number;
+  /** L'Idiot était Capitaine et a été gracié : l'écharpe est perdue pour de bon. */
+  chargePerdue?: boolean;
 }
+
+/** Un tour de vote du village. */
+export interface TourDeVote {
+  /** Joueur désigné par le vote. 0 signifie que le village est à égalité. */
+  designe: number;
+  /** Après égalité : joueur finalement éliminé, 0 si personne ne l'est. */
+  tranche?: number;
+}
+
+/**
+ * Déroulé de la journée en cours.
+ *
+ * Le jour n'a pas de secret à garder : chaque mort est publique et prend
+ * effet aussitôt. Ce journal ne sert donc pas à différer des actions comme
+ * celui de la nuit, mais à retenir où en est le fil — quelles étapes ont
+ * été validées, ce qu'a donné le vote — pour que le Maître du Jeu puisse
+ * recharger sa page, revenir en arrière, ou lâcher son téléphone deux
+ * minutes sans rien perdre.
+ */
+export interface JourEnCours {
+  /** Étapes validées, dans l'ordre. Le fil reprend à la première qui manque. */
+  faites?: string[];
+  /** Morts de la nuit qui vient de s'achever, à annoncer au village. */
+  mortsNuit?: { position: number; cause: string }[];
+  /** Survies de la nuit : pour le seul Maître du Jeu, jamais annoncées. */
+  sauves?: { position: number; raison: string }[];
+  /** Victime infectée par l'Infect Père des Loups. */
+  infecte?: number;
+  /** L'Enfant Sauvage a rejoint la meute cette nuit. */
+  enfantTransforme?: boolean;
+  /**
+   * Rang de mort atteint au lever du jour. Tout ce qui meurt au-delà est
+   * une mort du jour : vote, balle du Chasseur, chagrin d'un Amoureux.
+   */
+  ordreDepart?: number;
+  /** Un tour de vote par entrée. */
+  votes?: TourDeVote[];
+  /**
+   * Décisions touchées mais pas encore appliquées, par identifiant d'étape :
+   * successeur du Capitaine, cible du Chasseur, Loup contaminé. On les
+   * applique à la validation, jamais au moment du toucher.
+   */
+  choix?: Record<string, number>;
+  /** Juge Bègue : second vote accordé (true) ou refusé (false). */
+  secondTour?: boolean;
+}
+
+/** Modification du journal du jour. Une valeur `null` efface la clé. */
+export type PatchJour = { [K in keyof JourEnCours]?: JourEnCours[K] | null };
 
 /**
  * Actions enregistrées pendant la nuit en cours.
@@ -113,11 +220,15 @@ export interface GameDTO {
   hostState: HostState;
   /** Actions de la nuit en cours — visible du seul Maître du Jeu */
   nuit: NuitEnCours;
+  /** Déroulé de la journée en cours — visible du seul Maître du Jeu */
+  jour: JourEnCours;
   seats: SeatDTO[];
   isHost: boolean;
   mySeats: number[];
   /** L'appareil a au moins une place éliminée : il peut consulter le cimetière. */
   voitLeCimetiere: boolean;
+  /** État des seules places portées par cet appareil. */
+  mesEtats: EtatPersonnel[];
   reveals: { id: string; toPosition: number; targetPosition: number; note: string | null }[];
 }
 
@@ -203,6 +314,66 @@ async function seatsDe(db: Base, gameId: string) {
   })) as AnyRow[];
 }
 
+/**
+ * L'état d'une place, tel que son porteur a le droit de le voir.
+ *
+ * La règle est simple : on ne rappelle ici que ce que ce joueur a fait
+ * lui-même — ses potions, sa dernière protection, ses envoûtés, son modèle
+ * — et ce que le village entier sait déjà. Rien de ce qu'un joueur apprend
+ * de la bouche du Maître du Jeu : ni l'identité de son aimé, ni le charme
+ * du Flûtiste, ni le passage côté Loups. Ces choses-là se disent d'un
+ * regard, la nuit, autour de la table ; le téléphone n'a pas à les
+ * doubler.
+ */
+function etatPersonnel(place: AnyRow, seats: AnyRow[], etat: HostState, game: AnyRow) {
+  const position = place["position"] as number;
+  const role = (place["role_id"] as string) || "";
+  const nuit = (game["night"] as number) ?? 1;
+  const prenom = (p: number | undefined) => {
+    if (p === undefined) return undefined;
+    const cible = seats.find((x) => x["position"] === p);
+    if (!cible) return undefined;
+    return ((cible["name"] as string) || `Place ${p}`) as string;
+  };
+
+  const e: EtatPersonnel = { position };
+
+  if (role === "sorciere") {
+    e.potionVie = etat.potionVie !== false;
+    e.potionMort = etat.potionMort !== false;
+  }
+  if (role === "salvateur") {
+    const interdit = prenom(etat.protectionPrecedente);
+    if (interdit) e.protectionInterdite = interdit;
+  }
+  if (role === "loup-garou-blanc") e.loupBlancCetteNuit = nuit % 2 === 0;
+  if (role === "joueur-de-flute") {
+    e.envoutes = (etat.charmed ?? []).map((p) => prenom(p) ?? `Place ${p}`);
+  }
+  if (role === "enfant-sauvage") {
+    const modele = prenom(etat.modele);
+    if (modele) e.modele = modele;
+  }
+  if (role === "chien-loup" && etat.chienLoup) e.chienLoup = etat.chienLoup;
+
+  // Volontairement absents : l'identité de l'aimé, le charme du Flûtiste et
+  // le passage côté Loups. Ce sont des secrets que le Maître du Jeu confie
+  // d'un geste ou d'un regard — les afficher ici les rendrait certains, et
+  // priverait la table de ce moment.
+  if (role && (etat.pouvoirsUtilises ?? []).includes(role)) e.pouvoirConsomme = true;
+  if (etat.villageSansPouvoirs) e.villageSansPouvoirs = true;
+
+  const statuts = (place["statuses"] ?? []) as string[];
+  if (place["is_captain"]) e.capitaine = true;
+  if (statuts.includes("baillonne")) e.baillonne = true;
+  if (statuts.includes("sans-vote")) e.sansVote = true;
+  if (etat.privesJour === nuit && (etat.privesDeVote ?? []).includes(position)) {
+    e.priveDeVote = true;
+  }
+
+  return e;
+}
+
 async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO> {
   const isHost = token === game["host_token"];
   const seats = await seatsDe(db, game["id"]);
@@ -239,9 +410,13 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
     gagHistory: (game["gag_history"] ?? []) as { night: number; position: number }[],
     hostState: isHost ? ((game["host_state"] ?? {}) as HostState) : {},
     nuit: isHost ? ((game["nuit"] ?? {}) as NuitEnCours) : {},
+    jour: isHost ? ((game["jour"] ?? {}) as JourEnCours) : {},
     isHost,
     mySeats,
     voitLeCimetiere,
+    mesEtats: seats
+      .filter((s) => s["device_token"] && s["device_token"] === token)
+      .map((s) => etatPersonnel(s, seats, (game["host_state"] ?? {}) as HostState, game)),
     reveals: revealRows
       .filter((r) => isHost || mySeats.includes(r["to_position"]))
       .map((r) => ({
@@ -263,9 +438,18 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
         alive: !!s["alive"],
         deathCause: isHost ? vide(s["death_cause"]) : null,
         deathPhase: vide(s["death_phase"]),
+        deathOrder: isHost ? ((s["death_order"] as number) ?? 0) : 0,
         isCaptain: !!s["is_captain"],
-        loverGroup: (s["lover_group"] as number) || null,
-        statuses: (s["statuses"] ?? []) as string[],
+        // Les Amoureux ne se connaissent qu'entre eux : envoyer le lien à
+        // toute la table le donnait à qui savait ouvrir la console de son
+        // navigateur. Même chose pour la carte emportée par la Servante.
+        loverGroup: isHost || mine ? (s["lover_group"] as number) || null : null,
+        statuses:
+          isHost || mine
+            ? ((s["statuses"] ?? []) as string[])
+            : ((s["statuses"] ?? []) as string[]).filter(
+                (x) => x === "baillonne" || x === "sans-vote",
+              ),
         seen: !!s["seen"],
       };
     }),
@@ -342,6 +526,7 @@ export const createGame = createServerFn({ method: "POST" })
         devenusLoups: [],
       },
       nuit: {},
+      jour: {},
     });
 
     // Mode « un seul téléphone » : toutes les places sont portées par l'appareil du MJ.
@@ -835,9 +1020,9 @@ export const setPhase = createServerFn({ method: "POST" })
     const game = await requireHost(db, data.code, data.token);
     const patch: AnyRow = { phase: data.phase };
     if (typeof data.night === "number") patch["night"] = data.night;
-    // le bâillon tombe quand une nouvelle nuit commence
+    const seats = await seatsDe(db, game["id"]);
     if (data.phase === "nuit") {
-      const seats = await seatsDe(db, game["id"]);
+      // le bâillon tombe quand une nouvelle nuit commence
       for (const s of seats) {
         const avant = (s["statuses"] ?? []) as string[];
         if (avant.includes("baillonne")) {
@@ -846,6 +1031,17 @@ export const setPhase = createServerFn({ method: "POST" })
           });
         }
       }
+      // Le fil de la journée ne vaut que pour la journée écoulée.
+      patch["jour"] = {};
+    } else {
+      // Passage au jour sans résolution de nuit (rattrapage manuel) : on
+      // ouvre quand même un fil, sinon le moteur de jour n'a pas de repère
+      // pour distinguer les morts déjà tombées de celles du vote à venir.
+      patch["jour"] = {
+        faites: [],
+        mortsNuit: [],
+        ordreDepart: Math.max(0, ...seats.map((s) => (s["death_order"] as number) ?? 0)),
+      };
     }
     await db.pb.modifier("games", game["id"], patch);
     const fresh = await loadGame(db, data.code);
@@ -865,6 +1061,85 @@ export const setNightAction = createServerFn({ method: "POST" })
       if (valeur === null) delete (fusion as Record<string, unknown>)[cle];
     }
     await db.pb.modifier("games", game["id"], { nuit: fusion });
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
+/**
+ * Le MJ avance dans le fil de la journée.
+ *
+ * Contrairement à la nuit, rien n'est différé : les morts du jour sont
+ * appliquées sur-le-champ par `setDead`. Ce journal ne retient que le
+ * chemin parcouru.
+ */
+export const setDayAction = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string; patch: PatchJour }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    const courant = (game["jour"] ?? {}) as JourEnCours;
+    const fusion = { ...courant, ...data.patch } as JourEnCours;
+    for (const [cle, valeur] of Object.entries(data.patch)) {
+      if (valeur === null) delete (fusion as Record<string, unknown>)[cle];
+    }
+    await db.pb.modifier("games", game["id"], { jour: fusion });
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
+/**
+ * Servante Dévouée : elle prend la carte d'un joueur éliminé.
+ *
+ * Juste avant que la carte du mort ne soit retournée, elle peut se dévoiler
+ * et s'en emparer sans la montrer à personne. Ce n'est pas un échange : sa
+ * propre carte est perdue et l'éliminé ne reçoit rien. Elle repart de zéro
+ * avec le nouveau rôle — d'où la remise à neuf des compteurs qui suivaient
+ * les pouvoirs de ce rôle, et le `seen` remis à faux pour qu'elle découvre
+ * sa nouvelle carte sur son téléphone.
+ */
+export const servanteEchange = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string; servante: number; morte: number }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    const seats = await seatsDe(db, game["id"]);
+    const servante = seats.find((s) => s["position"] === data.servante);
+    const morte = seats.find((s) => s["position"] === data.morte);
+    if (!servante || !morte) throw new Error("Joueur introuvable");
+    if (servante["id"] === morte["id"]) {
+      throw new Error("La Servante ne peut pas reprendre sa propre carte");
+    }
+    if (!servante["alive"]) throw new Error("La Servante Dévouée est éliminée");
+
+    const nouveau = (morte["role_id"] as string) || "";
+    await db.pb.modifier("seats", servante["id"], {
+      role_id: nouveau,
+      seen: false,
+      public_role: false,
+    });
+    // La carte du mort part avec elle : elle ne sera jamais retournée.
+    const statuts = ((morte["statuses"] ?? []) as string[]).filter((x) => x !== "carte-prise");
+    await db.pb.modifier("seats", morte["id"], {
+      statuses: [...statuts, "carte-prise"],
+      public_role: false,
+    });
+
+    const etat = (game["host_state"] ?? {}) as HostState;
+    const patch: HostState = {
+      ...etat,
+      pouvoirsUtilises: [
+        ...(etat.pouvoirsUtilises ?? []).filter((x) => x !== nouveau),
+        "servante-devouee",
+      ],
+    };
+    if (nouveau === "sorciere") {
+      patch.potionVie = true;
+      patch.potionMort = true;
+    }
+    if (nouveau === "infect-pere-des-loups") patch.infectionUtilisee = false;
+    if (nouveau === "ancien") patch.ancienDejaAttaque = false;
+    await db.pb.modifier("games", game["id"], { host_state: patch });
+
     const fresh = await loadGame(db, data.code);
     return buildDTO(db, fresh, data.token);
   });
@@ -940,6 +1215,15 @@ export const resolveNight = createServerFn({ method: "POST" })
 
     attaqueLoups(nuit.victimeLoups, true);
     attaqueLoups(nuit.secondeVictime, false);
+
+    // Chevalier à l'Épée Rouillée : le Loup contaminé la veille meurt de la
+    // gangrène au cours de cette nuit. Ni protection ni potion n'y peuvent
+    // quoi que ce soit — c'est une maladie, pas une attaque.
+    if (etat.gangrene) {
+      const malade = parPosition(etat.gangrene);
+      if (malade && malade["alive"]) morts.push({ position: etat.gangrene, cause: "gangrene" });
+      patchEtat.gangrene = 0;
+    }
 
     // Le Loup-Garou Blanc frappe un Loup : ni protection ni potion ne jouent ici.
     if (nuit.loupBlanc !== undefined) {
@@ -1044,23 +1328,30 @@ export const resolveNight = createServerFn({ method: "POST" })
     if (nuit.soin !== undefined) patchEtat.potionVie = false;
     if (nuit.poison !== undefined) patchEtat.potionMort = false;
 
+    // Le bilan de la nuit ouvre le fil de la journée. Il est écrit en base
+    // plutôt que renvoyé au seul écran du moment : le Maître du Jeu peut
+    // recharger sa page en plein milieu des annonces sans rien perdre.
+    const mortsUniques = morts.filter(
+      (m, i, t) => t.findIndex((x) => x.position === m.position) === i,
+    );
+    const journalDuJour: JourEnCours = {
+      faites: [],
+      mortsNuit: mortsUniques,
+      sauves,
+      enfantTransforme,
+      ordreDepart: ordre,
+    };
+    if (infecte !== undefined) journalDuJour.infecte = infecte;
+
     await db.pb.modifier("games", game["id"], {
       host_state: { ...etat, ...patchEtat },
       nuit: {},
+      jour: journalDuJour,
       phase: "jour",
     });
 
     const fresh = await loadGame(db, data.code);
-    const dto = await buildDTO(db, fresh, data.token);
-    return {
-      ...dto,
-      bilan: {
-        morts: morts.filter((m, i, t) => t.findIndex((x) => x.position === m.position) === i),
-        sauves,
-        infecte: infecte ?? null,
-        enfantTransforme,
-      },
-    };
+    return buildDTO(db, fresh, data.token);
   });
 
 /** Révélation privée : le MJ envoie le rôle d'un joueur à un autre joueur (Voyante, Renard…). */

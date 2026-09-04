@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Button, LinkButton, PageHeader, RoleSigil } from "@/components/ui-kit";
 import { ChampPrenom } from "@/components/champ-prenom";
+import { ConduiteJour } from "@/components/conduite-jour";
 import { ConduiteNuit } from "@/components/conduite-nuit";
 import { CAMP_LABEL, PREMIERE_NUIT_SEULEMENT, ROLES_BY_ID } from "@/data/roles";
 import { useGame } from "@/lib/game-store";
@@ -13,7 +14,9 @@ import {
   pushReveal,
   resetSeen,
   resolveNight,
+  servanteEchange,
   setCaptain,
+  setDayAction,
   setDead,
   setHostState,
   setLovers,
@@ -23,6 +26,7 @@ import {
   setSeatName,
   thiefSwap,
   type HostState,
+  type PatchJour,
   type PatchNuit,
   type SeatDTO,
 } from "@/lib/party.functions";
@@ -60,12 +64,6 @@ function Maitre() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [lovers, setLoversSel] = useState<number[]>([]);
   const [revealFrom, setRevealFrom] = useState<number | null>(null);
-  const [bilan, setBilan] = useState<{
-    morts: { position: number; cause: string }[];
-    sauves: { position: number; raison: string }[];
-    infecte: number | null;
-    enfantTransforme: boolean;
-  } | null>(null);
 
   useEffect(() => {
     if (hydrated && !session?.host) void navigate({ to: "/" });
@@ -311,7 +309,7 @@ function Maitre() {
                   <p className="text-[11px] text-muted-foreground">
                     {game.phase === "nuit"
                       ? "Suivez les étapes ci-dessous, puis lever du jour."
-                      : "Débat et vote du village. Marquez les morts dans l'onglet Joueurs."}
+                      : "Suivez le fil : annonces, débat, vote, et tout ce qui s'ensuit."}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -326,14 +324,13 @@ function Maitre() {
                     </Button>
                   ) : (
                     <Button
-                      onClick={() => {
-                        setBilan(null);
+                      onClick={() =>
                         void run(
                           setPhase({
                             data: { code: game.code, token, phase: "nuit", night: game.night + 1 },
                           }),
-                        );
-                      }}
+                        )
+                      }
                     >
                       🌙 Nuit suivante
                     </Button>
@@ -341,37 +338,37 @@ function Maitre() {
                 </div>
               </div>
 
-              {bilan && (
-                <BilanNuit bilan={bilan} seats={game.seats} onFermer={() => setBilan(null)} />
-              )}
-
-              {game.phase === "jour" && !bilan && (
-                <div className="surface p-5">
-                  <h2 className="font-display text-sm font-bold">Déroulé de la journée</h2>
-                  <ol className="mt-3 flex flex-col gap-2 text-xs leading-relaxed">
-                    <li>
-                      <strong>1.</strong> Annoncez les morts de la nuit, sans jamais dire la cause.
-                      Les éliminés retournent leur carte et ne parlent plus.
-                    </li>
-                    <li>
-                      <strong>2.</strong> Si le Chasseur est tombé, il tire immédiatement.
-                    </li>
-                    <li>
-                      <strong>3.</strong> Première journée seulement : faites élire le Capitaine. Sa
-                      voix compte double.
-                    </li>
-                    <li>
-                      <strong>4.</strong> Ouvrez le débat, puis le vote à main levée.
-                    </li>
-                    <li>
-                      <strong>5.</strong> Marquez l'éliminé dans l'onglet 👥 Joueurs, avec la cause
-                      « vote ».
-                    </li>
-                    <li>
-                      <strong>6.</strong> Revenez ici et lancez la nuit suivante.
-                    </li>
-                  </ol>
-                </div>
+              {game.phase === "jour" && (
+                <ConduiteJour
+                  game={game}
+                  onJour={(patch: PatchJour) =>
+                    run(setDayAction({ data: { code: game.code, token, patch } }))
+                  }
+                  onMort={(position, cause) =>
+                    run(
+                      setDead({
+                        data: { code: game.code, token, position, alive: false, cause },
+                      }),
+                    )
+                  }
+                  onCapitaine={(position) =>
+                    run(setCaptain({ data: { code: game.code, token, position } }))
+                  }
+                  onPublic={(position, value) =>
+                    run(setPublicRole({ data: { code: game.code, token, position, value } }))
+                  }
+                  onServante={(servante, morte) =>
+                    run(servanteEchange({ data: { code: game.code, token, servante, morte } }))
+                  }
+                  onEtat={(patch) => run(setHostState({ data: { code: game.code, token, patch } }))}
+                  onNuitSuivante={() =>
+                    run(
+                      setPhase({
+                        data: { code: game.code, token, phase: "nuit", night: game.night + 1 },
+                      }),
+                    )
+                  }
+                />
               )}
 
               {game.phase === "nuit" && (
@@ -388,16 +385,7 @@ function Maitre() {
                   onLovers={(positions) =>
                     void run(setLovers({ data: { code: game.code, token, positions } }))
                   }
-                  onResoudre={async () => {
-                    try {
-                      const dto = await resolveNight({ data: { code: game.code, token } });
-                      apply(dto);
-                      setBilan(dto.bilan);
-                      setErreur(null);
-                    } catch (e) {
-                      setErreur(e instanceof Error ? e.message : "Résolution impossible");
-                    }
-                  }}
+                  onResoudre={() => void run(resolveNight({ data: { code: game.code, token } }))}
                   onVol={(position, avec) =>
                     void run(thiefSwap({ data: { code: game.code, token, position, avec } }))
                   }
@@ -524,12 +512,6 @@ function Maitre() {
                   </p>
                 </div>
               )}
-
-              <MontreurOurs
-                seats={game.seats}
-                etat={game.hostState}
-                unSeulTelephone={game.singleDevice}
-              />
 
               <SuiviPouvoirs
                 seats={game.seats}
@@ -771,205 +753,6 @@ function Mini({
     >
       {children}
     </button>
-  );
-}
-
-/**
- * Bilan du lever du jour.
- *
- * C'est le seul écran qui dit au Maître du Jeu ce qu'il doit annoncer au
- * village, et ce qu'il doit surtout garder pour lui : une victime sauvée
- * par la Sorcière ou le Salvateur ne s'annonce jamais, sinon le village
- * apprend gratuitement qui détient ces cartes.
- */
-function BilanNuit({
-  bilan,
-  seats,
-  onFermer,
-}: {
-  bilan: {
-    morts: { position: number; cause: string }[];
-    sauves: { position: number; raison: string }[];
-    infecte: number | null;
-    enfantTransforme: boolean;
-  };
-  seats: SeatDTO[];
-  onFermer: () => void;
-}) {
-  const nom = (p: number) => seats.find((s) => s.position === p)?.name || `Place ${p}`;
-  const CAUSES: Record<string, string> = {
-    loups: "dévoré par les Loups-Garous",
-    poison: "empoisonné",
-    chagrin: "mort de chagrin",
-    "loup blanc": "égorgé par le Loup-Garou Blanc",
-  };
-
-  return (
-    <div className="surface border border-primary/40 p-5">
-      <h2 className="font-display text-base font-black">☀️ Lever du jour</h2>
-
-      <p className="mt-3 text-[11px] tracking-widest text-muted-foreground uppercase">
-        À annoncer au village
-      </p>
-      {bilan.morts.length === 0 ? (
-        <p className="mt-1 rounded-xl border border-primary/30 bg-primary/10 p-3 text-sm font-semibold text-primary">
-          « Cette nuit, personne n'est mort. »
-        </p>
-      ) : (
-        <ul className="mt-1 flex flex-col gap-2">
-          {bilan.morts.map((m) => (
-            <li
-              key={m.position}
-              className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-sm font-semibold text-primary"
-            >
-              « {nom(m.position)} est mort cette nuit. » —{" "}
-              <span className="font-normal">{CAUSES[m.cause] ?? m.cause}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <p className="mt-2 text-[11px] text-muted-foreground">
-        N'annoncez jamais la cause : le village doit la deviner. Les morts retournent leur carte et
-        ne parlent plus.
-      </p>
-
-      {(bilan.sauves.length > 0 || bilan.infecte !== null || bilan.enfantTransforme) && (
-        <>
-          <p className="mt-5 text-[11px] tracking-widest text-destructive uppercase">
-            Pour vous seul — ne dites rien
-          </p>
-          <ul className="mt-1 flex flex-col gap-1 text-xs text-muted-foreground">
-            {bilan.sauves.map((s) => (
-              <li key={s.position}>
-                • {nom(s.position)} a survécu : {s.raison}.
-              </li>
-            ))}
-            {bilan.infecte !== null && (
-              <li>
-                • Prévenez discrètement {nom(bilan.infecte)} qu'il rejoint les Loups-Garous, en
-                gardant son pouvoir.
-              </li>
-            )}
-            {bilan.enfantTransforme && (
-              <li>
-                • Le modèle de l'Enfant Sauvage est mort : prévenez-le qu'il devient Loup-Garou.
-              </li>
-            )}
-          </ul>
-        </>
-      )}
-
-      {bilan.morts.some(
-        (m) => seats.find((s) => s.position === m.position)?.roleId === "chasseur",
-      ) && (
-        <p className="mt-4 rounded-xl border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
-          🎯 Le Chasseur est mort : il tire immédiatement sur un joueur de son choix. Marquez cette
-          mort depuis l'onglet Village.
-        </p>
-      )}
-
-      <Button variant="ghost" className="mt-4 w-full" onClick={onFermer}>
-        J'ai fait les annonces
-      </Button>
-    </div>
-  );
-}
-
-/**
- * Montreur d'Ours : rappel actif au lever du jour.
- *
- * L'ours grogne si au moins un des deux VOISINS DIRECTS VIVANTS du Montreur
- * est un Loup-Garou. Les morts ne comptent pas : on saute jusqu'au prochain
- * joueur vivant de chaque côté de la table.
- */
-function MontreurOurs({
-  seats,
-  etat,
-  unSeulTelephone,
-}: {
-  seats: SeatDTO[];
-  etat: HostState;
-  unSeulTelephone: boolean;
-}) {
-  const montreur = seats.find((s) => s.roleId === "montreur-ours");
-  if (!montreur || !montreur.alive) return null;
-
-  const vivants = seats.filter((s) => s.alive);
-  const index = vivants.findIndex((s) => s.position === montreur.position);
-  if (index === -1 || vivants.length < 3) return null;
-
-  const gauche = vivants[(index - 1 + vivants.length) % vivants.length]!;
-  const droite = vivants[(index + 1) % vivants.length]!;
-
-  // Un joueur infecté par l'Infect Père, un Enfant Sauvage transformé ou un
-  // Chien-Loup passé côté meute comptent comme Loups-Garous, même si leur
-  // carte dit autre chose.
-  const convertis = etat.devenusLoups ?? [];
-  const estLoup = (s: SeatDTO) => {
-    const role = s.roleId ? ROLES_BY_ID[s.roleId] : undefined;
-    return (
-      role?.camp === "loups" || role?.id === "loup-garou-blanc" || convertis.includes(s.position)
-    );
-  };
-
-  const voisins = [gauche, droite];
-  // Cas particulier du livret : si le Montreur d'Ours est lui-même infecté,
-  // l'ours grogne à chaque tour jusqu'à son élimination.
-  const montreurInfecte = convertis.includes(montreur.position);
-  const grogne = montreurInfecte || voisins.some(estLoup);
-  const nom = (s: SeatDTO) => s.name || `Place ${s.position}`;
-
-  // Avec plusieurs téléphones, l'ordre des places vient de l'ordre où les
-  // appareils les ont réclamées : il n'a aucune raison de correspondre à la
-  // table. Donner un verdict serait donc du hasard. On se contente de
-  // rappeler au MJ de regarder ses joueurs.
-  if (!unSeulTelephone) {
-    const loups = vivants.filter(estLoup);
-    return (
-      <div className="surface border border-border p-4">
-        <h2 className="font-display text-sm font-bold">🐻 Montreur d'Ours — au lever du jour</h2>
-        <p className="mt-1 text-[11px] text-muted-foreground">{nom(montreur)} porte l'ours.</p>
-        <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-xs">
-          Regardez qui est <strong>physiquement assis</strong> de chaque côté de {nom(montreur)}. Si
-          l'un des deux est côté Loups, faites grogner l'ours ; sinon l'ours reste silencieux.
-        </p>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Côté Loups en ce moment : {loups.map((s) => nom(s)).join(", ") || "personne"}.
-        </p>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          L'ordre de cette liste ne suit pas forcément votre table. Pour que l'application calcule
-          elle-même le grognement, rangez la liste depuis l'écran d'attente.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn("surface border p-4", grogne ? "border-destructive/60" : "border-border")}>
-      <h2 className="font-display text-sm font-bold">🐻 Montreur d'Ours — au lever du jour</h2>
-      <p className="mt-1 text-[11px] text-muted-foreground">
-        {nom(montreur)} · voisins vivants : {nom(gauche)} et {nom(droite)}
-      </p>
-      <p
-        className={cn(
-          "mt-3 rounded-xl border p-3 text-center font-display text-base font-black",
-          grogne
-            ? "border-destructive/60 bg-destructive/15 text-destructive"
-            : "border-border bg-secondary text-muted-foreground",
-        )}
-      >
-        {grogne ? "FAITES GROGNER L'OURS" : "L'ours reste silencieux"}
-      </p>
-      <p className="mt-2 text-[11px] text-muted-foreground">
-        {montreurInfecte
-          ? "Le Montreur d'Ours est lui-même infecté : l'ours grognera à chaque tour jusqu'à son élimination."
-          : "Seuls les voisins encore en jeu comptent."}
-      </p>
-      <p className="mt-2 text-[11px] text-muted-foreground">
-        Annoncez-le à voix haute, avant le débat, sans dire de quel côté vient le grognement. Les
-        joueurs passés côté Loups en cours de partie (infection, Enfant Sauvage) sont comptés.
-      </p>
-    </div>
   );
 }
 

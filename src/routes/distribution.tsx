@@ -4,7 +4,13 @@ import { Button, PageHeader, RoleArt, CampBadge } from "@/components/ui-kit";
 import { ChampPrenom } from "@/components/champ-prenom";
 import { CAMP_LABEL, ROLES_BY_ID } from "@/data/roles";
 import { useGame } from "@/lib/game-store";
-import { markSeen, setSeatName, thiefChoose, type SeatDTO } from "@/lib/party.functions";
+import {
+  markSeen,
+  setSeatName,
+  thiefChoose,
+  type EtatPersonnel,
+  type SeatDTO,
+} from "@/lib/party.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/distribution")({
@@ -77,7 +83,7 @@ function EcranJoueur() {
         subtitle={
           game.status === "lobby"
             ? "En attente du Maître du Jeu : renseignez déjà les prénoms."
-            : "Chacun son tour : ouvrez votre place, regardez votre carte, passez le téléphone."
+            : `${game.phase === "nuit" ? `🌙 Nuit ${game.night}` : `☀️ Jour ${game.night}`} · ouvrez votre place pour retrouver ce que vous savez.`
         }
         back={game.isHost ? "/maitre" : undefined}
         backLabel="Tableau du Maître du Jeu"
@@ -113,6 +119,9 @@ function EcranJoueur() {
                     Découvrir ma carte
                   </Button>
                 ))}
+              {game.status !== "lobby" && !game.singleDevice && (
+                <MonEtat seat={s} etat={game.mesEtats.find((x) => x.position === s.position)} />
+              )}
             </li>
           ))}
           {mine.length === 0 && (
@@ -201,6 +210,138 @@ function EcranJoueur() {
         </section>
       )}
     </main>
+  );
+}
+
+/**
+ * Ce que ce joueur sait de lui-même.
+ *
+ * Uniquement ce que ce joueur a fait lui-même — ses potions, sa dernière
+ * protection, ses envoûtés — et ce que tout le village sait déjà. Ce qu'un
+ * joueur apprend du Maître du Jeu reste sur l'écran du Maître du Jeu : son
+ * aimé, le charme qu'il vient de subir, son passage côté Loups. Le
+ * téléphone ne double jamais ce qui se dit d'un regard.
+ */
+function MonEtat({ seat, etat }: { seat: SeatDTO; etat: EtatPersonnel | undefined }) {
+  const points: { cle: string; texte: string; alerte?: boolean }[] = [];
+
+  if (!seat.alive) {
+    points.push({
+      cle: "mort",
+      texte:
+        "☠️ Vous êtes éliminé. Vous suivez la partie en silence : ni parole, ni geste, ni regard appuyé.",
+      alerte: true,
+    });
+  }
+  if (etat?.capitaine) {
+    points.push({
+      cle: "capitaine",
+      texte:
+        "🎖️ Vous portez l'écharpe : votre voix compte double, et vous désignerez votre successeur en mourant.",
+    });
+  }
+  if (etat?.potionVie !== undefined) {
+    points.push({
+      cle: "vie",
+      texte: etat.potionVie
+        ? "🧪 Potion de vie : encore en main."
+        : "🧪 Potion de vie : déjà versée, elle ne servira plus.",
+    });
+  }
+  if (etat?.potionMort !== undefined) {
+    points.push({
+      cle: "mort-potion",
+      texte: etat.potionMort
+        ? "☠️ Potion de mort : encore en main."
+        : "☠️ Potion de mort : déjà versée, elle ne servira plus.",
+    });
+  }
+  if (etat?.protectionInterdite) {
+    points.push({
+      cle: "salvateur",
+      texte: `🛡️ Vous ne pouvez pas reprotéger ${etat.protectionInterdite} cette nuit : c'était déjà votre choix la nuit dernière.`,
+    });
+  }
+  if (etat?.loupBlancCetteNuit !== undefined) {
+    points.push({
+      cle: "blanc",
+      texte: etat.loupBlancCetteNuit
+        ? "🌕 Cette nuit, vous vous réveillez seul après la meute : vous pouvez dévorer un Loup-Garou."
+        : "🌕 Pas de réveil solitaire cette nuit : votre pouvoir revient la nuit prochaine.",
+    });
+  }
+  if (etat?.envoutes && etat.envoutes.length > 0) {
+    points.push({
+      cle: "flute",
+      texte: `🎶 Déjà sous votre charme : ${etat.envoutes.join(", ")}. Il vous faut deux nouveaux noms chaque nuit.`,
+    });
+  }
+  if (etat?.modele) {
+    points.push({
+      cle: "modele",
+      texte: `🧒 Votre modèle est ${etat.modele}. Tant qu'il vit, vous êtes villageois ; s'il tombe, vous rejoignez la meute.`,
+    });
+  }
+  if (etat?.chienLoup) {
+    points.push({
+      cle: "chien",
+      texte:
+        etat.chienLoup === "loups"
+          ? "🐕 Vous avez choisi les Loups-Garous. Ce choix est définitif et personne ne le connaît."
+          : "🐕 Vous avez choisi le village. Ce choix est définitif et personne ne le connaît.",
+    });
+  }
+  if (etat?.pouvoirConsomme) {
+    points.push({ cle: "consomme", texte: "⚪ Votre pouvoir à usage unique est déjà dépensé." });
+  }
+  if (etat?.baillonne) {
+    points.push({
+      cle: "baillon",
+      texte:
+        "🤐 Vous ne prononcez pas un mot pendant le débat d'aujourd'hui. Les gestes sont permis, et vous votez normalement.",
+      alerte: true,
+    });
+  }
+  if (etat?.sansVote) {
+    points.push({
+      cle: "sans-vote",
+      texte: "🤡 Gracié par le village : vous restez en jeu, mais vous ne votez plus jamais.",
+    });
+  }
+  if (etat?.priveDeVote) {
+    points.push({
+      cle: "prive",
+      texte: "🐐 Le Bouc Émissaire vous prive de vote pour la journée.",
+      alerte: true,
+    });
+  }
+  if (etat?.villageSansPouvoirs) {
+    points.push({
+      cle: "ancien",
+      texte:
+        "⚰️ L'Ancien est tombé sous un coup du village : plus aucun villageois n'a de pouvoir jusqu'à la fin de la partie.",
+      alerte: true,
+    });
+  }
+
+  if (points.length === 0) return null;
+
+  return (
+    <ul className="mt-3 flex flex-col gap-2">
+      {points.map((p) => (
+        <li
+          key={p.cle}
+          className={cn(
+            "rounded-xl border p-3 text-[11px] leading-relaxed",
+            p.alerte
+              ? "border-primary/40 bg-primary/10 text-primary"
+              : "border-border bg-secondary text-muted-foreground",
+          )}
+        >
+          {p.texte}
+        </li>
+      ))}
+    </ul>
   );
 }
 
