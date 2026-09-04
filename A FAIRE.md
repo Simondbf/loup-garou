@@ -52,22 +52,29 @@ tête reposée, pas pendant un déploiement.
 ## Moteur de partie — avancement
 1. **Nuit pas à pas** — fait. Un écran par étape, profils cliquables, retour arrière.
 2. **Jour pas à pas** — fait. `src/components/conduite-jour.tsx` : annonces, cartes
-   retournées, débat, vote, et les déclencheurs qui s'accumulent (Chasseur,
-   écharpe, Bouc, Idiot, Ancien, Servante, Juge Bègue, Chevalier, Ange).
+   retournées, débat, vote, et les déclencheurs qui s'accumulent.
 3. **États visibles côté joueur** — fait. Chaque téléphone reçoit l'état de ses
    seules places (`mesEtats`). Volontairement absents : l'identité de l'aimé, le
-   charme du Flûtiste, le passage côté Loups — ce sont des secrets que le Maître
-   du Jeu transmet d'un geste, le téléphone ne les double pas.
-4. **Salon multi-téléphones** — fait. L'effectif n'est plus annoncé à l'avance :
-   les places se créent quand les joueurs rejoignent. Le MJ ne prête pas son
-   téléphone et n'inscrit personne — chaque joueur prend sa place lui-même — il
-   peut seulement écarter une connexion en double et recoller la composition.
-   Le Renard et le Montreur d'Ours ne sont proposés qu'en mode un seul
-   téléphone : ailleurs, l'ordre des places ne suit pas la table.
-5. **Fin de partie et relance** — fait. Toutes les cartes se retournent, puis
-   « Rejouer avec les mêmes joueurs » ouvre une partie neuve : mêmes prénoms,
-   mêmes téléphones, cartes rebattues. L'ancienne partie garde le code de la
-   nouvelle (`suite`), et chaque appareil bascule tout seul.
+   charme du Flûtiste, la liste des envoûtés. Seule exception voulue : le passage
+   côté Loups, qui est une consigne de jeu.
+4. **Salon multi-téléphones** — fait, en deux temps. `lobby` : le MJ donne le
+   code, chaque joueur entre son prénom sur son téléphone et voit le village se
+   remplir en direct. `composition` : le MJ valide les profils, l'effectif est
+   déduit du nombre de profils et il choisit les cartes. Un retardataire peut
+   encore rejoindre pendant ce second temps — le compte suit, il n'y a qu'une
+   carte de plus à poser. Le MJ ne prête pas son téléphone, n'inscrit personne
+   et ne range pas les joueurs en cercle.
+5. **Fin de partie** — fait. « Terminer la partie » ouvre aussitôt la suivante :
+   mêmes places, mêmes prénoms, mêmes téléphones, nouveau code tiré tout seul.
+   L'ancienne partie garde une flèche (`suite`) et chaque appareil la suit sans
+   rien retaper. Le MJ reste le MJ ; pour en changer, on se passe le téléphone,
+   d'où les prénoms de nouveau modifiables.
+
+## Ce que le MJ n'a plus
+- Pas d'onglet Joueurs : les profils sont cliquables dans le déroulé.
+- Pas de rangement en cercle (`moveSeat` supprimé).
+- L'onglet « Montrer » n'existe qu'en mode un seul téléphone, sans destinataire
+  ni historique : la carte s'affiche sur son écran, il tourne le téléphone.
 
 ## À faire
 - Nom définitif de l'app (« Les Nuits de Thiercelieux » retenu (titre de roman, distinct du jeu de société)).

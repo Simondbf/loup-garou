@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Button, LinkButton, PageHeader, RoleSigil } from "@/components/ui-kit";
-import { ChampPrenom } from "@/components/champ-prenom";
+import { Button, CampBadge, LinkButton, PageHeader, RoleSigil } from "@/components/ui-kit";
 import { ConduiteJour } from "@/components/conduite-jour";
 import { ConduiteNuit } from "@/components/conduite-nuit";
 import { CAMP_LABEL, PREMIERE_NUIT_SEULEMENT, ROLES_BY_ID } from "@/data/roles";
@@ -13,14 +12,12 @@ import {
 } from "@/data/composition";
 import { useGame } from "@/lib/game-store";
 import {
+  PLACES_MAX,
   PLACES_MIN,
-  clearReveals,
   dealCards,
   endGame,
   gagPlayer,
-  pushReveal,
-  resetSeen,
-  relancerPartie,
+  addSeat,
   removeSeat,
   resolveNight,
   servanteEchange,
@@ -28,11 +25,12 @@ import {
   setDayAction,
   setDead,
   setHostState,
-  setLovers,
   setPhase,
   setPublicRole,
+  setLovers,
   setNightAction,
   setSelection,
+  validerProfils,
   setSeatName,
   thiefSwap,
   type HostState,
@@ -63,7 +61,7 @@ export const Route = createFileRoute("/maitre")({
   component: Maitre,
 });
 
-type Onglet = "village" | "nuit" | "reveals";
+type Onglet = "nuit" | "reveals";
 
 function Maitre() {
   const navigate = useNavigate();
@@ -72,7 +70,6 @@ function Maitre() {
   // qui doit s'ouvrir en premier une fois les cartes distribuées.
   const [onglet, setOnglet] = useState<Onglet>("nuit");
   const [erreur, setErreur] = useState<string | null>(null);
-  const [lovers, setLoversSel] = useState<number[]>([]);
   const [revealFrom, setRevealFrom] = useState<number | null>(null);
 
   useEffect(() => {
@@ -142,19 +139,83 @@ function Maitre() {
         subtitle={
           game.status === "lobby"
             ? game.singleDevice
-              ? `${game.seats.length} joueurs · votre appareil porte toutes les places et tourne autour de la table.`
-              : `${prets} joueur${prets > 1 ? "s" : ""} dans le village. Partagez le code, puis distribuez.`
-            : `Nuit ${game.night} · ${game.phase} · ${vivants} vivants${
-                game.singleDevice ? " · un seul téléphone" : ` · code ${game.code}`
-              }`
+              ? "Votre appareil porte toutes les places et tourne autour de la table."
+              : "Le village se rassemble : les profils arrivent d'eux-mêmes."
+            : game.status === "composition"
+              ? `${game.seats.length} joueurs enregistrés · choisissez les cartes.`
+              : `Nuit ${game.night} · ${game.phase} · ${vivants} vivants${
+                  game.singleDevice ? " · un seul téléphone" : ` · code ${game.code}`
+                }`
         }
       />
 
       {erreur && <p className="mb-3 text-center text-xs text-destructive">{erreur}</p>}
 
-      {game.status === "lobby" ? (
-        <section className="flex flex-col gap-3">
-          {!game.singleDevice && (
+      {game.status === "lobby" || game.status === "composition" ? (
+        game.singleDevice ? (
+          /* Un seul téléphone : le MJ compte la tablée et choisit les cartes
+             sur le même écran, puis fait circuler l'appareil. */
+          <section className="flex flex-col gap-3">
+            <div className="surface flex items-center justify-between p-5">
+              <button
+                onClick={() =>
+                  void run(
+                    removeSeat({
+                      data: { code: game.code, token, position: game.seats.length },
+                    }),
+                  )
+                }
+                disabled={game.seats.length <= PLACES_MIN}
+                className="btn-base btn-ghost h-12 w-12 text-xl"
+                aria-label="Un joueur de moins"
+              >
+                −
+              </button>
+              <div className="text-center">
+                <p className="font-display text-5xl font-black text-gradient-moon">
+                  {game.seats.length}
+                </p>
+                <p className="text-xs text-muted-foreground">joueurs</p>
+              </div>
+              <button
+                onClick={() => void run(addSeat({ data: { code: game.code, token } }))}
+                disabled={game.seats.length >= PLACES_MAX}
+                className="btn-base btn-ghost h-12 w-12 text-xl"
+                aria-label="Un joueur de plus"
+              >
+                +
+              </button>
+            </div>
+            <p className="text-center text-[11px] text-muted-foreground">
+              Ajoutez ou retirez des joueurs maintenant : après, le téléphone commence à tourner et
+              chacun saisit son prénom à son tour.
+            </p>
+
+            <Composition
+              effectif={game.seats.length}
+              selection={game.selection}
+              variante={game.thiefVariant}
+              unSeulTelephone
+              onSelection={(selection) =>
+                void run(setSelection({ data: { code: game.code, token, selection } }))
+              }
+            />
+
+            <Button
+              className="w-full py-4"
+              disabled={!distributionPossible}
+              onClick={async () => {
+                await run(dealCards({ data: { code: game.code, token } }));
+                await navigate({ to: "/tour-de-table" });
+              }}
+            >
+              Commencer la distribution
+            </Button>
+          </section>
+        ) : game.status === "lobby" ? (
+          /* Appel des profils : le MJ donne le code et regarde le village
+             arriver. Il ne saisit rien lui-même. */
+          <section className="flex flex-col gap-3">
             <div className="surface p-5 text-center">
               <p className="text-xs tracking-widest text-muted-foreground uppercase">
                 Code de partie
@@ -163,43 +224,25 @@ function Maitre() {
                 {game.code}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
-                Chaque joueur ouvre l'application, choisit « Rejoindre » et indique combien de
-                joueurs partagent son téléphone. Leurs prénoms apparaissent ici au fur et à mesure.
+                Chacun ouvre l'application, choisit « Rejoindre », entre ce code puis son prénom.
+                Les profils s'affichent ici au fur et à mesure.
               </p>
             </div>
-          )}
 
-          <ul className="flex flex-col gap-2">
-            {game.seats.map((s) => (
-              <li key={s.position} className="surface flex items-center gap-3 p-3">
-                <span className="w-6 text-xs text-muted-foreground">{s.position}</span>
-                {game.singleDevice ? (
-                  <ChampPrenom
-                    valeur={s.name}
-                    onEnregistrer={(nom) =>
-                      void run(
-                        setSeatName({
-                          data: { code: game.code, token, position: s.position, name: nom },
-                        }),
-                      )
-                    }
-                    placeholder="Prénom"
-                    className="min-w-0 flex-1"
-                  />
-                ) : (
-                  <>
-                    {/* Chaque joueur saisit son prénom sur son propre téléphone.
-                        Le MJ regarde les connexions arriver : il anime, il ne
-                        joue pas. Il peut en revanche écarter quelqu'un. */}
-                    <span className="min-w-0 flex-1 truncate text-sm">
-                      {s.name || <span className="text-muted-foreground italic">en attente…</span>}
-                    </span>
-                    <span className="shrink-0 rounded-lg border border-primary/50 bg-primary/10 px-2 py-1 text-[11px] text-primary">
-                      connecté
-                    </span>
-                  </>
-                )}
-                {!game.singleDevice && (
+            <p className="text-center text-xs text-muted-foreground">
+              {game.seats.length} profil{game.seats.length > 1 ? "s" : ""} enregistré
+              {game.seats.length > 1 ? "s" : ""}
+            </p>
+
+            <ul className="flex flex-col gap-2">
+              {game.seats.map((s) => (
+                <li key={s.position} className="surface flex items-center gap-3 p-3">
+                  <span className="w-6 text-xs text-muted-foreground">{s.position}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    {s.name || (
+                      <span className="text-muted-foreground italic">prénom en cours…</span>
+                    )}
+                  </span>
                   <button
                     onClick={() =>
                       void run(
@@ -211,110 +254,74 @@ function Maitre() {
                   >
                     ✕
                   </button>
-                )}
-              </li>
-            ))}
-            {game.seats.length === 0 && (
-              <li className="surface p-4 text-center text-xs text-muted-foreground">
-                Le village est encore vide. Donnez le code à voix haute.
-              </li>
-            )}
-          </ul>
-
-          {!game.singleDevice && (
-            <>
-              <p className="text-center text-[11px] text-muted-foreground">
-                Chaque joueur prend sa place depuis son propre téléphone. Le ✕ n'est là que pour
-                écarter une connexion en double ou quelqu'un qui s'en va.
-              </p>
-
-              <Composition
-                effectif={game.seats.length}
-                selection={game.selection}
-                variante={game.thiefVariant}
-                onSelection={(selection) =>
-                  void run(setSelection({ data: { code: game.code, token, selection } }))
-                }
-              />
-            </>
-          )}
-
-          <Button
-            className="w-full py-4"
-            disabled={!game.singleDevice && !distributionPossible}
-            onClick={() => void run(dealCards({ data: { code: game.code, token } }))}
-          >
-            {game.singleDevice ? "Commencer la distribution" : "Distribuer les cartes"}
-          </Button>
-          <p className="text-center text-[11px] text-muted-foreground">
-            {game.singleDevice
-              ? "Les joueurs saisiront leur prénom et découvriront leur carte chacun leur tour sur cet appareil."
-              : game.seats.length < PLACES_MIN
-                ? `Attendez au moins ${PLACES_MIN} joueurs.`
-                : "Une fois les cartes distribuées, plus personne ne peut rejoindre la partie."}
-          </p>
-        </section>
-      ) : game.status === "ended" ? (
-        <section className="flex flex-col gap-3">
-          <div className="surface p-5 text-center">
-            <p className="text-4xl">🎭</p>
-            <h2 className="mt-2 font-display text-xl font-black">Partie terminée</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Les cartes sont retournées sur tous les téléphones. Le village peut repartir aussitôt.
-            </p>
-          </div>
-
-          <ul className="flex flex-col gap-2">
-            {game.seats.map((s) => {
-              const role = s.roleId ? ROLES_BY_ID[s.roleId] : undefined;
-              return (
-                <li key={s.position} className="surface flex items-center gap-3 p-3">
-                  <span className="text-2xl">{role?.emoji ?? "❔"}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">
-                      {s.name || `Place ${s.position}`}
-                      <span className="text-muted-foreground"> — </span>
-                      <span className="font-display font-black text-primary">
-                        {role?.name ?? "carte inconnue"}
-                      </span>
-                    </p>
-                    <p className="truncate text-[11px] text-muted-foreground">
-                      {role ? CAMP_LABEL[role.camp] : "—"} · {s.alive ? "survivant" : "éliminé"}
-                    </p>
-                  </div>
                 </li>
-              );
-            })}
-          </ul>
+              ))}
+              {game.seats.length === 0 && (
+                <li className="surface p-4 text-center text-xs text-muted-foreground">
+                  Le village est encore vide. Donnez le code à voix haute.
+                </li>
+              )}
+            </ul>
 
-          <Button
-            className="w-full py-4"
-            onClick={() => void run(relancerPartie({ data: { code: game.code, token } }))}
-          >
-            🔁 Rejouer avec les mêmes joueurs
-          </Button>
-          <p className="text-center text-[11px] text-muted-foreground">
-            Mêmes prénoms, mêmes téléphones, cartes rebattues. Un nouveau code est créé, mais
-            personne n'a besoin de le retaper : chaque appareil suit tout seul.
-          </p>
-          <Button
-            variant="ghost"
-            className="w-full"
-            onClick={() => {
-              saveSession(null);
-              void navigate({ to: "/" });
-            }}
-          >
-            Quitter la partie
-          </Button>
-        </section>
+            <Button
+              className="w-full py-4"
+              disabled={game.seats.length < PLACES_MIN}
+              onClick={() =>
+                void run(validerProfils({ data: { code: game.code, token, valide: true } }))
+              }
+            >
+              Valider les profils
+            </Button>
+            <p className="text-center text-[11px] text-muted-foreground">
+              {game.seats.length < PLACES_MIN
+                ? `Il faut au moins ${PLACES_MIN} joueurs.`
+                : "Un retardataire pourra encore rejoindre après : le compte se mettra à jour tout seul."}
+            </p>
+          </section>
+        ) : (
+          /* Choix des cartes : l'effectif est déjà connu, il se met à jour
+             tout seul si quelqu'un arrive entre-temps. */
+          <section className="flex flex-col gap-3">
+            <Composition
+              effectif={game.seats.length}
+              selection={game.selection}
+              variante={game.thiefVariant}
+              unSeulTelephone={false}
+              onSelection={(selection) =>
+                void run(setSelection({ data: { code: game.code, token, selection } }))
+              }
+            />
+
+            <Button
+              className="w-full py-4"
+              disabled={!distributionPossible}
+              onClick={() => void run(dealCards({ data: { code: game.code, token } }))}
+            >
+              Distribuer les cartes
+            </Button>
+            <p className="text-center text-[11px] text-muted-foreground">
+              Un retardataire peut encore rejoindre avec le code {game.code} : l'effectif se met à
+              jour tout seul, vous n'aurez qu'une carte de plus à poser.
+            </p>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() =>
+                void run(validerProfils({ data: { code: game.code, token, valide: false } }))
+              }
+            >
+              ← Revenir aux profils
+            </Button>
+          </section>
+        )
       ) : (
         <>
-          <div className="mb-4 flex gap-2">
+          {/* Multi-téléphones : le MJ n'a que le déroulé du jeu. Montrer une
+              carte n'a de sens que si l'appareil circule. */}
+          <div className={cn("mb-4 flex gap-2", !game.singleDevice && "hidden")}>
             {(
               [
                 ["nuit", "🌙 Conduire"],
-                ["village", "👥 Joueurs"],
                 ["reveals", "👁️ Montrer"],
               ] as [Onglet, string][]
             ).map(([id, label]) => (
@@ -337,68 +344,6 @@ function Maitre() {
             <LinkButton to="/distribution" variant="ghost" className="mb-4 w-full py-3 text-sm">
               📱 Faire tourner le téléphone (prénoms + cartes)
             </LinkButton>
-          )}
-
-          {onglet === "village" && (
-            <ul className="flex flex-col gap-2">
-              {game.seats.map((s) => (
-                <JoueurLigne
-                  key={s.position}
-                  seat={s}
-                  converti={(game.hostState.devenusLoups ?? []).includes(s.position)}
-                  loversSel={lovers}
-                  onLover={(p) =>
-                    setLoversSel((cur) =>
-                      cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p].slice(-2),
-                    )
-                  }
-                  onDead={(alive, cause) =>
-                    void run(
-                      setDead({
-                        data: { code: game.code, token, position: s.position, alive, cause },
-                      }),
-                    )
-                  }
-                  onCaptain={() =>
-                    void run(
-                      setCaptain({
-                        data: { code: game.code, token, position: s.isCaptain ? null : s.position },
-                      }),
-                    )
-                  }
-                  onPublic={() =>
-                    void run(
-                      setPublicRole({
-                        data: {
-                          code: game.code,
-                          token,
-                          position: s.position,
-                          value: !s.publicRole,
-                        },
-                      }),
-                    )
-                  }
-                  onRouvrir={() =>
-                    void run(resetSeen({ data: { code: game.code, token, position: s.position } }))
-                  }
-                />
-              ))}
-              <li className="surface p-3">
-                <p className="text-xs text-muted-foreground">
-                  Amoureux sélectionnés : {lovers.join(" & ") || "aucun"}
-                </p>
-                <Button
-                  variant="ghost"
-                  className="mt-2 w-full"
-                  disabled={lovers.length !== 2}
-                  onClick={() =>
-                    void run(setLovers({ data: { code: game.code, token, positions: lovers } }))
-                  }
-                >
-                  Lier ces deux joueurs (ils mourront ensemble)
-                </Button>
-              </li>
-            </ul>
           )}
 
           {onglet === "nuit" && (
@@ -678,20 +623,37 @@ function Maitre() {
             </section>
           )}
 
-          {onglet === "reveals" && (
+          <div className="mt-8 border-t border-border pt-4">
+            <Button
+              variant="danger"
+              className="w-full"
+              onClick={async () => {
+                const dto = await endGame({ data: { code: game.code, token } });
+                saveSession({ code: dto.code, host: true });
+                apply(dto);
+              }}
+            >
+              Terminer la partie
+            </Button>
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
+              La partie suivante s'ouvre aussitôt avec les mêmes joueurs et un nouveau code.
+              Personne n'a rien à retaper : chaque téléphone suit tout seul.
+            </p>
+          </div>
+
+          {onglet === "reveals" && game.singleDevice && (
             <section className="flex flex-col gap-3">
               <div className="surface p-4">
                 <h2 className="font-display text-sm font-bold">Montrer une carte</h2>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  Pour la Voyante, le Chaman, la Gitane… choisissez d'abord qui reçoit
-                  l'information, puis la carte à révéler. Elle apparaît sur le téléphone du joueur —
-                  s'il n'en a pas, montrez-lui simplement votre écran.
+                  Pour la Voyante, le Chaman, la Gitane… touchez le joueur dont la carte doit être
+                  vue. Elle s'affiche ici : tournez l'écran vers celui qui a le droit de la voir.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {game.seats.map((s) => (
                     <button
                       key={s.position}
-                      onClick={() => setRevealFrom(s.position)}
+                      onClick={() => setRevealFrom(revealFrom === s.position ? null : s.position)}
                       className={cn(
                         "rounded-xl border px-3 py-2 text-xs",
                         revealFrom === s.position
@@ -703,55 +665,32 @@ function Maitre() {
                     </button>
                   ))}
                 </div>
-                {revealFrom && (
-                  <>
-                    <p className="mt-4 text-xs text-muted-foreground">Carte de quel joueur ?</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {game.seats
-                        .filter((s) => s.position !== revealFrom)
-                        .map((s) => (
-                          <button
-                            key={s.position}
-                            onClick={() =>
-                              void run(
-                                pushReveal({
-                                  data: {
-                                    code: game.code,
-                                    token,
-                                    toPosition: revealFrom,
-                                    targetPosition: s.position,
-                                  },
-                                }),
-                              )
-                            }
-                            className="rounded-xl border border-border bg-secondary px-3 py-2 text-xs"
-                          >
-                            {s.name || `Place ${s.position}`}
-                          </button>
-                        ))}
-                    </div>
-                  </>
-                )}
               </div>
 
-              <div className="surface p-4">
-                <h2 className="font-display text-sm font-bold">Informations envoyées</h2>
-                <ul className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground">
-                  {game.reveals.map((r) => (
-                    <li key={r.id}>
-                      Place {r.toPosition} ← place {r.targetPosition} : {r.note}
-                    </li>
-                  ))}
-                  {game.reveals.length === 0 && <li>Aucune pour l'instant.</li>}
-                </ul>
-                <Button
-                  variant="ghost"
-                  className="mt-3 w-full"
-                  onClick={() => void run(clearReveals({ data: { code: game.code, token } }))}
-                >
-                  Effacer
-                </Button>
-              </div>
+              {revealFrom !== null &&
+                (() => {
+                  const cible = game.seats.find((x) => x.position === revealFrom);
+                  const role = cible?.roleId ? ROLES_BY_ID[cible.roleId] : undefined;
+                  return (
+                    <div className="surface p-5 text-center">
+                      <p className="text-5xl">{role?.emoji ?? "❔"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {cible?.name || `Place ${revealFrom}`}
+                      </p>
+                      <p className="font-display text-3xl font-black text-primary">
+                        {role?.name ?? "carte inconnue"}
+                      </p>
+                      {role && <CampBadge camp={role.camp} className="mt-2" />}
+                      <Button
+                        variant="ghost"
+                        className="mt-4 w-full"
+                        onClick={() => setRevealFrom(null)}
+                      >
+                        Cacher
+                      </Button>
+                    </div>
+                  );
+                })()}
             </section>
           )}
         </>
@@ -771,19 +710,21 @@ function Composition({
   effectif,
   selection,
   variante,
+  unSeulTelephone,
   onSelection,
 }: {
   effectif: number;
   selection: Record<string, number>;
   variante: string;
+  unSeulTelephone: boolean;
   onSelection: (selection: Record<string, number>) => void;
 }) {
   const attendu = cartesAttendues(effectif, selection, variante);
   const total = Object.values(selection).reduce((a, b) => a + b, 0);
   const ecart = total - attendu;
-  // Salon multi-téléphones : ni Renard ni Montreur d'Ours, l'ordre des
+  // Hors mode un seul téléphone : ni Renard ni Montreur d'Ours, l'ordre des
   // places n'y suit pas la table.
-  const pioche = rolesDistribuables(false);
+  const pioche = rolesDistribuables(unSeulTelephone);
   const enJeu = pioche.filter((r) => (selection[r.id] ?? 0) > 0);
   const absents = pioche.filter((r) => !(selection[r.id] ?? 0));
   const cartesCentre = attendu - effectif;
@@ -848,7 +789,10 @@ function Composition({
             Compléter avec {-ecart} Simple{-ecart > 1 ? "s" : ""} Villageois
           </Button>
         )}
-        <Button variant="ghost" onClick={() => onSelection(compositionAuto(effectif, false))}>
+        <Button
+          variant="ghost"
+          onClick={() => onSelection(compositionAuto(effectif, unSeulTelephone))}
+        >
           Reprendre la composition conseillée pour {effectif}
         </Button>
       </div>
@@ -868,104 +812,6 @@ function Composition({
         </div>
       </details>
     </div>
-  );
-}
-
-function JoueurLigne({
-  seat,
-  converti,
-  loversSel,
-  onLover,
-  onDead,
-  onCaptain,
-  onPublic,
-  onRouvrir,
-}: {
-  seat: SeatDTO;
-  converti: boolean;
-  loversSel: number[];
-  onLover: (p: number) => void;
-  onDead: (alive: boolean, cause?: string) => void;
-  onCaptain: () => void;
-  onPublic: () => void;
-  onRouvrir: () => void;
-}) {
-  const role = seat.roleId ? ROLES_BY_ID[seat.roleId] : undefined;
-  return (
-    <li className={cn("surface p-3", !seat.alive && "opacity-50")}>
-      <div className="flex items-center gap-3">
-        {role && <RoleSigil role={role} size="sm" />}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="truncate text-sm font-semibold">
-              {seat.name || `Place ${seat.position}`}
-              <span className="text-muted-foreground"> — </span>
-              <span className="font-display font-black text-primary">
-                {role?.name ?? "carte non distribuée"}
-              </span>
-            </span>
-            {converti && <span title="Passé côté Loups-Garous">🩸</span>}
-            {seat.isCaptain && <span title="Capitaine">🎖️</span>}
-            {seat.loverGroup && <span title="Amoureux">❤️</span>}
-            {seat.statuses.includes("sans-vote") && (
-              <span title="Idiot gracié : ne vote plus">🤡</span>
-            )}
-            {seat.statuses.includes("baillonne") && (
-              <span title="Bâillonné (gestes autorisés)">🤐</span>
-            )}
-          </div>
-          <p className="truncate text-[11px] text-muted-foreground">
-            {converti ? "Loups-Garous (converti)" : role ? CAMP_LABEL[role.camp] : "—"}
-            {seat.publicRole ? " · rôle public" : ""}
-            {role?.id === "villageois-villageois" && !seat.publicRole
-              ? " · à annoncer au village"
-              : ""}
-            {seat.statuses.includes("sans-vote") ? " · gracié, sans droit de vote" : ""}
-            {!seat.alive ? ` · mort (${seat.deathCause})` : ""}
-          </p>
-        </div>
-      </div>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {seat.alive ? (
-          <>
-            <Mini onClick={() => onDead(false, "loups")}>🐺 dévoré</Mini>
-            <Mini onClick={() => onDead(false, "vote")}>🗳️ éliminé</Mini>
-            <Mini onClick={() => onDead(false, "poison")}>🧪 poison</Mini>
-            <Mini onClick={() => onDead(false, "chasseur")}>🎯 tir</Mini>
-          </>
-        ) : (
-          <Mini onClick={() => onDead(true)}>↩️ ressusciter</Mini>
-        )}
-        <Mini onClick={onCaptain}>{seat.isCaptain ? "retirer capitaine" : "🎖️ capitaine"}</Mini>
-        <Mini onClick={onPublic}>{seat.publicRole ? "cacher rôle" : "👁️ rôle public"}</Mini>
-        <Mini onClick={() => onLover(seat.position)} active={loversSel.includes(seat.position)}>
-          ❤️ amoureux
-        </Mini>
-        {seat.seen && <Mini onClick={onRouvrir}>🔓 rouvrir sa carte</Mini>}
-      </div>
-    </li>
-  );
-}
-
-function Mini({
-  children,
-  onClick,
-  active,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  active?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "rounded-lg border px-2 py-1 text-[11px]",
-        active ? "border-primary bg-primary/15 text-primary" : "border-border bg-secondary",
-      )}
-    >
-      {children}
-    </button>
   );
 }
 

@@ -291,6 +291,17 @@ export const PLACES_MAX = 30;
 /** Plancher officiel du jeu : en dessous, les rôles ne s'équilibrent plus. */
 export const PLACES_MIN = 7;
 
+/**
+ * Les deux temps qui précèdent la distribution.
+ *
+ * `lobby` : les profils arrivent, chacun saisit son prénom sur son propre
+ * téléphone. `composition` : le Maître du Jeu a validé les profils et
+ * choisit les cartes. Un retardataire peut encore rejoindre pendant ce
+ * second temps — l'effectif se met à jour, le MJ n'a qu'une carte de plus
+ * à poser.
+ */
+export const AVANT_DISTRIBUTION = ["lobby", "composition"];
+
 async function base() {
   const { pb, litteral } = await import("@/lib/pocketbase.server");
   return { pb, litteral };
@@ -419,7 +430,11 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
   // Un joueur éliminé a le droit de suivre la partie : dans le jeu physique,
   // il garde les yeux ouverts et voit tout. Dès qu'une de ses places est
   // morte, cet appareil voit le rôle de tous les joueurs éliminés.
-  const voitLeCimetiere = isHost || seats.some((s) => s["device_token"] === token && !s["alive"]);
+  // Le cimetière n'est ouvert qu'à un téléphone qui ne porte qu'un seul
+  // joueur, et seulement une fois celui-ci éliminé : un appareil partagé à
+  // deux ou trois y donnerait les cartes des morts à des vivants.
+  const mesPlaces = seats.filter((s) => s["device_token"] && s["device_token"] === token);
+  const voitLeCimetiere = isHost || (mesPlaces.length === 1 && !mesPlaces[0]?.["alive"]);
   const finie = game["status"] === "ended";
 
   return {
@@ -625,7 +640,9 @@ export const claimSeats = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const db = await base();
     const game = await loadGame(db, data.code);
-    if (game["status"] !== "lobby") throw new Error("La partie a déjà commencé");
+    if (!AVANT_DISTRIBUTION.includes(game["status"] as string)) {
+      throw new Error("Les cartes sont déjà distribuées");
+    }
     if (game["single_device"]) throw new Error("Cette partie se joue sur un seul téléphone");
 
     // Trois places maximum par appareil : au-delà, le téléphone circule trop
@@ -664,13 +681,75 @@ export const claimSeats = createServerFn({ method: "POST" })
     return buildDTO(db, fresh, data.token);
   });
 
+/**
+ * Le MJ ajoute une place.
+ *
+ * Réservé au mode un seul téléphone, où c'est lui qui compte la tablée :
+ * en multi-téléphones, chaque joueur apporte sa place lui-même et le MJ
+ * n'inscrit personne.
+ */
+export const addSeat = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    if (!AVANT_DISTRIBUTION.includes(game["status"] as string)) {
+      throw new Error("Les cartes sont déjà distribuées");
+    }
+    if (!game["single_device"]) {
+      throw new Error("Chaque joueur prend sa place depuis son propre téléphone");
+    }
+    const seats = await seatsDe(db, game["id"]);
+    if (seats.length >= PLACES_MAX)
+      throw new Error(`Le village est complet (${PLACES_MAX} places)`);
+    await db.pb.creer("seats", {
+      game_id: game["id"],
+      position: seats.length + 1,
+      name: "",
+      alive: true,
+      statuses: [],
+      device_token: game["host_token"],
+    });
+    await db.pb.modifier("games", game["id"], { player_count: seats.length + 1 });
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
+/**
+ * Le MJ clôt l'appel et passe au choix des cartes — ou revient en arrière.
+ *
+ * Les profils restent modifiables et un retardataire peut encore arriver :
+ * cette étape n'enferme rien, elle range simplement l'écran du MJ.
+ */
+export const validerProfils = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string; valide: boolean }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    if (!AVANT_DISTRIBUTION.includes(game["status"] as string)) {
+      throw new Error("Les cartes sont déjà distribuées");
+    }
+    const seats = await seatsDe(db, game["id"]);
+    if (data.valide && seats.length < PLACES_MIN) {
+      throw new Error(`Il faut au moins ${PLACES_MIN} joueurs`);
+    }
+    await db.pb.modifier("games", game["id"], {
+      status: data.valide ? "composition" : "lobby",
+      player_count: seats.length,
+    });
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
 /** Le MJ retire une place du salon : quelqu'un s'en va, ou s'est connecté deux fois. */
 export const removeSeat = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; token: string; position: number }) => d)
   .handler(async ({ data }) => {
     const db = await base();
     const game = await requireHost(db, data.code, data.token);
-    if (game["status"] !== "lobby") throw new Error("La partie a déjà commencé");
+    if (!AVANT_DISTRIBUTION.includes(game["status"] as string)) {
+      throw new Error("Les cartes sont déjà distribuées");
+    }
     const seats = await seatsDe(db, game["id"]);
     const cible = seats.find((s) => s["position"] === data.position);
     if (cible) {
@@ -687,7 +766,9 @@ export const setSelection = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const db = await base();
     const game = await requireHost(db, data.code, data.token);
-    if (game["status"] !== "lobby") throw new Error("La partie a déjà commencé");
+    if (!AVANT_DISTRIBUTION.includes(game["status"] as string)) {
+      throw new Error("Les cartes sont déjà distribuées");
+    }
     await db.pb.modifier("games", game["id"], { selection: data.selection });
     const fresh = await loadGame(db, data.code);
     return buildDTO(db, fresh, data.token);
@@ -708,60 +789,6 @@ export const setSeatName = createServerFn({ method: "POST" })
     return buildDTO(db, game, data.token);
   });
 
-/**
- * Le MJ déplace un joueur d'un cran dans l'ordre des places.
- *
- * Les places sont numérotées dans l'ordre où les téléphones les réclament,
- * ce qui n'a aucune raison de correspondre à l'ordre réel autour de la
- * table. Or le Renard et le Montreur d'Ours raisonnent sur les voisins :
- * sans cet ordre, leurs pouvoirs sont faux. Le MJ range donc la liste pour
- * qu'elle suive la table.
- *
- * On échange le contenu des deux places (le joueur et sa carte), pas leurs
- * numéros : les positions restent 1..N, sans trou.
- */
-export const moveSeat = createServerFn({ method: "POST" })
-  .inputValidator((d: { code: string; token: string; position: number; vers: "haut" | "bas" }) => d)
-  .handler(async ({ data }) => {
-    const db = await base();
-    const game = await requireHost(db, data.code, data.token);
-    const seats = await seatsDe(db, game["id"]);
-    const total = seats.length;
-    const depart = seats.find((s) => s["position"] === data.position);
-    if (!depart || total < 2) return buildDTO(db, game, data.token);
-
-    // La table est un cercle : le premier remonte à la dernière place.
-    const cible =
-      data.vers === "haut"
-        ? ((data.position - 2 + total) % total) + 1
-        : (data.position % total) + 1;
-    const arrivee = seats.find((s) => s["position"] === cible);
-    if (!arrivee) return buildDTO(db, game, data.token);
-
-    const CHAMPS = [
-      "name",
-      "role_id",
-      "alive",
-      "death_cause",
-      "death_order",
-      "is_captain",
-      "lover_group",
-      "statuses",
-      "public_role",
-      "device_token",
-      "seen",
-    ];
-    const contenu = (s: AnyRow) => Object.fromEntries(CHAMPS.map((c) => [c, s[c]]));
-    const aDepart = contenu(depart);
-    const aArrivee = contenu(arrivee);
-    await db.pb.modifier("seats", depart["id"], aArrivee);
-    await db.pb.modifier("seats", arrivee["id"], aDepart);
-
-    const fresh = await loadGame(db, data.code);
-    return buildDTO(db, fresh, data.token);
-  });
-
-/** Le MJ récupère une place non réclamée sur son propre téléphone. */
 export const hostTakeSeat = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; token: string; position: number; take: boolean }) => d)
   .handler(async ({ data }) => {
@@ -1477,25 +1504,28 @@ export const clearReveals = createServerFn({ method: "POST" })
   });
 
 /**
- * Relancer une partie avec les mêmes joueurs.
+ * Terminer la partie — et rouvrir aussitôt la suivante.
  *
- * À la fin d'une partie, tout le monde est encore autour de la table et
- * veut enchaîner. Refaire le tour des prénoms et redonner un code à quinze
- * personnes casse l'élan pour rien : on repart donc d'une partie neuve —
- * nouveau code, cartes rebattues, compteurs remis à zéro — mais avec les
- * mêmes places, les mêmes prénoms et les mêmes téléphones.
+ * À la fin d'une partie, tout le monde est encore autour de la table. Faire
+ * retaper un code à quinze personnes casserait l'élan pour rien : la partie
+ * suivante s'ouvre donc toute seule, avec les mêmes places, les mêmes
+ * prénoms et les mêmes téléphones. Les cartes sont rebattues et se
+ * rechoisissent, le Maître du Jeu reste celui qui l'était — pour en
+ * changer, on se passe le téléphone, d'où les prénoms qui redeviennent
+ * modifiables.
  *
- * L'ancienne partie garde une flèche vers la nouvelle : chaque appareil la
- * suit tout seul au prochain rafraîchissement.
+ * Le nouveau code est tiré tout seul. L'ancienne partie garde une flèche
+ * vers lui : chaque appareil la suit au rafraîchissement suivant, sans que
+ * personne ait rien à saisir.
  */
-export const relancerPartie = createServerFn({ method: "POST" })
+export const endGame = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; token: string }) => d)
   .handler(async ({ data }) => {
     const db = await base();
     const ancienne = await requireHost(db, data.code, data.token);
     if (ancienne["suite"]) {
-      // Déjà relancée : on renvoie la partie qui a pris la suite plutôt que
-      // d'en créer une troisième si le MJ touche deux fois le bouton.
+      // Déjà terminée : on renvoie la partie qui a pris la suite plutôt que
+      // d'en ouvrir une troisième si le MJ touche deux fois le bouton.
       const suite = await loadGame(db, ancienne["suite"] as string);
       return buildDTO(db, suite, data.token);
     }
@@ -1536,13 +1566,4 @@ export const relancerPartie = createServerFn({ method: "POST" })
     await db.pb.modifier("games", ancienne["id"], { status: "ended", suite: code });
     const fresh = await loadGame(db, code);
     return buildDTO(db, fresh, data.token);
-  });
-
-export const endGame = createServerFn({ method: "POST" })
-  .inputValidator((d: { code: string; token: string }) => d)
-  .handler(async ({ data }) => {
-    const db = await base();
-    const game = await requireHost(db, data.code, data.token);
-    await db.pb.modifier("games", game["id"], { status: "ended" });
-    return { ok: true };
   });

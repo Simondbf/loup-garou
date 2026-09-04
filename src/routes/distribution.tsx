@@ -190,35 +190,9 @@ function EcranJoueur() {
         </section>
       )}
 
-      {!seat && game.status === "ended" && (
-        <div className="surface mb-4 p-4 text-center">
-          <p className="font-display text-lg font-black">Partie terminée</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Toutes les cartes sont retournées. Si le Maître du Jeu relance une partie avec les mêmes
-            joueurs, ce téléphone suivra tout seul — gardez-le ouvert.
-          </p>
-        </div>
-      )}
-
       {!seat && <CartesPubliques seats={game.seats} />}
 
       {game.voitLeCimetiere && !seat && <Cimetiere seats={game.seats} />}
-
-      {revealsPourMoi.length > 0 && !seat && (
-        <section className="mt-8">
-          <h2 className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
-            Informations reçues
-          </h2>
-          <ul className="flex flex-col gap-2">
-            {revealsPourMoi.map((r) => (
-              <li key={r.id} className="surface p-3 text-sm">
-                Place {r.targetPosition} :{" "}
-                <span className="font-display font-bold text-primary">{r.note}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </main>
   );
 }

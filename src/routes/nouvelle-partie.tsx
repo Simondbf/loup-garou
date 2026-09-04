@@ -95,10 +95,13 @@ function NouvellePartie() {
         data: {
           hostToken: token,
           playerCount: count,
-          selection,
+          // En multi-téléphones, ni l'effectif ni les cartes ne sont connus
+          // ici : le village se compte en arrivant, et le Maître du Jeu
+          // choisira la composition une fois les profils validés.
+          selection: singleDevice ? selection : {},
           thiefVariant: varianteVoleur,
           singleDevice,
-          comedienCartes: cartesComedien,
+          comedienCartes: singleDevice ? cartesComedien : [],
         },
       });
       saveSession({ code, host: true });
@@ -134,7 +137,12 @@ function NouvellePartie() {
 
       {step === 1 && (
         <section className="animate-rise">
-          <div className="surface flex items-center justify-between p-5">
+          <div
+            className={cn(
+              "surface flex items-center justify-between p-5",
+              !singleDevice && "hidden",
+            )}
+          >
             <button
               onClick={() =>
                 setCount((c) => {
@@ -187,9 +195,13 @@ function NouvellePartie() {
               +
             </button>
           </div>
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            De {MIN} à {MAX} joueurs. En multi-téléphones, ce nombre ne sert qu'à préparer la
-            composition : l'effectif réel se comptera tout seul dans le salon.
+          <p
+            className={cn(
+              "mt-3 text-center text-xs text-muted-foreground",
+              !singleDevice && "hidden",
+            )}
+          >
+            De {MIN} à {MAX} joueurs.
           </p>
 
           <div className="surface mt-5 flex w-full items-center gap-3 p-4">
@@ -214,8 +226,19 @@ function NouvellePartie() {
             </button>
           </div>
 
-          <Button className="mt-6 w-full py-4" onClick={() => setStep(2)}>
-            Choisir la composition
+          {!singleDevice && (
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              Vous n'avez rien à compter : donnez le code à la table, les profils arriveront
+              d'eux-mêmes et les cartes se choisiront ensuite, une fois le village au complet.
+            </p>
+          )}
+
+          <Button
+            className="mt-6 w-full py-4"
+            disabled={busy}
+            onClick={() => (singleDevice ? setStep(2) : void lancer())}
+          >
+            {singleDevice ? "Choisir la composition" : "Ouvrir le salon"}
           </Button>
         </section>
       )}
