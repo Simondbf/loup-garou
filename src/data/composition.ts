@@ -13,16 +13,35 @@ import { ROLES, ROLES_BY_ID } from "@/data/roles";
 export const ROLES_DISTRIBUABLES = ROLES.filter((r) => !r.derived);
 
 /**
+ * Rôles qui lisent les voisins de table : Renard et Montreur d'Ours.
+ *
+ * L'application ne connaît que l'ordre des places, et cet ordre ne suit la
+ * vraie table que dans le mode un seul téléphone, où le Maître du Jeu
+ * distribue les places en tournant. En multi-téléphones, les places sont
+ * attribuées dans l'ordre des connexions : le voisin de gauche à l'écran
+ * n'est pas celui qui est assis à gauche. Ces deux rôles y sont donc
+ * retirés de la pioche plutôt que de rendre des réponses fausses.
+ */
+export const ROLES_VOISINS = ["renard", "montreur-ours"];
+
+/** Rôles proposés selon le mode de jeu. */
+export function rolesDistribuables(unSeulTelephone: boolean) {
+  if (unSeulTelephone) return ROLES_DISTRIBUABLES;
+  return ROLES_DISTRIBUABLES.filter((r) => !ROLES_VOISINS.includes(r.id));
+}
+
+/**
  * Composition de secours : environ un tiers de la table côté loups, et le
  * moins de Simples Villageois possible — c'est le seul rôle sans pouvoir,
  * donc le moins amusant à tirer.
  */
-export function compositionAuto(count: number): Record<string, number> {
+export function compositionAuto(count: number, unSeulTelephone = true): Record<string, number> {
   // Le plafond `count - 2` ne sert qu'aux toutes petites tables : à trois
   // joueurs, une meute d'un tiers ferait déjà deux loups contre un villageois.
   const loups = Math.max(1, Math.min(Math.round(count / 3), Math.max(1, count - 2)));
   const base: Record<string, number> = { "loup-garou": loups };
   let reste = count - loups;
+  const proposables = unSeulTelephone ? null : ROLES_VOISINS;
   for (const id of [
     "voyante",
     "sorciere",
@@ -39,6 +58,7 @@ export function compositionAuto(count: number): Record<string, number> {
     "servante-devouee",
   ]) {
     if (reste <= 0) break;
+    if (proposables?.includes(id)) continue;
     base[id] = 1;
     reste -= 1;
   }

@@ -54,12 +54,12 @@ export interface EtatPersonnel {
   protectionInterdite?: string;
   /** Loup-Garou Blanc : se réveille-t-il seul la nuit qui vient ? */
   loupBlancCetteNuit?: boolean;
-  /** Joueur de Flûte : prénoms des joueurs déjà envoûtés. */
-  envoutes?: string[];
   /** Enfant Sauvage : prénom de son modèle. */
   modele?: string;
   /** Chien-Loup : camp choisi la première nuit. */
   chienLoup?: "villageois" | "loups";
+  /** Passé côté Loups-Garous en cours de partie : infection, transformation, choix. */
+  passeCoteLoups?: boolean;
   /** Pouvoir à usage unique déjà consommé. */
   pouvoirConsomme?: boolean;
   /** L'Ancien est tombé sous un coup du village : plus aucun pouvoir villageois. */
@@ -229,6 +229,12 @@ export interface GameDTO {
   voitLeCimetiere: boolean;
   /** État des seules places portées par cet appareil. */
   mesEtats: EtatPersonnel[];
+  /**
+   * Code de la partie qui prend la suite, quand le Maître du Jeu a relancé.
+   * Chaque téléphone le voit et bascule tout seul : personne n'a de nouveau
+   * code à retaper.
+   */
+  suite: string;
   reveals: { id: string; toPosition: number; targetPosition: number; note: string | null }[];
 }
 
@@ -282,8 +288,8 @@ export const PLACES_MAX_PAR_APPAREIL = 3;
 /** Plafond d'un village. Au-delà, la partie devient ingérable pour le MJ. */
 export const PLACES_MAX = 30;
 
-/** Plancher : en dessous, il n'y a plus de partie à conduire. */
-export const PLACES_MIN = 3;
+/** Plancher officiel du jeu : en dessous, les rôles ne s'équilibrent plus. */
+export const PLACES_MIN = 7;
 
 async function base() {
   const { pb, litteral } = await import("@/lib/pocketbase.server");
@@ -353,19 +359,18 @@ function etatPersonnel(place: AnyRow, seats: AnyRow[], etat: HostState, game: An
     if (interdit) e.protectionInterdite = interdit;
   }
   if (role === "loup-garou-blanc") e.loupBlancCetteNuit = nuit % 2 === 0;
-  if (role === "joueur-de-flute") {
-    e.envoutes = (etat.charmed ?? []).map((p) => prenom(p) ?? `Place ${p}`);
-  }
   if (role === "enfant-sauvage") {
     const modele = prenom(etat.modele);
     if (modele) e.modele = modele;
   }
   if (role === "chien-loup" && etat.chienLoup) e.chienLoup = etat.chienLoup;
 
-  // Volontairement absents : l'identité de l'aimé, le charme du Flûtiste et
-  // le passage côté Loups. Ce sont des secrets que le Maître du Jeu confie
-  // d'un geste ou d'un regard — les afficher ici les rendrait certains, et
-  // priverait la table de ce moment.
+  // Le seul secret que l'écran annonce : le passage côté Loups. C'est une
+  // consigne de jeu — le converti doit savoir avec qui il gagne — et non un
+  // renseignement sur les autres. L'identité de l'aimé, le charme du
+  // Flûtiste et la liste des envoûtés restent hors du téléphone : ce sont
+  // des choses qui se disent d'un geste, autour de la table.
+  if ((etat.devenusLoups ?? []).includes(position)) e.passeCoteLoups = true;
   if (role && (etat.pouvoirsUtilises ?? []).includes(role)) e.pouvoirConsomme = true;
   if (etat.villageSansPouvoirs) e.villageSansPouvoirs = true;
 
@@ -415,6 +420,7 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
   // il garde les yeux ouverts et voit tout. Dès qu'une de ses places est
   // morte, cet appareil voit le rôle de tous les joueurs éliminés.
   const voitLeCimetiere = isHost || seats.some((s) => s["device_token"] === token && !s["alive"]);
+  const finie = game["status"] === "ended";
 
   return {
     code: game["code"],
@@ -439,6 +445,7 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
     isHost,
     mySeats,
     voitLeCimetiere,
+    suite: (game["suite"] as string) || "",
     mesEtats: seats
       .filter((s) => s["device_token"] && s["device_token"] === token)
       .map((s) => etatPersonnel(s, seats, (game["host_state"] ?? {}) as HostState, game)),
@@ -452,7 +459,10 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
       })),
     seats: seats.map((s) => {
       const mine = !!s["device_token"] && s["device_token"] === token;
-      const visible = isHost || mine || s["public_role"] || (voitLeCimetiere && !s["alive"]);
+      // Partie terminée : toutes les cartes se retournent, comme on les
+      // étale sur la table quand la dernière est tombée.
+      const visible =
+        isHost || mine || s["public_role"] || finie || (voitLeCimetiere && !s["alive"]);
       return {
         position: s["position"],
         name: s["name"] ?? "",
@@ -488,6 +498,17 @@ async function requireHost(db: Base, code: string, token: string) {
 }
 
 /* ------------------------------------------------------------------ */
+
+/** Tire un code à quatre lettres qui n'est pas déjà pris. */
+async function codeLibre(db: Base) {
+  let code = makeCode();
+  for (let essai = 0; essai < 8; essai++) {
+    const existant = await db.pb.premier("games", `code = ${db.litteral(code)}`);
+    if (!existant) break;
+    code = makeCode();
+  }
+  return code;
+}
 
 export const createGame = createServerFn({ method: "POST" })
   .inputValidator(
@@ -526,12 +547,7 @@ export const createGame = createServerFn({ method: "POST" })
       // Le ménage ne doit jamais empêcher de lancer une partie.
     }
 
-    let code = makeCode();
-    for (let attempt = 0; attempt < 8; attempt++) {
-      const existing = await db.pb.premier("games", `code = ${db.litteral(code)}`);
-      if (!existing) break;
-      code = makeCode();
-    }
+    const code = await codeLibre(db);
 
     const game = await db.pb.creer("games", {
       code,
@@ -644,34 +660,6 @@ export const claimSeats = createServerFn({ method: "POST" })
       await renumeroter(db, game["id"]);
     }
 
-    const fresh = await loadGame(db, data.code);
-    return buildDTO(db, fresh, data.token);
-  });
-
-/**
- * Le MJ ajoute une place portée par son propre téléphone.
- *
- * Pour le joueur qui n'a pas de smartphone, ou dont la batterie a lâché :
- * sa carte s'ouvre sur l'écran du Maître du Jeu, qui la lui montre.
- */
-export const addSeat = createServerFn({ method: "POST" })
-  .inputValidator((d: { code: string; token: string }) => d)
-  .handler(async ({ data }) => {
-    const db = await base();
-    const game = await requireHost(db, data.code, data.token);
-    if (game["status"] !== "lobby") throw new Error("La partie a déjà commencé");
-    const seats = await seatsDe(db, game["id"]);
-    if (seats.length >= PLACES_MAX)
-      throw new Error(`Le village est complet (${PLACES_MAX} places)`);
-    await db.pb.creer("seats", {
-      game_id: game["id"],
-      position: seats.length + 1,
-      name: "",
-      alive: true,
-      statuses: [],
-      device_token: game["host_token"],
-    });
-    await db.pb.modifier("games", game["id"], { player_count: seats.length + 1 });
     const fresh = await loadGame(db, data.code);
     return buildDTO(db, fresh, data.token);
   });
@@ -1486,6 +1474,68 @@ export const clearReveals = createServerFn({ method: "POST" })
     });
     for (const r of revealRows) await db.pb.supprimer("reveals", r["id"]);
     return buildDTO(db, game, data.token);
+  });
+
+/**
+ * Relancer une partie avec les mêmes joueurs.
+ *
+ * À la fin d'une partie, tout le monde est encore autour de la table et
+ * veut enchaîner. Refaire le tour des prénoms et redonner un code à quinze
+ * personnes casse l'élan pour rien : on repart donc d'une partie neuve —
+ * nouveau code, cartes rebattues, compteurs remis à zéro — mais avec les
+ * mêmes places, les mêmes prénoms et les mêmes téléphones.
+ *
+ * L'ancienne partie garde une flèche vers la nouvelle : chaque appareil la
+ * suit tout seul au prochain rafraîchissement.
+ */
+export const relancerPartie = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const ancienne = await requireHost(db, data.code, data.token);
+    if (ancienne["suite"]) {
+      // Déjà relancée : on renvoie la partie qui a pris la suite plutôt que
+      // d'en créer une troisième si le MJ touche deux fois le bouton.
+      const suite = await loadGame(db, ancienne["suite"] as string);
+      return buildDTO(db, suite, data.token);
+    }
+
+    const places = await seatsDe(db, ancienne["id"]);
+    const code = await codeLibre(db);
+    const nouvelle = await db.pb.creer("games", {
+      code,
+      host_token: ancienne["host_token"],
+      status: "lobby",
+      phase: "nuit",
+      night: 1,
+      player_count: places.length,
+      single_device: ancienne["single_device"],
+      thief_variant: ancienne["thief_variant"],
+      selection: ancienne["selection"],
+      comedien_cartes: ancienne["comedien_cartes"] ?? [],
+      center_cards: [],
+      gag_history: [],
+      host_state: {},
+      nuit: {},
+      jour: {},
+    });
+
+    // Les places suivent : même rang, même prénom, même téléphone. Tout le
+    // reste — carte, vie, statuts, écharpe, amours — repart de zéro.
+    for (const place of places) {
+      await db.pb.creer("seats", {
+        game_id: nouvelle["id"],
+        position: place["position"],
+        name: place["name"] ?? "",
+        alive: true,
+        statuses: [],
+        ...(place["device_token"] ? { device_token: place["device_token"] } : {}),
+      });
+    }
+
+    await db.pb.modifier("games", ancienne["id"], { status: "ended", suite: code });
+    const fresh = await loadGame(db, code);
+    return buildDTO(db, fresh, data.token);
   });
 
 export const endGame = createServerFn({ method: "POST" })

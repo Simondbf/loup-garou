@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Modal, PageHeader, RoleDetail, RoleSigil } from "@/components/ui-kit";
 import { CAMP_LABEL, ROLES_BY_ID, type Camp, type Role } from "@/data/roles";
-import { ROLES_DISTRIBUABLES, compositionAuto } from "@/data/composition";
+import { compositionAuto, rolesDistribuables } from "@/data/composition";
 import { createGame, dealCards } from "@/lib/party.functions";
 import { useGame } from "@/lib/game-store";
 import { cn } from "@/lib/utils";
@@ -47,11 +47,16 @@ function NouvellePartie() {
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
 
+  // Le Renard et le Montreur d'Ours lisent les voisins de table : hors du
+  // mode un seul téléphone, l'ordre des places ne suit pas la table et ces
+  // deux rôles ne sont pas proposés.
+  const pioche = rolesDistribuables(singleDevice);
+
   // La composition conseillée est pré-remplie dès l'arrivée sur l'étape 2.
   useEffect(() => {
     if (step !== 2) return;
-    setSelection(compositionAuto(count));
-  }, [step, count]);
+    setSelection(compositionAuto(count, singleDevice));
+  }, [step, count, singleDevice]);
 
   // La variante « vol de rôle » oblige chaque joueur à revérifier sa carte le
   // matin : impossible quand tout le monde partage un seul téléphone.
@@ -255,73 +260,78 @@ function NouvellePartie() {
                 {CAMP_LABEL[camp]}
               </h2>
               <ul className="flex flex-col gap-2">
-                {ROLES_DISTRIBUABLES.filter((r) => r.camp === camp).map((role) => (
-                  <li key={role.id} className="surface p-2.5">
-                    <div className="flex items-center gap-3">
-                      <button onClick={() => setDetail(role)} aria-label={`Détails ${role.name}`}>
-                        <RoleSigil role={role} size="sm" />
-                      </button>
-                      <button className="min-w-0 flex-1 text-left" onClick={() => setDetail(role)}>
-                        <span className="block truncate text-sm font-semibold">{role.name}</span>
-                        <p className="truncate text-[11px] text-muted-foreground">{role.short}</p>
-                      </button>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => ajuster(role.id, -1)}
-                          className="btn-base btn-ghost h-8 w-8 p-0"
-                          aria-label="Retirer"
-                        >
-                          −
+                {pioche
+                  .filter((r) => r.camp === camp)
+                  .map((role) => (
+                    <li key={role.id} className="surface p-2.5">
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => setDetail(role)} aria-label={`Détails ${role.name}`}>
+                          <RoleSigil role={role} size="sm" />
                         </button>
-                        <span className="w-5 text-center text-sm font-bold">
-                          {selection[role.id] ?? 0}
-                        </span>
                         <button
-                          onClick={() => ajuster(role.id, 1)}
-                          className="btn-base btn-ghost h-8 w-8 p-0"
-                          aria-label="Ajouter"
+                          className="min-w-0 flex-1 text-left"
+                          onClick={() => setDetail(role)}
                         >
-                          +
+                          <span className="block truncate text-sm font-semibold">{role.name}</span>
+                          <p className="truncate text-[11px] text-muted-foreground">{role.short}</p>
                         </button>
-                      </div>
-                    </div>
-
-                    {role.id === "voleur" && selection["voleur"] ? (
-                      <>
-                        <div className="mt-2 flex gap-1 rounded-xl bg-secondary p-1">
-                          {(
-                            [
-                              ["echange", "Vol de rôle"],
-                              ["centre", "2 cartes au centre"],
-                            ] as const
-                          ).map(([v, label]) => (
-                            <button
-                              key={v}
-                              disabled={singleDevice && v === "echange"}
-                              onClick={() => setThiefVariant(v)}
-                              className={cn(
-                                "flex-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold transition",
-                                varianteVoleur === v
-                                  ? "bg-card text-primary shadow-sm"
-                                  : "text-muted-foreground",
-                                singleDevice && v === "echange" && "opacity-40",
-                              )}
-                            >
-                              {label}
-                            </button>
-                          ))}
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => ajuster(role.id, -1)}
+                            className="btn-base btn-ghost h-8 w-8 p-0"
+                            aria-label="Retirer"
+                          >
+                            −
+                          </button>
+                          <span className="w-5 text-center text-sm font-bold">
+                            {selection[role.id] ?? 0}
+                          </span>
+                          <button
+                            onClick={() => ajuster(role.id, 1)}
+                            className="btn-base btn-ghost h-8 w-8 p-0"
+                            aria-label="Ajouter"
+                          >
+                            +
+                          </button>
                         </div>
-                        <p className="mt-2 text-[11px] text-muted-foreground">
-                          {singleDevice
-                            ? "Avec un seul téléphone : automatiquement 2 cartes au milieu. Le vol de rôle obligerait chacun à repasser voir sa carte chaque matin."
-                            : varianteVoleur === "echange"
-                              ? "Chaque nuit, le Voleur échange sa carte avec celle d'un joueur. Les deux devront revoir leur carte au lever du jour."
-                              : "Deux cartes de plus sont mises au centre. La première nuit, le Voleur en prend une définitivement."}
-                        </p>
-                      </>
-                    ) : null}
-                  </li>
-                ))}
+                      </div>
+
+                      {role.id === "voleur" && selection["voleur"] ? (
+                        <>
+                          <div className="mt-2 flex gap-1 rounded-xl bg-secondary p-1">
+                            {(
+                              [
+                                ["echange", "Vol de rôle"],
+                                ["centre", "2 cartes au centre"],
+                              ] as const
+                            ).map(([v, label]) => (
+                              <button
+                                key={v}
+                                disabled={singleDevice && v === "echange"}
+                                onClick={() => setThiefVariant(v)}
+                                className={cn(
+                                  "flex-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold transition",
+                                  varianteVoleur === v
+                                    ? "bg-card text-primary shadow-sm"
+                                    : "text-muted-foreground",
+                                  singleDevice && v === "echange" && "opacity-40",
+                                )}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                          <p className="mt-2 text-[11px] text-muted-foreground">
+                            {singleDevice
+                              ? "Avec un seul téléphone : automatiquement 2 cartes au milieu. Le vol de rôle obligerait chacun à repasser voir sa carte chaque matin."
+                              : varianteVoleur === "echange"
+                                ? "Chaque nuit, le Voleur échange sa carte avec celle d'un joueur. Les deux devront revoir leur carte au lever du jour."
+                                : "Deux cartes de plus sont mises au centre. La première nuit, le Voleur en prend une définitivement."}
+                          </p>
+                        </>
+                      ) : null}
+                    </li>
+                  ))}
               </ul>
             </div>
           ))}
@@ -372,30 +382,32 @@ function NouvellePartie() {
             {cartesComedien.length} sur 3 choisies
           </p>
           <div className="grid grid-cols-2 gap-2 pb-28">
-            {ROLES_DISTRIBUABLES.filter(
-              (r) => r.camp !== "loups" && r.id !== "comedien" && r.id !== "simple-villageois",
-            ).map((r) => {
-              const choisie = cartesComedien.includes(r.id);
-              return (
-                <button
-                  key={r.id}
-                  onClick={() =>
-                    setCartesComedien((c) =>
-                      c.includes(r.id) ? c.filter((x) => x !== r.id) : [...c, r.id].slice(-3),
-                    )
-                  }
-                  className={cn(
-                    "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left",
-                    choisie
-                      ? "border-primary bg-primary/15 text-primary"
-                      : "border-border bg-secondary",
-                  )}
-                >
-                  <span className="text-lg">{r.emoji}</span>
-                  <span className="min-w-0 flex-1 truncate text-xs font-semibold">{r.name}</span>
-                </button>
-              );
-            })}
+            {pioche
+              .filter(
+                (r) => r.camp !== "loups" && r.id !== "comedien" && r.id !== "simple-villageois",
+              )
+              .map((r) => {
+                const choisie = cartesComedien.includes(r.id);
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() =>
+                      setCartesComedien((c) =>
+                        c.includes(r.id) ? c.filter((x) => x !== r.id) : [...c, r.id].slice(-3),
+                      )
+                    }
+                    className={cn(
+                      "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left",
+                      choisie
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border bg-secondary",
+                    )}
+                  >
+                    <span className="text-lg">{r.emoji}</span>
+                    <span className="min-w-0 flex-1 truncate text-xs font-semibold">{r.name}</span>
+                  </button>
+                );
+              })}
           </div>
 
           <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md border-t border-border bg-background/95 p-4 backdrop-blur">

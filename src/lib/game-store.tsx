@@ -82,14 +82,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
     busy.current = true;
     try {
       const dto = await fetchGame({ data: { code: session.code, token } });
-      setGame(dto);
+      // Le Maître du Jeu a relancé : l'ancienne partie porte le code de la
+      // nouvelle. Chaque appareil bascule tout seul, personne ne retape rien.
+      if (dto.suite) {
+        const suivante = await fetchGame({ data: { code: dto.suite, token } });
+        saveSession({ code: suivante.code, host: session.host });
+        setGame(suivante);
+      } else {
+        setGame(dto);
+      }
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur réseau");
     } finally {
       busy.current = false;
     }
-  }, [session?.code, token]);
+  }, [session?.code, session?.host, token, saveSession]);
 
   // Synchronisation légère : toutes les 3 s tant qu'une partie est active.
   useEffect(() => {

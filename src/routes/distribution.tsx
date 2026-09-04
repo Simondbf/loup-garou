@@ -190,6 +190,16 @@ function EcranJoueur() {
         </section>
       )}
 
+      {!seat && game.status === "ended" && (
+        <div className="surface mb-4 p-4 text-center">
+          <p className="font-display text-lg font-black">Partie terminée</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Toutes les cartes sont retournées. Si le Maître du Jeu relance une partie avec les mêmes
+            joueurs, ce téléphone suivra tout seul — gardez-le ouvert.
+          </p>
+        </div>
+      )}
+
       {!seat && <CartesPubliques seats={game.seats} />}
 
       {game.voitLeCimetiere && !seat && <Cimetiere seats={game.seats} />}
@@ -217,10 +227,13 @@ function EcranJoueur() {
  * Ce que ce joueur sait de lui-même.
  *
  * Uniquement ce que ce joueur a fait lui-même — ses potions, sa dernière
- * protection, ses envoûtés — et ce que tout le village sait déjà. Ce qu'un
- * joueur apprend du Maître du Jeu reste sur l'écran du Maître du Jeu : son
- * aimé, le charme qu'il vient de subir, son passage côté Loups. Le
- * téléphone ne double jamais ce qui se dit d'un regard.
+ * protection — et ce que tout le village sait déjà. Ce qu'un joueur apprend
+ * du Maître du Jeu reste sur l'écran du Maître du Jeu : son aimé, le charme
+ * qu'il vient de subir, la liste des envoûtés s'il joue de la flûte.
+ *
+ * Une seule exception : le passage côté Loups-Garous. Ce n'est pas un
+ * renseignement sur les autres mais une consigne de jeu — le converti doit
+ * savoir avec qui il gagne, et l'oublier fausse la fin de partie.
  */
 function MonEtat({ seat, etat }: { seat: SeatDTO; etat: EtatPersonnel | undefined }) {
   const points: { cle: string; texte: string; alerte?: boolean }[] = [];
@@ -270,12 +283,6 @@ function MonEtat({ seat, etat }: { seat: SeatDTO; etat: EtatPersonnel | undefine
         : "🌕 Pas de réveil solitaire cette nuit : votre pouvoir revient la nuit prochaine.",
     });
   }
-  if (etat?.envoutes && etat.envoutes.length > 0) {
-    points.push({
-      cle: "flute",
-      texte: `🎶 Déjà sous votre charme : ${etat.envoutes.join(", ")}. Il vous faut deux nouveaux noms chaque nuit.`,
-    });
-  }
   if (etat?.modele) {
     points.push({
       cle: "modele",
@@ -289,6 +296,14 @@ function MonEtat({ seat, etat }: { seat: SeatDTO; etat: EtatPersonnel | undefine
         etat.chienLoup === "loups"
           ? "🐕 Vous avez choisi les Loups-Garous. Ce choix est définitif et personne ne le connaît."
           : "🐕 Vous avez choisi le village. Ce choix est définitif et personne ne le connaît.",
+    });
+  }
+  if (etat?.passeCoteLoups) {
+    points.push({
+      cle: "converti",
+      texte:
+        "🩸 Vous êtes désormais du côté des Loups-Garous. Vous gardez votre pouvoir, mais vous ne gagnez plus avec le village.",
+      alerte: true,
     });
   }
   if (etat?.pouvoirConsomme) {

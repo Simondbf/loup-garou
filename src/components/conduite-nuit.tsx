@@ -826,8 +826,10 @@ function construire(
       id: "magicien",
       role: R("magicien"),
       appel: "« Le Magicien se réveille et désigne un habitant à faire taire. »",
-      consigne: "Touchez le joueur muselé pour le débat de demain.",
-      aide: "Le muselé garde son droit de vote et peut communiquer par gestes, mais ne prononce pas un mot. Rôle maison, absent du jeu officiel.",
+      consigne: game.singleDevice
+        ? "Touchez le joueur muselé pour le débat de demain, puis prévenez-le avant la fin de la nuit : une tape sur l'épaule pendant qu'il a les yeux fermés, ou un mot à l'oreille au moment du réveil."
+        : "Touchez le joueur muselé pour le débat de demain. Le bâillon s'affiche aussitôt sur son téléphone : il sera prévenu avant même que la nuit se termine.",
+      aide: "Le muselé garde son droit de vote et peut communiquer par gestes, mais ne prononce pas un mot. Il doit le savoir avant l'ouverture du débat, sans quoi il parlera sans le vouloir. Rôle maison, absent du jeu officiel.",
       pret: () => game.seats.some((s) => s.statuses.includes("baillonne")),
       rendu: () => (
         <Profils

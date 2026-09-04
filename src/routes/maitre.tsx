@@ -6,22 +6,21 @@ import { ConduiteJour } from "@/components/conduite-jour";
 import { ConduiteNuit } from "@/components/conduite-nuit";
 import { CAMP_LABEL, PREMIERE_NUIT_SEULEMENT, ROLES_BY_ID } from "@/data/roles";
 import {
-  ROLES_DISTRIBUABLES,
   ajusterRole,
   cartesAttendues,
   compositionAuto,
+  rolesDistribuables,
 } from "@/data/composition";
 import { useGame } from "@/lib/game-store";
 import {
-  PLACES_MAX,
   PLACES_MIN,
-  addSeat,
   clearReveals,
   dealCards,
   endGame,
   gagPlayer,
   pushReveal,
   resetSeen,
+  relancerPartie,
   removeSeat,
   resolveNight,
   servanteEchange,
@@ -174,7 +173,7 @@ function Maitre() {
             {game.seats.map((s) => (
               <li key={s.position} className="surface flex items-center gap-3 p-3">
                 <span className="w-6 text-xs text-muted-foreground">{s.position}</span>
-                {game.singleDevice || s.mine ? (
+                {game.singleDevice ? (
                   <ChampPrenom
                     valeur={s.name}
                     onEnregistrer={(nom) =>
@@ -224,16 +223,9 @@ function Maitre() {
 
           {!game.singleDevice && (
             <>
-              <Button
-                variant="ghost"
-                className="w-full"
-                disabled={game.seats.length >= PLACES_MAX}
-                onClick={() => void run(addSeat({ data: { code: game.code, token } }))}
-              >
-                ➕ Ajouter un joueur sans téléphone
-              </Button>
               <p className="text-center text-[11px] text-muted-foreground">
-                Sa carte s'ouvrira sur votre écran : vous la lui montrerez à l'abri des regards.
+                Chaque joueur prend sa place depuis son propre téléphone. Le ✕ n'est là que pour
+                écarter une connexion en double ou quelqu'un qui s'en va.
               </p>
 
               <Composition
@@ -261,6 +253,60 @@ function Maitre() {
                 ? `Attendez au moins ${PLACES_MIN} joueurs.`
                 : "Une fois les cartes distribuées, plus personne ne peut rejoindre la partie."}
           </p>
+        </section>
+      ) : game.status === "ended" ? (
+        <section className="flex flex-col gap-3">
+          <div className="surface p-5 text-center">
+            <p className="text-4xl">🎭</p>
+            <h2 className="mt-2 font-display text-xl font-black">Partie terminée</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Les cartes sont retournées sur tous les téléphones. Le village peut repartir aussitôt.
+            </p>
+          </div>
+
+          <ul className="flex flex-col gap-2">
+            {game.seats.map((s) => {
+              const role = s.roleId ? ROLES_BY_ID[s.roleId] : undefined;
+              return (
+                <li key={s.position} className="surface flex items-center gap-3 p-3">
+                  <span className="text-2xl">{role?.emoji ?? "❔"}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">
+                      {s.name || `Place ${s.position}`}
+                      <span className="text-muted-foreground"> — </span>
+                      <span className="font-display font-black text-primary">
+                        {role?.name ?? "carte inconnue"}
+                      </span>
+                    </p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {role ? CAMP_LABEL[role.camp] : "—"} · {s.alive ? "survivant" : "éliminé"}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <Button
+            className="w-full py-4"
+            onClick={() => void run(relancerPartie({ data: { code: game.code, token } }))}
+          >
+            🔁 Rejouer avec les mêmes joueurs
+          </Button>
+          <p className="text-center text-[11px] text-muted-foreground">
+            Mêmes prénoms, mêmes téléphones, cartes rebattues. Un nouveau code est créé, mais
+            personne n'a besoin de le retaper : chaque appareil suit tout seul.
+          </p>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => {
+              saveSession(null);
+              void navigate({ to: "/" });
+            }}
+          >
+            Quitter la partie
+          </Button>
         </section>
       ) : (
         <>
@@ -621,14 +667,14 @@ function Maitre() {
               <Button
                 variant="danger"
                 className="w-full"
-                onClick={async () => {
-                  await endGame({ data: { code: game.code, token } });
-                  saveSession(null);
-                  await navigate({ to: "/" });
-                }}
+                onClick={() => void run(endGame({ data: { code: game.code, token } }))}
               >
                 Terminer la partie
               </Button>
+              <p className="text-center text-[11px] text-muted-foreground">
+                Toutes les cartes se retournent sur les téléphones, et vous pourrez relancer une
+                partie avec les mêmes joueurs.
+              </p>
             </section>
           )}
 
@@ -735,8 +781,11 @@ function Composition({
   const attendu = cartesAttendues(effectif, selection, variante);
   const total = Object.values(selection).reduce((a, b) => a + b, 0);
   const ecart = total - attendu;
-  const enJeu = ROLES_DISTRIBUABLES.filter((r) => (selection[r.id] ?? 0) > 0);
-  const absents = ROLES_DISTRIBUABLES.filter((r) => !(selection[r.id] ?? 0));
+  // Salon multi-téléphones : ni Renard ni Montreur d'Ours, l'ordre des
+  // places n'y suit pas la table.
+  const pioche = rolesDistribuables(false);
+  const enJeu = pioche.filter((r) => (selection[r.id] ?? 0) > 0);
+  const absents = pioche.filter((r) => !(selection[r.id] ?? 0));
   const cartesCentre = attendu - effectif;
 
   return (
@@ -799,7 +848,7 @@ function Composition({
             Compléter avec {-ecart} Simple{-ecart > 1 ? "s" : ""} Villageois
           </Button>
         )}
-        <Button variant="ghost" onClick={() => onSelection(compositionAuto(effectif))}>
+        <Button variant="ghost" onClick={() => onSelection(compositionAuto(effectif, false))}>
           Reprendre la composition conseillée pour {effectif}
         </Button>
       </div>

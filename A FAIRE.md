@@ -59,11 +59,15 @@ tête reposée, pas pendant un déploiement.
    charme du Flûtiste, le passage côté Loups — ce sont des secrets que le Maître
    du Jeu transmet d'un geste, le téléphone ne les double pas.
 4. **Salon multi-téléphones** — fait. L'effectif n'est plus annoncé à l'avance :
-   les places se créent quand les joueurs rejoignent, le MJ peut en ajouter une
-   portée par son propre téléphone, en retirer une, et recoller la composition
-   depuis le salon.
-5. **Fin de partie et relance** — à faire. Retour à l'écran des profils
-   conservés, nouveau code, MJ inchangé.
+   les places se créent quand les joueurs rejoignent. Le MJ ne prête pas son
+   téléphone et n'inscrit personne — chaque joueur prend sa place lui-même — il
+   peut seulement écarter une connexion en double et recoller la composition.
+   Le Renard et le Montreur d'Ours ne sont proposés qu'en mode un seul
+   téléphone : ailleurs, l'ordre des places ne suit pas la table.
+5. **Fin de partie et relance** — fait. Toutes les cartes se retournent, puis
+   « Rejouer avec les mêmes joueurs » ouvre une partie neuve : mêmes prénoms,
+   mêmes téléphones, cartes rebattues. L'ancienne partie garde le code de la
+   nouvelle (`suite`), et chaque appareil bascule tout seul.
 
 ## À faire
 - Nom définitif de l'app (« Les Nuits de Thiercelieux » retenu (titre de roman, distinct du jeu de société)).

@@ -39,11 +39,20 @@ function TourDeTable() {
   const [index, setIndex] = useState(0);
   const [etape, setEtape] = useState<Etape>("prenom");
   const [prenom, setPrenom] = useState("");
+  const [amorce, setAmorce] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (hydrated && !session) void navigate({ to: "/" });
   }, [hydrated, session, navigate]);
+
+  // Premier affichage : si la partie reprend des joueurs connus, la première
+  // place arrive avec son prénom déjà saisi.
+  useEffect(() => {
+    if (amorce || !game) return;
+    setPrenom(game.seats.find((s) => s.position === 1)?.name ?? "");
+    setAmorce(true);
+  }, [amorce, game]);
 
   if (!game) {
     return (
@@ -88,7 +97,9 @@ function TourDeTable() {
   }
 
   function suivant() {
-    setPrenom("");
+    // Après une relance, les prénoms sont déjà là : on les repropose au lieu
+    // de refaire tout le tour de table.
+    setPrenom(places[index + 1]?.name ?? "");
     setIndex((i) => i + 1);
     setEtape("prenom");
   }
