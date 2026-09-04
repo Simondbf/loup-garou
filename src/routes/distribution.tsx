@@ -59,10 +59,6 @@ function EcranJoueur() {
     apply(await setSeatName({ data: { code: game!.code, token, position, name } }));
   }
 
-  // Une carte déjà consultée reste verrouillée : sur un téléphone partagé,
-  // c'est ce qui empêche le joueur suivant de repasser en revue toutes les
-  // places. Le Maître du Jeu peut la rouvrir depuis son écran.
-
   async function ouvrir(s: SeatDTO) {
     setActive(s.position);
     setRevele(false);
@@ -74,52 +70,103 @@ function EcranJoueur() {
     apply(await markSeen({ data: { code: game!.code, token, position: s.position } }));
   }
 
-  const revealsPourMoi = game.reveals.filter((r) => game.mySeats.includes(r.toPosition));
+  // Tant que les cartes ne sont pas distribuées, l'écran est celui des
+  // profils : on saisit le sien, puis on regarde le village se remplir.
+  const avantCartes = game.status === "lobby" || game.status === "composition";
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-md px-5 pt-10 pb-16">
       <PageHeader
         title={`Partie ${game.code}`}
         subtitle={
-          game.status === "lobby"
-            ? "En attente du Maître du Jeu : renseignez déjà les prénoms."
-            : `${game.phase === "nuit" ? `🌙 Nuit ${game.night}` : `☀️ Jour ${game.night}`} · ouvrez votre place pour retrouver ce que vous savez.`
+          avantCartes
+            ? game.status === "composition"
+              ? "Les cartes sont en cours de choix. Votre rôle arrivera tout seul sur cet écran."
+              : "Entrez votre prénom : le Maître du Jeu vous voit arriver."
+            : `${game.phase === "nuit" ? `Nuit ${game.night}` : `Jour ${game.night}`} · ouvrez votre place pour retrouver ce que vous savez.`
         }
         back={game.isHost ? "/maitre" : undefined}
         backLabel="Tableau du Maître du Jeu"
       />
 
-      {!seat && (
+      {!seat && avantCartes && (
+        <>
+          {(() => {
+            // Un téléphone peut porter deux ou trois joueurs : on ne demande
+            // qu'un prénom à la fois, celui de la personne qui a l'appareil
+            // en main, et on passe au suivant une fois qu'elle a validé.
+            const aRemplir = mine.find((s) => !s.name);
+            if (!aRemplir) return null;
+            return (
+              <div className="surface p-4">
+                <p className="text-xs text-muted-foreground">
+                  Joueur {mine.filter((s) => s.name).length + 1} sur {mine.length}
+                </p>
+                <h2 className="mt-1 font-display text-lg font-black">Votre prénom</h2>
+                <ChampPrenom
+                  valeur=""
+                  onEnregistrer={(nom) => void nommer(aRemplir.position, nom)}
+                  placeholder="Prénom"
+                  className="mt-3 w-full"
+                />
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Une fois validé, passez le téléphone au joueur suivant s'il y en a un. Pour
+                  corriger un prénom, demandez au Maître du Jeu de libérer le profil.
+                </p>
+              </div>
+            );
+          })()}
+        </>
+      )}
+
+      {!seat && avantCartes && !game.singleDevice && (
+        <section className="mt-6">
+          <h2 className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
+            Le village · {game.seats.filter((s) => s.name).length} sur {game.seats.length}
+          </h2>
+          <ul className="flex flex-wrap gap-2">
+            {game.seats.map((s) => (
+              <li
+                key={s.position}
+                className={cn(
+                  "rounded-xl border px-3 py-2 text-xs",
+                  s.mine
+                    ? "border-primary bg-primary/15 text-primary"
+                    : s.name
+                      ? "border-border bg-secondary"
+                      : "border-border bg-secondary text-muted-foreground italic",
+                )}
+              >
+                {s.name || "…"}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {!seat && !avantCartes && (
         <ul className="flex flex-col gap-3">
           {mine.map((s) => (
             <li key={s.position} className="surface p-4">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xs text-muted-foreground">Place {s.position}</span>
-                {s.seen && <span className="text-[11px] text-muted-foreground">🔒 carte vue</span>}
-              </div>
-              <ChampPrenom
-                valeur={s.name}
-                onEnregistrer={(nom) => void nommer(s.position, nom)}
-                placeholder="Prénom"
-                className="mt-2 w-full"
-              />
-              {game.status !== "lobby" && !s.seen && s.name && (
-                <p className="mt-3 text-center text-[11px] text-primary">
-                  Votre carte a peut-être changé : ouvrez-la de nouveau.
-                </p>
+              <p className="text-sm font-semibold">{s.name || `Place ${s.position}`}</p>
+              {!s.seen && (
+                <Button className="mt-3 w-full" onClick={() => void ouvrir(s)}>
+                  Découvrir ma carte
+                </Button>
               )}
-              {game.status !== "lobby" &&
-                (s.seen ? (
+              {s.seen &&
+                (game.singleDevice ? (
                   <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-center text-xs text-muted-foreground">
-                    🔒 Carte déjà consultée. Pour la revoir, demandez au Maître du Jeu de la
-                    rouvrir.
+                    Carte déjà consultée. Pour la revoir, demandez au Maître du Jeu de la rouvrir.
                   </p>
                 ) : (
-                  <Button className="mt-3 w-full" onClick={() => void ouvrir(s)}>
-                    Découvrir ma carte
+                  /* Chacun a son téléphone : il peut revoir sa carte autant
+                     de fois qu'il veut, sans rien demander à personne. */
+                  <Button variant="ghost" className="mt-3 w-full" onClick={() => void ouvrir(s)}>
+                    Revoir ma carte
                   </Button>
                 ))}
-              {game.status !== "lobby" && !game.singleDevice && (
+              {!game.singleDevice && (
                 <MonEtat seat={s} etat={game.mesEtats.find((x) => x.position === s.position)} />
               )}
             </li>
@@ -165,34 +212,9 @@ function EcranJoueur() {
         />
       )}
 
-      {!seat && game.comedienCartes.length > 0 && (
-        <section className="mt-8">
-          <h2 className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
-            Les trois cartes du Comédien
-          </h2>
-          <p className="mb-3 text-[11px] text-muted-foreground">
-            Posées face visible au centre : le Comédien en emprunte le pouvoir, une par nuit.
-          </p>
-          <ul className="flex flex-col gap-2">
-            {game.comedienCartes.map((id) => {
-              const r = ROLES_BY_ID[id];
-              return (
-                <li key={id} className="surface flex items-center gap-3 p-3">
-                  <span className="text-2xl">{r?.emoji ?? "❔"}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{r?.name ?? id}</p>
-                    <p className="truncate text-[11px] text-muted-foreground">{r?.short}</p>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
+      {!seat && !avantCartes && <CartesPubliques seats={game.seats} />}
 
-      {!seat && <CartesPubliques seats={game.seats} />}
-
-      {game.voitLeCimetiere && !seat && <Cimetiere seats={game.seats} />}
+      {game.voitLeCimetiere && !seat && !avantCartes && <Cimetiere seats={game.seats} />}
     </main>
   );
 }
@@ -356,7 +378,6 @@ function CartesPubliques({ seats }: { seats: SeatDTO[] }) {
           const role = s.roleId ? ROLES_BY_ID[s.roleId] : undefined;
           return (
             <li key={s.position} className="surface flex items-center gap-3 p-3">
-              <span className="text-2xl">{role?.emoji ?? "❔"}</span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">
                   {s.name || `Place ${s.position}`}
@@ -413,7 +434,6 @@ function Cimetiere({ seats }: { seats: SeatDTO[] }) {
             const role = s.roleId ? ROLES_BY_ID[s.roleId] : undefined;
             return (
               <li key={s.position} className="surface flex items-center gap-3 p-3">
-                <span className="text-2xl">{role?.emoji ?? "❔"}</span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">
                     {s.name || `Place ${s.position}`}

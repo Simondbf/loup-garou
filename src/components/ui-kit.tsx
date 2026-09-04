@@ -162,10 +162,10 @@ export function RoleArt({ role, className }: { role: Role; className?: string })
       role="img"
       aria-label={`Carte ${role.name}`}
     >
-      {/* Seulement l'emblème : le nom du rôle est déjà affiché juste
-          en dessous par l'appelant, l'afficher ici faisait doublon. */}
-      <span className="role-face-text text-6xl leading-none" aria-hidden="true">
-        {role.emoji}
+      {/* Rien qu'un nom, en toutes lettres. Les emblèmes reviendront le
+          jour où les vraies illustrations des cartes seront là. */}
+      <span className="role-face-text text-center font-display text-2xl leading-tight font-black">
+        {role.name}
       </span>
     </div>
   );

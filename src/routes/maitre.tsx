@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, CampBadge, LinkButton, PageHeader, RoleSigil } from "@/components/ui-kit";
 import { ConduiteJour } from "@/components/conduite-jour";
 import { ConduiteNuit } from "@/components/conduite-nuit";
-import { CAMP_LABEL, PREMIERE_NUIT_SEULEMENT, ROLES_BY_ID } from "@/data/roles";
+import { CAMP_LABEL, ROLES_BY_ID } from "@/data/roles";
 import {
   ajusterRole,
   cartesAttendues,
@@ -18,6 +18,7 @@ import {
   endGame,
   gagPlayer,
   addSeat,
+  libererProfil,
   removeSeat,
   resolveNight,
   servanteEchange,
@@ -84,30 +85,6 @@ function Maitre() {
       setErreur(e instanceof Error ? e.message : "Action impossible");
     }
   };
-
-  const ordreReveil = useMemo(() => {
-    if (!game) return [];
-    const ids = new Set(game.seats.map((s) => s.roleId).filter(Boolean) as string[]);
-    // Les Amoureux se reconnaissent juste après que Cupidon se soit rendormi.
-    if (ids.has("cupidon")) ids.add("amoureux");
-    return [...ids]
-      .map((id) => ROLES_BY_ID[id]!)
-      .filter((r) => r && r.wakeOrder !== undefined)
-      .filter(
-        (r) =>
-          game.night <= 1 ||
-          !PREMIERE_NUIT_SEULEMENT.has(r.id) ||
-          (r.id === "voleur" && game.thiefVariant === "echange"),
-      )
-
-      .sort((a, b) => (a.wakeOrder ?? 0) - (b.wakeOrder ?? 0));
-  }, [game]);
-
-  const rappelsJour = useMemo(() => {
-    if (!game) return [];
-    const ids = new Set(game.seats.map((s) => s.roleId).filter(Boolean) as string[]);
-    return [...ids].map((id) => ROLES_BY_ID[id]!).filter((r) => r?.rappelJour);
-  }, [game]);
 
   const sansAppel = useMemo(() => {
     if (!game) return [];
@@ -246,13 +223,19 @@ function Maitre() {
                   <button
                     onClick={() =>
                       void run(
-                        removeSeat({ data: { code: game.code, token, position: s.position } }),
+                        s.name
+                          ? libererProfil({
+                              data: { code: game.code, token, position: s.position },
+                            })
+                          : removeSeat({ data: { code: game.code, token, position: s.position } }),
                       )
                     }
-                    aria-label={`Retirer ${s.name || `la place ${s.position}`}`}
+                    aria-label={
+                      s.name ? `Libérer le profil de ${s.name}` : `Retirer la place ${s.position}`
+                    }
                     className="shrink-0 rounded-lg border border-border px-2 py-1 text-[11px] text-muted-foreground"
                   >
-                    ✕
+                    {s.name ? "Libérer" : "✕"}
                   </button>
                 </li>
               ))}
@@ -275,7 +258,7 @@ function Maitre() {
             <p className="text-center text-[11px] text-muted-foreground">
               {game.seats.length < PLACES_MIN
                 ? `Il faut au moins ${PLACES_MIN} joueurs.`
-                : "Un retardataire pourra encore rejoindre après : le compte se mettra à jour tout seul."}
+                : "« Libérer » rend son profil à un joueur qui s'est trompé : il le ressaisit sur son téléphone. Un retardataire peut encore rejoindre après."}
             </p>
           </section>
         ) : (
@@ -359,30 +342,6 @@ function Maitre() {
                       : "Suivez le fil : annonces, débat, vote, et tout ce qui s'ensuit."}
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  {game.phase === "nuit" ? (
-                    <Button
-                      variant="ghost"
-                      onClick={() =>
-                        void run(setPhase({ data: { code: game.code, token, phase: "jour" } }))
-                      }
-                    >
-                      ☀️ Jour
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() =>
-                        void run(
-                          setPhase({
-                            data: { code: game.code, token, phase: "nuit", night: game.night + 1 },
-                          }),
-                        )
-                      }
-                    >
-                      🌙 Nuit suivante
-                    </Button>
-                  )}
-                </div>
               </div>
 
               {game.phase === "jour" && (
@@ -442,47 +401,6 @@ function Maitre() {
                 />
               )}
 
-              <details className="surface p-4">
-                <summary className="cursor-pointer font-display text-sm font-bold">
-                  Vue d'ensemble de l'ordre d'appel
-                </summary>
-                <ol className="mt-3 flex flex-col gap-2">
-                  {ordreReveil.map((r, i) => {
-                    const echangeur = r.id === "voleur" && game.thiefVariant === "echange";
-                    const premiereNuit = PREMIERE_NUIT_SEULEMENT.has(r.id) && !echangeur;
-                    return (
-                      <li key={r.id} className="flex items-center gap-3">
-                        <span className="w-5 text-xs text-muted-foreground">{i + 1}</span>
-                        <RoleSigil role={r} size="sm" />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold">
-                            {r.name}
-                            {echangeur && (
-                              <span className="ml-2 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
-                                chaque nuit
-                              </span>
-                            )}
-                            {premiereNuit && (
-                              <span className="ml-2 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
-                                1re nuit
-                              </span>
-                            )}
-                          </p>
-                          <p className="truncate text-[11px] text-muted-foreground">
-                            {game.seats
-                              .filter((s) => s.roleId === r.id)
-                              .map(
-                                (s) => `${s.name || `Place ${s.position}`}${s.alive ? "" : " †"}`,
-                              )
-                              .join(", ")}
-                          </p>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </details>
-
               {sansAppel.length > 0 && (
                 <div className="surface border border-destructive/40 p-4">
                   <h2 className="font-display text-sm font-bold text-destructive">
@@ -514,37 +432,6 @@ function Maitre() {
                 </div>
               )}
 
-              {rappelsJour.length > 0 && (
-                <details className="surface p-4">
-                  <summary className="cursor-pointer font-display text-sm font-bold">
-                    Pouvoirs de jour et déclenchements à la mort
-                  </summary>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    Ces rôles n'ont pas d'appel de nuit, mais se déclenchent au vote ou à la mort
-                    d'un joueur. Gardez-les en tête.
-                  </p>
-                  <ul className="mt-3 flex flex-col gap-3">
-                    {rappelsJour.map((r) => (
-                      <li key={r.id} className="flex items-start gap-3">
-                        <RoleSigil role={r} size="sm" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold">{r.name}</p>
-                          <p className="truncate text-[11px] text-muted-foreground">
-                            {game.seats
-                              .filter((s) => s.roleId === r.id)
-                              .map(
-                                (s) => `${s.name || `Place ${s.position}`}${s.alive ? "" : " †"}`,
-                              )
-                              .join(", ")}
-                          </p>
-                          <p className="mt-1 text-[11px] leading-relaxed">{r.rappelJour}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-
               {game.hostState.villageSansPouvoirs && (
                 <div className="surface border border-destructive/60 p-4">
                   <h2 className="font-display text-sm font-bold text-destructive">
@@ -559,14 +446,6 @@ function Maitre() {
                   </p>
                 </div>
               )}
-
-              <SuiviPouvoirs
-                seats={game.seats}
-                hostState={game.hostState}
-                onPatch={(patch) =>
-                  void run(setHostState({ data: { code: game.code, token, patch } }))
-                }
-              />
 
               {game.seats.some((s) => s.roleId === "magicien") && (
                 <div className="surface p-4">
@@ -608,18 +487,6 @@ function Maitre() {
                   </div>
                 </div>
               )}
-
-              <Button
-                variant="danger"
-                className="w-full"
-                onClick={() => void run(endGame({ data: { code: game.code, token } }))}
-              >
-                Terminer la partie
-              </Button>
-              <p className="text-center text-[11px] text-muted-foreground">
-                Toutes les cartes se retournent sur les téléphones, et vous pourrez relancer une
-                partie avec les mêmes joueurs.
-              </p>
             </section>
           )}
 
@@ -673,7 +540,6 @@ function Maitre() {
                   const role = cible?.roleId ? ROLES_BY_ID[cible.roleId] : undefined;
                   return (
                     <div className="surface p-5 text-center">
-                      <p className="text-5xl">{role?.emoji ?? "❔"}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {cible?.name || `Place ${revealFrom}`}
                       </p>
@@ -725,8 +591,6 @@ function Composition({
   // Hors mode un seul téléphone : ni Renard ni Montreur d'Ours, l'ordre des
   // places n'y suit pas la table.
   const pioche = rolesDistribuables(unSeulTelephone);
-  const enJeu = pioche.filter((r) => (selection[r.id] ?? 0) > 0);
-  const absents = pioche.filter((r) => !(selection[r.id] ?? 0));
   const cartesCentre = attendu - effectif;
 
   return (
@@ -754,33 +618,59 @@ function Composition({
             : ` · il en manque ${-ecart}.`}
       </p>
 
-      <ul className="mt-3 flex flex-col gap-1.5">
-        {enJeu.map((r) => (
-          <li key={r.id} className="flex items-center gap-2">
-            <span className="text-base">{r.emoji}</span>
-            <span className="min-w-0 flex-1 truncate text-xs">{r.name}</span>
-            <button
-              onClick={() => onSelection(ajusterRole(selection, r.id, -1))}
-              aria-label={`Un ${r.name} de moins`}
-              className="h-7 w-7 rounded-lg border border-border text-sm"
-            >
-              −
-            </button>
-            <span className="w-5 text-center font-display text-sm font-black">
-              {selection[r.id]}
-            </span>
-            <button
-              onClick={() => onSelection(ajusterRole(selection, r.id, 1))}
-              aria-label={`Un ${r.name} de plus`}
-              className="h-7 w-7 rounded-lg border border-border text-sm"
-            >
-              +
-            </button>
-          </li>
-        ))}
-      </ul>
+      {/* L'ordre du livret : le village, la meute, les ambigus, puis les solitaires. */}
+      {(["villageois", "loups", "ambigu", "solitaire", "special"] as const).map((camp) => {
+        const duCamp = pioche.filter((r) => r.camp === camp);
+        if (duCamp.length === 0) return null;
+        return (
+          <section key={camp} className="mt-4">
+            <h3 className="text-[11px] tracking-widest text-muted-foreground uppercase">
+              {CAMP_LABEL[camp]}
+            </h3>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {duCamp.map((r) => {
+                const n = selection[r.id] ?? 0;
+                return (
+                  <div
+                    key={r.id}
+                    className={cn(
+                      "flex flex-col justify-between rounded-xl border px-3 py-2",
+                      n > 0 ? "border-primary bg-primary/10" : "border-border bg-secondary",
+                    )}
+                  >
+                    <button
+                      onClick={() => onSelection(ajusterRole(selection, r.id, 1))}
+                      className="min-w-0 text-left text-xs leading-tight font-semibold"
+                    >
+                      {r.name}
+                    </button>
+                    <div className="mt-2 flex items-center justify-between">
+                      <button
+                        onClick={() => onSelection(ajusterRole(selection, r.id, -1))}
+                        disabled={n === 0}
+                        aria-label={`Un ${r.name} de moins`}
+                        className="h-6 w-6 rounded-lg border border-border text-xs disabled:opacity-30"
+                      >
+                        −
+                      </button>
+                      <span className="font-display text-sm font-black">{n}</span>
+                      <button
+                        onClick={() => onSelection(ajusterRole(selection, r.id, 1))}
+                        aria-label={`Un ${r.name} de plus`}
+                        className="h-6 w-6 rounded-lg border border-border text-xs"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
 
-      <div className="mt-3 flex flex-col gap-2">
+      <div className="mt-4 flex flex-col gap-2">
         {ecart < 0 && (
           <Button
             variant="ghost"
@@ -796,195 +686,6 @@ function Composition({
           Reprendre la composition conseillée pour {effectif}
         </Button>
       </div>
-
-      <details className="mt-3">
-        <summary className="cursor-pointer text-[11px] text-primary">Ajouter un rôle</summary>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {absents.map((r) => (
-            <button
-              key={r.id}
-              onClick={() => onSelection(ajusterRole(selection, r.id, 1))}
-              className="rounded-lg border border-border bg-secondary px-2 py-1 text-[11px]"
-            >
-              {r.emoji} {r.name}
-            </button>
-          ))}
-        </div>
-      </details>
-    </div>
-  );
-}
-
-/** Suivi privé du MJ : potions de la Sorcière, envoûtés du Joueur de Flûte,
- *  pouvoirs à usage unique ou à rechargement. */
-function SuiviPouvoirs({
-  seats,
-  hostState,
-  onPatch,
-}: {
-  seats: SeatDTO[];
-  hostState: HostState;
-  onPatch: (patch: HostState) => void;
-}) {
-  const aRole = (id: string) => seats.some((s) => s.roleId === id);
-  const charmed = hostState.charmed ?? [];
-  const lastUsed = hostState.lastUsed ?? {};
-
-  const utilises = hostState.pouvoirsUtilises ?? [];
-  // Pouvoirs qui ne servent qu'une fois dans la partie, ou qui peuvent se
-  // perdre. Sans suivi, c'est au MJ de s'en souvenir de tête pendant deux
-  // heures — c'est exactement ce qu'on oublie.
-  const USAGE_UNIQUE: [string, string][] = [
-    ["infect-pere-des-loups", "Infection"],
-    ["juge-begue", "Second vote"],
-    ["assassin", "Coup de poignard"],
-    ["prete", "Eau bénite"],
-    ["loup-feral", "Transformation"],
-    ["servante-devouee", "Échange de carte"],
-    ["renard", "Pouvoir (perdu sur un « non »)"],
-    ["chevalier-epee-rouillee", "Gangrène"],
-  ];
-  const uniques = USAGE_UNIQUE.filter(([id]) => aRole(id));
-
-  const rappels = [
-    aRole("salvateur") && "Salvateur : jamais deux nuits de suite la même personne.",
-    aRole("infect-pere-des-loups") && "Infect Père des Loups : infection possible une seule fois.",
-    aRole("ancien") && "Ancien : survit à la première attaque des Loups.",
-    aRole("juge-begue") && "Juge Bègue : second vote utilisable une seule fois.",
-    aRole("gitane") && "Gitane / rôles à usage unique : appelez-les quand même chaque nuit.",
-  ].filter(Boolean) as string[];
-
-  if (
-    !aRole("sorciere") &&
-    !aRole("joueur-de-flute") &&
-    rappels.length === 0 &&
-    uniques.length === 0
-  )
-    return null;
-
-  return (
-    <div className="surface p-4">
-      <h2 className="font-display text-sm font-bold">Suivi des pouvoirs</h2>
-
-      {aRole("sorciere") && (
-        <div className="mt-3">
-          <p className="text-[11px] text-muted-foreground">Potions de la Sorcière</p>
-          <div className="mt-2 flex gap-2">
-            {(
-              [
-                ["potionVie", "🧪 Potion de vie"],
-                ["potionMort", "☠️ Potion de mort"],
-              ] as const
-            ).map(([cle, label]) => {
-              const dispo = hostState[cle] !== false;
-              return (
-                <button
-                  key={cle}
-                  onClick={() => onPatch({ [cle]: !dispo } as HostState)}
-                  className={cn(
-                    "flex-1 rounded-xl border px-3 py-2 text-xs font-semibold",
-                    dispo
-                      ? "border-primary bg-primary/15 text-primary"
-                      : "border-border bg-secondary text-muted-foreground line-through",
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Touchez une potion quand elle est consommée.
-          </p>
-        </div>
-      )}
-
-      {aRole("joueur-de-flute") && (
-        <div className="mt-4">
-          <p className="text-[11px] text-muted-foreground">
-            Joueurs envoûtés ({charmed.length}) — réveillez-les ensemble après le Joueur de Flûte.
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {seats
-              .filter((s) => s.alive)
-              .map((s) => {
-                const on = charmed.includes(s.position);
-                return (
-                  <button
-                    key={s.position}
-                    onClick={() =>
-                      onPatch({
-                        charmed: on
-                          ? charmed.filter((p) => p !== s.position)
-                          : [...charmed, s.position],
-                      })
-                    }
-                    className={cn(
-                      "rounded-xl border px-3 py-2 text-xs",
-                      on
-                        ? "border-primary bg-primary/15 text-primary"
-                        : "border-border bg-secondary",
-                    )}
-                  >
-                    🎶 {s.name || `Place ${s.position}`}
-                  </button>
-                );
-              })}
-          </div>
-        </div>
-      )}
-
-      {uniques.length > 0 && (
-        <div className="mt-4">
-          <p className="text-[11px] text-muted-foreground">
-            Pouvoirs à usage unique — touchez quand c'est consommé
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {uniques.map(([id, label]) => {
-              const consomme = utilises.includes(id);
-              return (
-                <button
-                  key={id}
-                  onClick={() =>
-                    onPatch({
-                      pouvoirsUtilises: consomme
-                        ? utilises.filter((x) => x !== id)
-                        : [...utilises, id],
-                    })
-                  }
-                  className={cn(
-                    "rounded-xl border px-3 py-2 text-xs",
-                    consomme
-                      ? "border-border bg-secondary text-muted-foreground line-through"
-                      : "border-primary bg-primary/15 text-primary",
-                  )}
-                >
-                  {ROLES_BY_ID[id]?.emoji} {label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {rappels.length > 0 && (
-        <ul className="mt-4 flex flex-col gap-1">
-          {rappels.map((r) => (
-            <li key={r} className="text-[11px] text-muted-foreground">
-              • {r}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {Object.keys(lastUsed).length > 0 && (
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Derniers usages :{" "}
-          {Object.entries(lastUsed)
-            .map(([id, n]) => `${ROLES_BY_ID[id]?.name ?? id} (nuit ${n})`)
-            .join(" · ")}
-        </p>
-      )}
     </div>
   );
 }

@@ -238,7 +238,6 @@ function Profils({
               actif ? "border-primary bg-primary/15 text-primary" : "border-border bg-secondary",
             )}
           >
-            <span className="text-lg">{r?.emoji ?? "❔"}</span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-semibold">{nom(s.position)}</span>
               <span className="block truncate text-[10px] text-muted-foreground">
@@ -255,7 +254,6 @@ function Profils({
 function FicheJoueur({ nom, role }: { nom: string; role: Role | undefined }) {
   return (
     <div className="rounded-xl border border-primary/40 bg-primary/5 p-4 text-center">
-      <p className="text-3xl">{role?.emoji ?? "❔"}</p>
       <p className="mt-1 text-sm text-muted-foreground">{nom}</p>
       <p className="font-display text-2xl font-black text-primary">
         {role?.name ?? "carte inconnue"}

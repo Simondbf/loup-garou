@@ -182,6 +182,8 @@ export interface NuitEnCours {
   /** Sorcière */
   soin?: number;
   poison?: number;
+  /** La Sorcière a annoncé qu'elle empoisonne : l'écran des cibles s'ouvre. */
+  poisonVoulu?: boolean;
   /** Enfant Sauvage : modèle désigné la première nuit, recopié dans hostState */
   modele?: number;
   /** Chien-Loup : camp choisi la première nuit, recopié dans hostState */
@@ -741,6 +743,29 @@ export const validerProfils = createServerFn({ method: "POST" })
     return buildDTO(db, fresh, data.token);
   });
 
+/**
+ * Le MJ rend son profil à un joueur.
+ *
+ * Quelqu'un s'est trompé de prénom, ou deux personnes se sont emmêlées : le
+ * MJ efface le prénom et la place repart vide, sur le téléphone de son
+ * propriétaire, qui la remplit de nouveau. Rien n'est supprimé — la place
+ * reste, le téléphone garde la sienne.
+ */
+export const libererProfil = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string; position: number }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    if (!AVANT_DISTRIBUTION.includes(game["status"] as string)) {
+      throw new Error("Les cartes sont déjà distribuées");
+    }
+    const seats = await seatsDe(db, game["id"]);
+    const cible = seats.find((s) => s["position"] === data.position);
+    if (cible) await db.pb.modifier("seats", cible["id"], { name: "" });
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
 /** Le MJ retire une place du salon : quelqu'un s'en va, ou s'est connecté deux fois. */
 export const removeSeat = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; token: string; position: number }) => d)
@@ -753,6 +778,11 @@ export const removeSeat = createServerFn({ method: "POST" })
     const seats = await seatsDe(db, game["id"]);
     const cible = seats.find((s) => s["position"] === data.position);
     if (cible) {
+      // On ne supprime jamais quelqu'un qui a validé son profil : le MJ
+      // libère d'abord la place, son propriétaire décide ensuite.
+      if (((cible["name"] as string) || "").trim() && !game["single_device"]) {
+        throw new Error("Libérez d'abord ce profil : son prénom est validé");
+      }
       await db.pb.supprimer("seats", cible["id"]);
       await renumeroter(db, game["id"]);
     }
@@ -782,11 +812,19 @@ export const setSeatName = createServerFn({ method: "POST" })
     const isHost = game["host_token"] === data.token;
     const seats = await seatsDe(db, game["id"]);
     const cible = seats.find((s) => s["position"] === data.position);
-    // Le MJ renomme n'importe quelle place ; un joueur seulement les siennes.
-    if (cible && (isHost || cible["device_token"] === data.token)) {
-      await db.pb.modifier("seats", cible["id"], { name: data.name.slice(0, 24) });
+    const nom = data.name.trim().slice(0, 24);
+    if (!nom) throw new Error("Entrez un prénom");
+    if (!cible) throw new Error("Place introuvable");
+    // Le MJ nomme n'importe quelle place — c'est lui qui tient le tour de
+    // table en mode un seul téléphone. Un joueur ne nomme que les siennes, et
+    // une seule fois : pour corriger, il demande au MJ de libérer son profil.
+    if (!isHost) {
+      if (cible["device_token"] !== data.token) throw new Error("Cette place n'est pas la vôtre");
+      if ((cible["name"] as string) || "") throw new Error("Ce profil est déjà validé");
     }
-    return buildDTO(db, game, data.token);
+    await db.pb.modifier("seats", cible["id"], { name: nom });
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
   });
 
 export const hostTakeSeat = createServerFn({ method: "POST" })
@@ -1148,8 +1186,11 @@ export const setPhase = createServerFn({ method: "POST" })
           });
         }
       }
-      // Le fil de la journée ne vaut que pour la journée écoulée.
+      // Le fil de la journée ne vaut que pour la journée écoulée, et celui
+      // de la nuit précédente encore moins : garder son curseur ferait
+      // reprendre la nuit suivante au milieu, avec des désignations vides.
       patch["jour"] = {};
+      patch["nuit"] = {};
     } else {
       // Passage au jour sans résolution de nuit (rattrapage manuel) : on
       // ouvre quand même un fil, sinon le moteur de jour n'a pas de repère

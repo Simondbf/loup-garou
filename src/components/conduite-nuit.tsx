@@ -198,7 +198,6 @@ function Profils({
               actif ? "border-primary bg-primary/15 text-primary" : "border-border bg-secondary",
             )}
           >
-            <span className="text-lg">{r?.emoji ?? "❔"}</span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-xs font-semibold">{nom(s.position)}</span>
               <span className="block truncate text-[10px] text-muted-foreground">
@@ -215,7 +214,6 @@ function Profils({
 function FicheJoueur({ nom, role }: { nom: string; role: Role | undefined }) {
   return (
     <div className="rounded-xl border border-primary/40 bg-primary/5 p-4 text-center">
-      <p className="text-3xl">{role?.emoji ?? "❔"}</p>
       <p className="mt-1 text-sm text-muted-foreground">{nom}</p>
       <p className="font-display text-2xl font-black text-primary">
         {role?.name ?? "carte inconnue"}
@@ -440,7 +438,6 @@ function construire(
                   key={id}
                   className="flex items-center gap-3 rounded-xl border border-border bg-secondary p-3"
                 >
-                  <span className="text-xl">{r?.emoji ?? "❔"}</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-semibold">{r?.name ?? id}</p>
                     <p className="truncate text-[10px] text-muted-foreground">{r?.short}</p>
@@ -701,76 +698,102 @@ function construire(
     });
   }
 
-  /* ---- Sorcière : potion de vie puis potion de mort ---- */
+  /* ---- Sorcière : un seul écran, puis les cibles si elle empoisonne ---- */
   const sorciere = porteur("sorciere");
   if (sorciere) {
-    if (etat.potionVie !== false) {
+    const vieDispo = etat.potionVie !== false;
+    const mortDispo = etat.potionMort !== false;
+    const victimeSoignable = vieDispo && nuit.victimeLoups !== undefined && !nuit.infection;
+
+    e.push({
+      id: "sorciere",
+      role: R("sorciere"),
+      appel: "« La Sorcière se réveille. »",
+      consigne:
+        "Montrez-lui la victime des Loups et l'état de ses potions. Elle sauve, elle empoisonne, elle fait les deux, ou elle ne fait rien.",
+      aide: "Chaque potion ne sert qu'une fois dans la partie, mais elle peut verser les deux la même nuit. Elle peut se sauver elle-même. Le poison ignore la protection du Salvateur.",
+      pret: ok,
+      rendu: () => (
+        <>
+          {nuit.victimeLoups === undefined ? (
+            <p className="text-xs text-muted-foreground">
+              Aucune victime cette nuit : il n'y a personne à lui montrer.
+            </p>
+          ) : nuit.infection ? (
+            <p className="text-xs text-muted-foreground">
+              La victime est infectée, elle ne meurt pas : la potion de vie n'a rien à faire ici.
+            </p>
+          ) : (
+            <FicheJoueur nom={nom(nuit.victimeLoups)} role={roleDe(nuit.victimeLoups)} />
+          )}
+
+          <div className="mt-3 flex flex-col gap-2">
+            <button
+              disabled={!victimeSoignable}
+              onClick={() =>
+                onAction({ soin: nuit.soin !== undefined ? null : (nuit.victimeLoups ?? null) })
+              }
+              className={cn(
+                "w-full rounded-xl border px-3 py-4 text-sm font-semibold disabled:opacity-35",
+                nuit.soin !== undefined
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border bg-secondary",
+              )}
+            >
+              {!vieDispo
+                ? "Potion de vie — déjà versée"
+                : nuit.soin !== undefined
+                  ? "Potion de vie versée — la victime est sauvée"
+                  : "Potion de vie"}
+            </button>
+
+            <button
+              disabled={!mortDispo}
+              onClick={() =>
+                onAction(
+                  nuit.poisonVoulu ? { poisonVoulu: null, poison: null } : { poisonVoulu: true },
+                )
+              }
+              className={cn(
+                "w-full rounded-xl border px-3 py-4 text-sm font-semibold disabled:opacity-35",
+                nuit.poisonVoulu
+                  ? "border-destructive bg-destructive/15 text-destructive"
+                  : "border-border bg-secondary",
+              )}
+            >
+              {!mortDispo
+                ? "Potion de mort — déjà versée"
+                : nuit.poisonVoulu
+                  ? "Potion de mort — choisissez la victime à l'écran suivant"
+                  : "Potion de mort"}
+            </button>
+          </div>
+        </>
+      ),
+    });
+
+    if (nuit.poisonVoulu && mortDispo) {
       e.push({
-        id: "sorciere-vie",
+        id: "sorciere-cible",
         role: R("sorciere"),
-        appel: "« La Sorcière se réveille. »",
-        consigne:
-          "Montrez-lui la victime des Loups, puis demandez-lui si elle la sauve. Elle peut se sauver elle-même.",
-        aide: "Chaque potion ne sert qu'une fois dans la partie, mais elle peut utiliser les deux la même nuit.",
-        pret: ok,
-        rendu: () => {
-          if (nuit.victimeLoups === undefined)
-            return (
-              <p className="text-xs text-muted-foreground">
-                Aucune victime cette nuit : rien à soigner.
-              </p>
-            );
-          if (nuit.infection)
-            return (
-              <p className="text-xs text-muted-foreground">
-                La victime est infectée, elle ne meurt pas : la potion de vie n'a rien à faire ici.
-              </p>
-            );
-          return (
-            <>
-              <FicheJoueur nom={nom(nuit.victimeLoups)} role={roleDe(nuit.victimeLoups)} />
-              <button
-                onClick={() =>
-                  onAction({ soin: nuit.soin !== undefined ? null : (nuit.victimeLoups ?? null) })
-                }
-                className={cn(
-                  "mt-3 w-full rounded-xl border px-3 py-4 text-sm font-semibold",
-                  nuit.soin !== undefined
-                    ? "border-primary bg-primary/15 text-primary"
-                    : "border-border bg-secondary",
-                )}
-              >
-                {nuit.soin !== undefined
-                  ? "🧪 Potion de vie utilisée — la victime est sauvée"
-                  : "🧪 Utiliser la potion de vie"}
-              </button>
-            </>
-          );
-        },
-      });
-    }
-    if (etat.potionMort !== false) {
-      e.push({
-        id: "sorciere-mort",
-        role: R("sorciere"),
-        appel: "Demandez-lui si elle veut empoisonner quelqu'un.",
-        consigne: "Touchez sa victime, ou passez si elle ne fait rien. Rendormez-la ensuite.",
-        aide: "Le poison ignore la protection du Salvateur. Il tue l'Ancien du premier coup, et le village perd alors tous ses pouvoirs.",
-        pret: ok,
+        appel: "Qui empoisonne-t-elle ?",
+        consigne: "Touchez sa victime, puis rendormez-la.",
+        aide: "Le poison tue l'Ancien du premier coup, et le village perd alors tous ses pouvoirs.",
+        pret: () => nuit.poison !== undefined,
         rendu: () => (
           <>
             <Profils
-              joueurs={vivants.filter((x) => x.position !== sorciere.position)}
+              joueurs={vivants.filter(
+                (x) => x.position !== sorciere.position && x.position !== nuit.soin,
+              )}
               choisis={nuit.poison !== undefined ? [nuit.poison] : []}
               sur={(p) => onAction({ poison: nuit.poison === p ? null : p })}
               nom={nom}
               roleDe={roleDe}
             />
-            {nuit.poison !== undefined && (
-              <Annuler onClick={() => onAction({ poison: null })}>
-                Finalement, elle n'empoisonne personne
-              </Annuler>
-            )}
+            <Annuler onClick={() => onAction({ poisonVoulu: null, poison: null })}>
+              Finalement, elle n'empoisonne personne
+            </Annuler>
           </>
         ),
       });

@@ -41,7 +41,10 @@ export function compositionAuto(count: number, unSeulTelephone = true): Record<s
   const loups = Math.max(1, Math.min(Math.round(count / 3), Math.max(1, count - 2)));
   const base: Record<string, number> = { "loup-garou": loups };
   let reste = count - loups;
-  const proposables = unSeulTelephone ? null : ROLES_VOISINS;
+  const ecartes = [...(unSeulTelephone ? [] : ROLES_VOISINS)];
+  // Le Salvateur étouffe une petite table : il neutralise une attaque sur
+  // deux quand il n'y a que deux Loups à convaincre.
+  if (count < 9) ecartes.push("salvateur");
   for (const id of [
     "voyante",
     "sorciere",
@@ -58,7 +61,7 @@ export function compositionAuto(count: number, unSeulTelephone = true): Record<s
     "servante-devouee",
   ]) {
     if (reste <= 0) break;
-    if (proposables?.includes(id)) continue;
+    if (ecartes.includes(id)) continue;
     base[id] = 1;
     reste -= 1;
   }
