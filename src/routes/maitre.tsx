@@ -23,7 +23,7 @@ import {
   setSeatName,
   thiefSwap,
   type HostState,
-  type NuitEnCours,
+  type PatchNuit,
   type SeatDTO,
 } from "@/lib/party.functions";
 import { cn } from "@/lib/utils";
@@ -377,8 +377,16 @@ function Maitre() {
               {game.phase === "nuit" && (
                 <ConduiteNuit
                   game={game}
-                  onAction={(patch: NuitEnCours) =>
+                  onAction={(patch: PatchNuit) =>
                     void run(setNightAction({ data: { code: game.code, token, patch } }))
+                  }
+                  onEtape={(index) =>
+                    void run(
+                      setNightAction({ data: { code: game.code, token, patch: { etape: index } } }),
+                    )
+                  }
+                  onLovers={(positions) =>
+                    void run(setLovers({ data: { code: game.code, token, positions } }))
                   }
                   onResoudre={async () => {
                     try {

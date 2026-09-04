@@ -79,9 +79,23 @@ export interface NuitEnCours {
   modele?: number;
   /** Chien-Loup : camp choisi la première nuit, recopié dans hostState */
   chienLoup?: "villageois" | "loups";
-  /** Morts ajoutées à la main (Assassin, Pyromane, variantes maison) */
+  /** Voyante : joueur sondé cette nuit */
+  voyante?: number;
+  /** Renard : joueur central du trio flairé cette nuit */
+  renard?: number;
+  /** Joueur de Flûte : les deux joueurs envoûtés cette nuit */
+  charmes?: number[];
+  /** Voleur : place avec qui il a échangé, pour le rappel du matin */
+  voleurEchange?: number;
+  /** Morts ajoutées à la main (variantes maison) */
   autres?: { position: number; cause: string }[];
 }
+
+/**
+ * Modification du journal de nuit. Une valeur `null` efface la clé : c'est
+ * ainsi que le MJ revient sur une désignation.
+ */
+export type PatchNuit = { [K in keyof NuitEnCours]?: NuitEnCours[K] | null };
 
 export interface GameDTO {
   code: string;
@@ -835,12 +849,12 @@ export const setPhase = createServerFn({ method: "POST" })
 
 /** Le MJ enregistre une action de la nuit en cours (cible des Loups, potion, protection…). */
 export const setNightAction = createServerFn({ method: "POST" })
-  .inputValidator((d: { code: string; token: string; patch: NuitEnCours }) => d)
+  .inputValidator((d: { code: string; token: string; patch: PatchNuit }) => d)
   .handler(async ({ data }) => {
     const db = await base();
     const game = await requireHost(db, data.code, data.token);
     const courante = (game["nuit"] ?? {}) as NuitEnCours;
-    const fusion: NuitEnCours = { ...courante, ...data.patch };
+    const fusion = { ...courante, ...data.patch } as NuitEnCours;
     // Une valeur nulle efface la cible (le MJ revient sur son choix).
     for (const [cle, valeur] of Object.entries(data.patch)) {
       if (valeur === null) delete (fusion as Record<string, unknown>)[cle];
@@ -998,6 +1012,12 @@ export const resolveNight = createServerFn({ method: "POST" })
     // doit survivre à l'effacement du journal : on le recopie dans l'état
     // durable de la partie.
     if (nuit.modele !== undefined) patchEtat.modele = nuit.modele;
+
+    // Joueur de Flûte : les envoûtés de la nuit s'ajoutent aux précédents.
+    if (nuit.charmes && nuit.charmes.length > 0) {
+      const avant = etat.charmed ?? [];
+      patchEtat.charmed = [...new Set([...avant, ...nuit.charmes])];
+    }
 
     // Chien-Loup : son camp est choisi la première nuit et ne change plus.
     // S'il a choisi les Loups, il compte comme tel pour le Montreur d'Ours.
