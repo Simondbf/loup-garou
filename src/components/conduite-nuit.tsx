@@ -1,7 +1,8 @@
-import { useMemo } from "react";
-import { Button, CampBadge, RoleSigil } from "@/components/ui-kit";
+import { useMemo, useState } from "react";
+import { Button, CampBadge, Modal, RoleSigil } from "@/components/ui-kit";
 import { ROLES_BY_ID, type Role } from "@/data/roles";
 import { CLOTURE, OUVERTURE } from "@/data/nuit";
+import { useConseils } from "@/lib/conseils";
 import type { GameDTO, PatchNuit, SeatDTO } from "@/lib/party.functions";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +55,7 @@ export function ConduiteNuit({
     [game, onAction, onLovers, onVol, onBaillon],
   );
 
+  const { conseils } = useConseils();
   const nuit = game.nuit ?? {};
   const index = Math.min(Math.max(nuit.etape ?? 0, 0), Math.max(etapes.length - 1, 0));
   const etape = etapes[index];
@@ -119,12 +121,11 @@ export function ConduiteNuit({
 
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{etape.consigne}</p>
 
-        <details className="mt-2">
-          <summary className="cursor-pointer text-[11px] text-primary">
-            Rappel : à quoi sert ce rôle ?
-          </summary>
-          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{etape.aide}</p>
-        </details>
+        {conseils && (
+          <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-[11px] leading-relaxed text-muted-foreground">
+            {etape.aide}
+          </p>
+        )}
 
         <div className="mt-4">{etape.rendu()}</div>
       </div>
@@ -160,7 +161,41 @@ export function ConduiteNuit({
           {CLOTURE}
         </p>
       )}
+
+      <BoutonAide role={etape.role} />
     </div>
+  );
+}
+
+/**
+ * Aide à la demande.
+ *
+ * La description du rôle n'occupe plus l'écran en permanence : elle est là
+ * si le Maître du Jeu la cherche, invisible le reste du temps.
+ */
+export function BoutonAide({ role }: { role: Role }) {
+  const [ouvert, setOuvert] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setOuvert(true)}
+        className="mx-auto flex items-center gap-2 rounded-xl border border-border bg-secondary px-3 py-2 text-[11px] text-muted-foreground"
+      >
+        <span className="flex h-5 w-5 items-center justify-center rounded-full border border-border font-semibold">
+          ?
+        </span>
+        Aide
+      </button>
+
+      <Modal open={ouvert} onClose={() => setOuvert(false)}>
+        <h2 className="font-display text-xl font-black">{role.name}</h2>
+        <CampBadge camp={role.camp} className="mt-2" />
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{role.short}</p>
+        <Button variant="ghost" className="mt-5 w-full" onClick={() => setOuvert(false)}>
+          Fermer
+        </Button>
+      </Modal>
+    </>
   );
 }
 
@@ -420,34 +455,53 @@ function construire(
 
   /* ---- Comédien ---- */
   if (enJeu.has("comedien")) {
+    const cartes = game.comedienCartes ?? [];
     e.push({
       id: "comedien",
       role: R("comedien"),
       appel: "« Le Comédien se réveille et choisit une carte au centre. »",
       consigne:
-        "Il désigne une des trois cartes posées au centre avant la partie, joue ce pouvoir jusqu'à demain soir, puis vous retirez la carte du jeu.",
-      aide: "Les trois cartes viennent du centre, jamais des joueurs : personne n'est dépossédé. Aucune carte de Loup-Garou parmi elles.",
-      pret: ok,
+        "Lisez-lui les trois rôles à voix haute, dans l'ordre, et demandez-lui le numéro. Touchez celui qu'il annonce : il joue ce pouvoir jusqu'à demain soir, puis la carte quitte le jeu.",
+      aide: "Les trois cartes viennent du centre, jamais des joueurs : personne n'est dépossédé. Aucune carte de Loup-Garou parmi elles. Appelez ensuite le rôle choisi à son tour dans la nuit.",
+      pret: () => nuit.comedien !== undefined,
       rendu: () => (
         <>
           <div className="flex flex-col gap-2">
-            {(game.comedienCartes ?? []).map((id) => {
+            {cartes.map((id, i) => {
               const r = ROLES_BY_ID[id];
+              const choisi = nuit.comedien === id;
               return (
-                <div
+                <button
                   key={id}
-                  className="flex items-center gap-3 rounded-xl border border-border bg-secondary p-3"
+                  onClick={() => onAction({ comedien: choisi ? null : id })}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl border p-3 text-left",
+                    choisi
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-secondary",
+                  )}
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold">{r?.name ?? id}</p>
-                    <p className="truncate text-[10px] text-muted-foreground">{r?.short}</p>
-                  </div>
-                </div>
+                  <span className="w-5 text-center text-sm font-semibold tabular-nums">
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-semibold">{r?.name ?? id}</span>
+                    <span className="block truncate text-[10px] text-muted-foreground">
+                      {r?.short}
+                    </span>
+                  </span>
+                </button>
               );
             })}
+            {cartes.length === 0 && (
+              <p className="text-xs text-destructive">
+                Aucune carte n'a été posée au centre pour le Comédien.
+              </p>
+            )}
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
-            Retirez du centre la carte qu'il choisit, et appelez ce rôle à son tour cette nuit.
+            Ne montrez pas cet écran : les trois rôles se disent à voix haute, il répond par un
+            numéro.
           </p>
         </>
       ),

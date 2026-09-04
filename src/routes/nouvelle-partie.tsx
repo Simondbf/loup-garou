@@ -177,7 +177,7 @@ function NouvellePartie() {
                   setSaisie(String(clamp));
                 }}
                 aria-label="Nombre de joueurs"
-                className="w-24 rounded-xl border-2 border-dashed border-border bg-transparent py-1 text-center font-display text-5xl font-black text-gradient-moon outline-none focus:border-primary"
+                className="w-24 rounded-xl border-2 border-dashed border-border bg-transparent py-1 text-center text-4xl font-semibold tabular-nums text-primary outline-none focus:border-primary"
               />
               <div className="text-xs text-muted-foreground">joueurs · touchez pour saisir</div>
             </div>

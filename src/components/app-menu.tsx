@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { RolesPanel } from "@/components/panels/roles-panel";
 import { ReglesPanel } from "@/components/panels/regles-panel";
+import { useConseils } from "@/lib/conseils";
 import { useTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ const TITRES: Record<Exclude<Vue, "menu">, string> = {
 export function AppMenu() {
   const [vue, setVue] = useState<Vue | null>(null);
   const { theme, setTheme } = useTheme();
+  const { conseils, setConseils } = useConseils();
 
   return (
     <>
@@ -84,9 +86,30 @@ export function AppMenu() {
               </div>
             </div>
 
+            <div className="mt-6">
+              <p className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
+                Maître du Jeu
+              </p>
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-secondary p-3">
+                <input
+                  type="checkbox"
+                  checked={conseils}
+                  onChange={(e) => setConseils(e.target.checked)}
+                  className="h-5 w-5 shrink-0 accent-primary"
+                />
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold">Conseils pendant la partie</span>
+                  <span className="block text-[11px] text-muted-foreground">
+                    Rappels de règle sous chaque étape. La description du rôle affiché reste
+                    accessible par le bouton « ? Aide ».
+                  </span>
+                </span>
+              </label>
+            </div>
+
             <button
               onClick={() => setVue(null)}
-              className="mt-2 w-full rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
+              className="mt-4 w-full rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
             >
               Fermer
             </button>

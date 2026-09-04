@@ -149,12 +149,30 @@ function EcranJoueur() {
           {mine.map((s) => (
             <li key={s.position} className="surface p-4">
               <p className="text-sm font-semibold">{s.name || `Place ${s.position}`}</p>
-              {!s.seen && (
+              {/* Éliminé : sa carte est retournée sur la table, elle n'a plus
+                  de raison d'être cachée sur son téléphone. */}
+              {!s.alive && s.roleId ? (
+                <div className="mt-3 rounded-xl border border-border bg-secondary p-4 text-center">
+                  <p className="text-[11px] text-muted-foreground">
+                    Vous êtes éliminé — votre carte reste visible
+                  </p>
+                  <p className="font-display text-xl font-black text-primary">
+                    {ROLES_BY_ID[s.roleId]?.name ?? "carte inconnue"}
+                  </p>
+                  {ROLES_BY_ID[s.roleId] && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {ROLES_BY_ID[s.roleId]!.short}
+                    </p>
+                  )}
+                </div>
+              ) : null}
+              {s.alive && !s.seen && (
                 <Button className="mt-3 w-full" onClick={() => void ouvrir(s)}>
                   Découvrir ma carte
                 </Button>
               )}
-              {s.seen &&
+              {s.alive &&
+                s.seen &&
                 (game.singleDevice ? (
                   <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-center text-xs text-muted-foreground">
                     Carte déjà consultée. Pour la revoir, demandez au Maître du Jeu de la rouvrir.

@@ -184,6 +184,8 @@ export interface NuitEnCours {
   poison?: number;
   /** La Sorcière a annoncé qu'elle empoisonne : l'écran des cibles s'ouvre. */
   poisonVoulu?: boolean;
+  /** Carte du centre choisie par le Comédien cette nuit. */
+  comedien?: string;
   /** Enfant Sauvage : modèle désigné la première nuit, recopié dans hostState */
   modele?: number;
   /** Chien-Loup : camp choisi la première nuit, recopié dans hostState */
@@ -792,14 +794,24 @@ export const removeSeat = createServerFn({ method: "POST" })
 
 /** Le MJ retouche la composition depuis le salon, une fois l'effectif connu. */
 export const setSelection = createServerFn({ method: "POST" })
-  .inputValidator((d: { code: string; token: string; selection: Record<string, number> }) => d)
+  .inputValidator(
+    (d: {
+      code: string;
+      token: string;
+      selection: Record<string, number>;
+      comedienCartes?: string[];
+    }) => d,
+  )
   .handler(async ({ data }) => {
     const db = await base();
     const game = await requireHost(db, data.code, data.token);
     if (!AVANT_DISTRIBUTION.includes(game["status"] as string)) {
       throw new Error("Les cartes sont déjà distribuées");
     }
-    await db.pb.modifier("games", game["id"], { selection: data.selection });
+    await db.pb.modifier("games", game["id"], {
+      selection: data.selection,
+      ...(data.comedienCartes ? { comedien_cartes: data.comedienCartes.slice(0, 3) } : {}),
+    });
     const fresh = await loadGame(db, data.code);
     return buildDTO(db, fresh, data.token);
   });

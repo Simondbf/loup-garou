@@ -149,7 +149,7 @@ function Maitre() {
                 −
               </button>
               <div className="text-center">
-                <p className="font-display text-5xl font-black text-gradient-moon">
+                <p className="text-4xl font-semibold tabular-nums text-primary">
                   {game.seats.length}
                 </p>
                 <p className="text-xs text-muted-foreground">joueurs</p>
@@ -173,8 +173,16 @@ function Maitre() {
               selection={game.selection}
               variante={game.thiefVariant}
               unSeulTelephone
+              comedienCartes={game.comedienCartes}
               onSelection={(selection) =>
                 void run(setSelection({ data: { code: game.code, token, selection } }))
+              }
+              onComedien={(comedienCartes) =>
+                void run(
+                  setSelection({
+                    data: { code: game.code, token, selection: game.selection, comedienCartes },
+                  }),
+                )
               }
             />
 
@@ -270,8 +278,16 @@ function Maitre() {
               selection={game.selection}
               variante={game.thiefVariant}
               unSeulTelephone={false}
+              comedienCartes={game.comedienCartes}
               onSelection={(selection) =>
                 void run(setSelection({ data: { code: game.code, token, selection } }))
+              }
+              onComedien={(comedienCartes) =>
+                void run(
+                  setSelection({
+                    data: { code: game.code, token, selection: game.selection, comedienCartes },
+                  }),
+                )
               }
             />
 
@@ -577,13 +593,17 @@ function Composition({
   selection,
   variante,
   unSeulTelephone,
+  comedienCartes,
   onSelection,
+  onComedien,
 }: {
   effectif: number;
   selection: Record<string, number>;
   variante: string;
   unSeulTelephone: boolean;
+  comedienCartes: string[];
   onSelection: (selection: Record<string, number>) => void;
+  onComedien: (cartes: string[]) => void;
 }) {
   const attendu = cartesAttendues(effectif, selection, variante);
   const total = Object.values(selection).reduce((a, b) => a + b, 0);
@@ -653,7 +673,9 @@ function Composition({
                       >
                         −
                       </button>
-                      <span className="font-display text-sm font-black">{n}</span>
+                      <span className="w-6 text-center text-sm font-semibold tabular-nums">
+                        {n}
+                      </span>
                       <button
                         onClick={() => onSelection(ajusterRole(selection, r.id, 1))}
                         aria-label={`Un ${r.name} de plus`}
@@ -669,6 +691,50 @@ function Composition({
           </section>
         );
       })}
+
+      {(selection["comedien"] ?? 0) > 0 && (
+        <section className="mt-5 rounded-xl border border-border p-3">
+          <h3 className="text-[11px] tracking-widest text-muted-foreground uppercase">
+            Les trois cartes du Comédien
+          </h3>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Elles se posent au centre de la table, face cachée. Jamais de Loup-Garou parmi elles :
+            seuls des rôles du village sont proposés. {comedienCartes.length} sur 3 choisies.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {pioche
+              .filter(
+                (r) =>
+                  r.camp === "villageois" &&
+                  r.id !== "comedien" &&
+                  r.id !== "villageois-villageois",
+              )
+              .map((r) => {
+                const prise = comedienCartes.includes(r.id);
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() =>
+                      onComedien(
+                        prise
+                          ? comedienCartes.filter((x) => x !== r.id)
+                          : [...comedienCartes, r.id].slice(-3),
+                      )
+                    }
+                    className={cn(
+                      "rounded-lg border px-2 py-1 text-[11px]",
+                      prise
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border bg-secondary",
+                    )}
+                  >
+                    {r.name}
+                  </button>
+                );
+              })}
+          </div>
+        </section>
+      )}
 
       <div className="mt-4 flex flex-col gap-2">
         {ecart < 0 && (

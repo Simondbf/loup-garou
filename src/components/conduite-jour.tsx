@@ -1,6 +1,8 @@
 import { useMemo } from "react";
+import { BoutonAide } from "@/components/conduite-nuit";
 import { Button, CampBadge, RoleSigil } from "@/components/ui-kit";
 import { ROLES_BY_ID, type Role } from "@/data/roles";
+import { useConseils } from "@/lib/conseils";
 import type { GameDTO, HostState, PatchJour, SeatDTO, TourDeVote } from "@/lib/party.functions";
 import { cn } from "@/lib/utils";
 
@@ -88,6 +90,7 @@ export function ConduiteJour({
     [game, onJour, onMort, onCapitaine, onPublic, onServante, onEtat, onNuitSuivante],
   );
 
+  const { conseils } = useConseils();
   const faites = game.jour?.faites ?? [];
   const restantes = etapes.filter((x) => !faites.includes(x.id));
   const etape = restantes[0];
@@ -161,13 +164,10 @@ export function ConduiteJour({
 
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{etape.consigne}</p>
 
-        {etape.aide && (
-          <details className="mt-2">
-            <summary className="cursor-pointer text-[11px] text-primary">
-              Rappel : comment marche cette règle ?
-            </summary>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{etape.aide}</p>
-          </details>
+        {etape.aide && conseils && (
+          <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-[11px] leading-relaxed text-muted-foreground">
+            {etape.aide}
+          </p>
         )}
 
         <div className="mt-4">{etape.rendu()}</div>
@@ -192,6 +192,8 @@ export function ConduiteJour({
           Cette étape attend une décision avant de continuer.
         </p>
       )}
+
+      {etape.role && <BoutonAide role={etape.role} />}
 
       <p className="text-center text-[11px] text-muted-foreground">
         Revenir en arrière rouvre l'étape précédente, mais ne ressuscite personne : une mort marquée
