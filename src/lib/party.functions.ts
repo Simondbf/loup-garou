@@ -279,6 +279,12 @@ type AnyRow = Record<string, any>;
  */
 export const PLACES_MAX_PAR_APPAREIL = 3;
 
+/** Plafond d'un village. Au-delà, la partie devient ingérable pour le MJ. */
+export const PLACES_MAX = 30;
+
+/** Plancher : en dessous, il n'y a plus de partie à conduire. */
+export const PLACES_MIN = 3;
+
 async function base() {
   const { pb, litteral } = await import("@/lib/pocketbase.server");
   return { pb, litteral };
@@ -372,6 +378,25 @@ function etatPersonnel(place: AnyRow, seats: AnyRow[], etat: HostState, game: An
   }
 
   return e;
+}
+
+/**
+ * Renumérote les places de 1 à N, sans trou.
+ *
+ * Le Renard et le Montreur d'Ours raisonnent sur les voisins : une place
+ * manquante au milieu de la liste fausserait leurs pouvoirs. Comme le salon
+ * permet maintenant de retirer quelqu'un, il faut refermer le rang derrière
+ * lui.
+ */
+async function renumeroter(db: Base, gameId: string) {
+  const seats = await seatsDe(db, gameId);
+  let rang = 0;
+  for (const s of seats) {
+    rang += 1;
+    if (s["position"] !== rang) await db.pb.modifier("seats", s["id"], { position: rang });
+  }
+  await db.pb.modifier("games", gameId, { player_count: rang });
+  return rang;
 }
 
 async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO> {
@@ -477,8 +502,11 @@ export const createGame = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const db = await base();
-    const count = Math.max(7, Math.min(30, Math.floor(data.playerCount)));
     const single = !!data.singleDevice;
+    // En multi-téléphones, l'effectif n'est plus décidé ici : il se déduit
+    // des joueurs qui se connectent. Le nombre saisi à la création n'a servi
+    // qu'à préparer une composition de départ.
+    const count = single ? Math.max(3, Math.min(PLACES_MAX, Math.floor(data.playerCount))) : 0;
 
     // Ménage : une partie ne vit qu'une soirée, jamais plusieurs jours. On
     // profite de la création d'une nouvelle partie pour effacer celles qui
@@ -529,7 +557,9 @@ export const createGame = createServerFn({ method: "POST" })
       jour: {},
     });
 
-    // Mode « un seul téléphone » : toutes les places sont portées par l'appareil du MJ.
+    // Mode « un seul téléphone » : toutes les places existent d'emblée et
+    // sont portées par l'appareil du MJ. En multi-téléphones, aucune place
+    // n'est créée — chaque joueur apporte la sienne en rejoignant.
     for (let i = 0; i < count; i++) {
       await db.pb.creer("seats", {
         game_id: game["id"],
@@ -537,7 +567,7 @@ export const createGame = createServerFn({ method: "POST" })
         name: "",
         alive: true,
         statuses: [],
-        ...(single ? { device_token: data.hostToken } : {}),
+        device_token: data.hostToken,
       });
     }
 
@@ -566,40 +596,111 @@ export const fetchGame = createServerFn({ method: "POST" })
     return buildDTO(db, game, data.token);
   });
 
-/** Un appareil réclame une ou plusieurs places libres (téléphone partagé). */
+/**
+ * Un appareil prend place dans le village.
+ *
+ * Il n'y a plus de places vides à réclamer : le salon part vide et chaque
+ * téléphone apporte la ou les siennes. C'est ce qui permet au Maître du Jeu
+ * de ne plus annoncer l'effectif à l'avance — il le lit sur son écran au
+ * fur et à mesure que le village arrive.
+ */
 export const claimSeats = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; token: string; count: number }) => d)
   .handler(async ({ data }) => {
     const db = await base();
     const game = await loadGame(db, data.code);
     if (game["status"] !== "lobby") throw new Error("La partie a déjà commencé");
+    if (game["single_device"]) throw new Error("Cette partie se joue sur un seul téléphone");
 
-    const seats = await seatsDe(db, game["id"]);
-    const already = seats.filter((s) => s["device_token"] === data.token);
     // Trois places maximum par appareil : au-delà, le téléphone circule trop
     // dans la même main et le secret des cartes ne tient plus. On refuse la
-    // demande au lieu de la rogner en silence : un client qui demande plus a
-    // un bug ou tente de contourner la limite, dans les deux cas il doit le
-    // savoir.
+    // demande au lieu de la rogner en silence.
     const demande = Math.floor(data.count);
     if (!Number.isFinite(demande) || demande < 1 || demande > PLACES_MAX_PAR_APPAREIL) {
       throw new Error(`Un téléphone porte au maximum ${PLACES_MAX_PAR_APPAREIL} joueurs`);
     }
-    const wanted = demande;
-    const missing = wanted - already.length;
 
-    if (missing > 0) {
-      const free = seats.filter((s) => !s["device_token"]).slice(0, missing);
-      if (free.length < missing) throw new Error("Plus assez de places libres");
-      for (const s of free) {
-        await db.pb.modifier("seats", s["id"], { device_token: data.token });
+    const seats = await seatsDe(db, game["id"]);
+    const siennes = seats.filter((s) => s["device_token"] === data.token);
+    const manque = demande - siennes.length;
+
+    if (manque > 0) {
+      if (seats.length + manque > PLACES_MAX) {
+        throw new Error(`Le village est complet (${PLACES_MAX} places)`);
       }
-    } else if (missing < 0) {
-      for (const s of already.slice(wanted)) {
-        await db.pb.modifier("seats", s["id"], { device_token: "", name: "" });
+      for (let i = 0; i < manque; i++) {
+        await db.pb.creer("seats", {
+          game_id: game["id"],
+          position: seats.length + i + 1,
+          name: "",
+          alive: true,
+          statuses: [],
+          device_token: data.token,
+        });
       }
+      await db.pb.modifier("games", game["id"], { player_count: seats.length + manque });
+    } else if (manque < 0) {
+      for (const s of siennes.slice(demande)) await db.pb.supprimer("seats", s["id"]);
+      await renumeroter(db, game["id"]);
     }
 
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
+/**
+ * Le MJ ajoute une place portée par son propre téléphone.
+ *
+ * Pour le joueur qui n'a pas de smartphone, ou dont la batterie a lâché :
+ * sa carte s'ouvre sur l'écran du Maître du Jeu, qui la lui montre.
+ */
+export const addSeat = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    if (game["status"] !== "lobby") throw new Error("La partie a déjà commencé");
+    const seats = await seatsDe(db, game["id"]);
+    if (seats.length >= PLACES_MAX)
+      throw new Error(`Le village est complet (${PLACES_MAX} places)`);
+    await db.pb.creer("seats", {
+      game_id: game["id"],
+      position: seats.length + 1,
+      name: "",
+      alive: true,
+      statuses: [],
+      device_token: game["host_token"],
+    });
+    await db.pb.modifier("games", game["id"], { player_count: seats.length + 1 });
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
+/** Le MJ retire une place du salon : quelqu'un s'en va, ou s'est connecté deux fois. */
+export const removeSeat = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string; position: number }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    if (game["status"] !== "lobby") throw new Error("La partie a déjà commencé");
+    const seats = await seatsDe(db, game["id"]);
+    const cible = seats.find((s) => s["position"] === data.position);
+    if (cible) {
+      await db.pb.supprimer("seats", cible["id"]);
+      await renumeroter(db, game["id"]);
+    }
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
+/** Le MJ retouche la composition depuis le salon, une fois l'effectif connu. */
+export const setSelection = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string; selection: Record<string, number> }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    if (game["status"] !== "lobby") throw new Error("La partie a déjà commencé");
+    await db.pb.modifier("games", game["id"], { selection: data.selection });
     const fresh = await loadGame(db, data.code);
     return buildDTO(db, fresh, data.token);
   });
@@ -700,6 +801,7 @@ export const dealCards = createServerFn({ method: "POST" })
       for (let i = 0; i < n; i++) pool.push(roleId);
     });
     const count = game["player_count"] as number;
+    if (count < PLACES_MIN) throw new Error(`Il faut au moins ${PLACES_MIN} joueurs`);
     const withThief = pool.includes("voleur") && game["thief_variant"] === "centre";
     if (pool.length !== count + (withThief ? 2 : 0)) {
       throw new Error("La composition ne correspond pas au nombre de joueurs");

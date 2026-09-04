@@ -49,6 +49,22 @@ tête reposée, pas pendant un déploiement.
 - Option, sur le téléphone d'un joueur éliminé seul (jamais partagé), pour
   suivre les désignations de la nuit en direct.
 
+## Moteur de partie — avancement
+1. **Nuit pas à pas** — fait. Un écran par étape, profils cliquables, retour arrière.
+2. **Jour pas à pas** — fait. `src/components/conduite-jour.tsx` : annonces, cartes
+   retournées, débat, vote, et les déclencheurs qui s'accumulent (Chasseur,
+   écharpe, Bouc, Idiot, Ancien, Servante, Juge Bègue, Chevalier, Ange).
+3. **États visibles côté joueur** — fait. Chaque téléphone reçoit l'état de ses
+   seules places (`mesEtats`). Volontairement absents : l'identité de l'aimé, le
+   charme du Flûtiste, le passage côté Loups — ce sont des secrets que le Maître
+   du Jeu transmet d'un geste, le téléphone ne les double pas.
+4. **Salon multi-téléphones** — fait. L'effectif n'est plus annoncé à l'avance :
+   les places se créent quand les joueurs rejoignent, le MJ peut en ajouter une
+   portée par son propre téléphone, en retirer une, et recoller la composition
+   depuis le salon.
+5. **Fin de partie et relance** — à faire. Retour à l'écran des profils
+   conservés, nouveau code, MJ inchangé.
+
 ## À faire
 - Nom définitif de l'app (« Les Nuits de Thiercelieux » retenu (titre de roman, distinct du jeu de société)).
 - Emballage Android (Capacitor / TWA) et fiche Play Store ; sous-domaine prévu : lg.soleiljaune.be.

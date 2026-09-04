@@ -5,14 +5,24 @@ import { ChampPrenom } from "@/components/champ-prenom";
 import { ConduiteJour } from "@/components/conduite-jour";
 import { ConduiteNuit } from "@/components/conduite-nuit";
 import { CAMP_LABEL, PREMIERE_NUIT_SEULEMENT, ROLES_BY_ID } from "@/data/roles";
+import {
+  ROLES_DISTRIBUABLES,
+  ajusterRole,
+  cartesAttendues,
+  compositionAuto,
+} from "@/data/composition";
 import { useGame } from "@/lib/game-store";
 import {
+  PLACES_MAX,
+  PLACES_MIN,
+  addSeat,
   clearReveals,
   dealCards,
   endGame,
   gagPlayer,
   pushReveal,
   resetSeen,
+  removeSeat,
   resolveNight,
   servanteEchange,
   setCaptain,
@@ -23,6 +33,7 @@ import {
   setPhase,
   setPublicRole,
   setNightAction,
+  setSelection,
   setSeatName,
   thiefSwap,
   type HostState,
@@ -118,6 +129,12 @@ function Maitre() {
 
   const vivants = game.seats.filter((s) => s.alive).length;
   const prets = game.seats.filter((s) => s.claimed).length;
+  // On ne distribue que si la composition tombe juste : autant de cartes que
+  // de joueurs présents, plus les deux cartes du centre s'il y a un Voleur.
+  const cartesPosees = Object.values(game.selection).reduce((a, b) => a + b, 0);
+  const distributionPossible =
+    game.seats.length >= PLACES_MIN &&
+    cartesPosees === cartesAttendues(game.seats.length, game.selection, game.thiefVariant);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-md px-5 pt-10 pb-16">
@@ -126,8 +143,8 @@ function Maitre() {
         subtitle={
           game.status === "lobby"
             ? game.singleDevice
-              ? `${game.playerCount} joueurs · votre appareil porte toutes les places et tourne autour de la table.`
-              : `${prets}/${game.playerCount} places prises. Partagez le code, puis distribuez.`
+              ? `${game.seats.length} joueurs · votre appareil porte toutes les places et tourne autour de la table.`
+              : `${prets} joueur${prets > 1 ? "s" : ""} dans le village. Partagez le code, puis distribuez.`
             : `Nuit ${game.night} · ${game.phase} · ${vivants} vivants${
                 game.singleDevice ? " · un seul téléphone" : ` · code ${game.code}`
               }`
@@ -148,7 +165,7 @@ function Maitre() {
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
                 Chaque joueur ouvre l'application, choisit « Rejoindre » et indique combien de
-                joueurs partagent son téléphone.
+                joueurs partagent son téléphone. Leurs prénoms apparaissent ici au fur et à mesure.
               </p>
             </div>
           )}
@@ -157,7 +174,7 @@ function Maitre() {
             {game.seats.map((s) => (
               <li key={s.position} className="surface flex items-center gap-3 p-3">
                 <span className="w-6 text-xs text-muted-foreground">{s.position}</span>
-                {game.singleDevice ? (
+                {game.singleDevice || s.mine ? (
                   <ChampPrenom
                     valeur={s.name}
                     onEnregistrer={(nom) =>
@@ -172,30 +189,67 @@ function Maitre() {
                   />
                 ) : (
                   <>
-                    {/* En multi-appareils, chaque joueur saisit son prénom sur
-                        son propre téléphone. Le MJ ne fait que regarder les
-                        connexions arriver : il anime, il ne joue pas. */}
+                    {/* Chaque joueur saisit son prénom sur son propre téléphone.
+                        Le MJ regarde les connexions arriver : il anime, il ne
+                        joue pas. Il peut en revanche écarter quelqu'un. */}
                     <span className="min-w-0 flex-1 truncate text-sm">
                       {s.name || <span className="text-muted-foreground italic">en attente…</span>}
                     </span>
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-lg border px-2 py-1 text-[11px]",
-                        s.claimed
-                          ? "border-primary/50 bg-primary/10 text-primary"
-                          : "border-border text-muted-foreground",
-                      )}
-                    >
-                      {s.claimed ? "connecté" : "libre"}
+                    <span className="shrink-0 rounded-lg border border-primary/50 bg-primary/10 px-2 py-1 text-[11px] text-primary">
+                      connecté
                     </span>
                   </>
                 )}
+                {!game.singleDevice && (
+                  <button
+                    onClick={() =>
+                      void run(
+                        removeSeat({ data: { code: game.code, token, position: s.position } }),
+                      )
+                    }
+                    aria-label={`Retirer ${s.name || `la place ${s.position}`}`}
+                    className="shrink-0 rounded-lg border border-border px-2 py-1 text-[11px] text-muted-foreground"
+                  >
+                    ✕
+                  </button>
+                )}
               </li>
             ))}
+            {game.seats.length === 0 && (
+              <li className="surface p-4 text-center text-xs text-muted-foreground">
+                Le village est encore vide. Donnez le code à voix haute.
+              </li>
+            )}
           </ul>
+
+          {!game.singleDevice && (
+            <>
+              <Button
+                variant="ghost"
+                className="w-full"
+                disabled={game.seats.length >= PLACES_MAX}
+                onClick={() => void run(addSeat({ data: { code: game.code, token } }))}
+              >
+                ➕ Ajouter un joueur sans téléphone
+              </Button>
+              <p className="text-center text-[11px] text-muted-foreground">
+                Sa carte s'ouvrira sur votre écran : vous la lui montrerez à l'abri des regards.
+              </p>
+
+              <Composition
+                effectif={game.seats.length}
+                selection={game.selection}
+                variante={game.thiefVariant}
+                onSelection={(selection) =>
+                  void run(setSelection({ data: { code: game.code, token, selection } }))
+                }
+              />
+            </>
+          )}
 
           <Button
             className="w-full py-4"
+            disabled={!game.singleDevice && !distributionPossible}
             onClick={() => void run(dealCards({ data: { code: game.code, token } }))}
           >
             {game.singleDevice ? "Commencer la distribution" : "Distribuer les cartes"}
@@ -203,7 +257,9 @@ function Maitre() {
           <p className="text-center text-[11px] text-muted-foreground">
             {game.singleDevice
               ? "Les joueurs saisiront leur prénom et découvriront leur carte chacun leur tour sur cet appareil."
-              : "Les places restées libres peuvent être portées par votre téléphone : le village fait tourner l'appareil pour ces joueurs-là."}
+              : game.seats.length < PLACES_MIN
+                ? `Attendez au moins ${PLACES_MIN} joueurs.`
+                : "Une fois les cartes distribuées, plus personne ne peut rejoindre la partie."}
           </p>
         </section>
       ) : (
@@ -655,6 +711,114 @@ function Maitre() {
         </>
       )}
     </main>
+  );
+}
+
+/**
+ * Composition ajustable depuis le salon.
+ *
+ * L'effectif n'étant plus décidé à l'avance, la composition doit pouvoir se
+ * recoller à la dernière minute : deux retardataires arrivent, un joueur
+ * s'en va, et il faut retomber sur le compte sans quitter cet écran.
+ */
+function Composition({
+  effectif,
+  selection,
+  variante,
+  onSelection,
+}: {
+  effectif: number;
+  selection: Record<string, number>;
+  variante: string;
+  onSelection: (selection: Record<string, number>) => void;
+}) {
+  const attendu = cartesAttendues(effectif, selection, variante);
+  const total = Object.values(selection).reduce((a, b) => a + b, 0);
+  const ecart = total - attendu;
+  const enJeu = ROLES_DISTRIBUABLES.filter((r) => (selection[r.id] ?? 0) > 0);
+  const absents = ROLES_DISTRIBUABLES.filter((r) => !(selection[r.id] ?? 0));
+  const cartesCentre = attendu - effectif;
+
+  return (
+    <div className="surface p-4">
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className="font-display text-sm font-bold">Composition</h2>
+        <span
+          className={cn(
+            "rounded-lg border px-2 py-1 text-[11px] font-semibold",
+            ecart === 0
+              ? "border-primary/50 bg-primary/10 text-primary"
+              : "border-destructive/50 bg-destructive/10 text-destructive",
+          )}
+        >
+          {total} carte{total > 1 ? "s" : ""} pour {attendu}
+        </span>
+      </div>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        {effectif} joueur{effectif > 1 ? "s" : ""} dans le village
+        {cartesCentre > 0 ? ` · ${cartesCentre} cartes au centre pour le Voleur` : ""}
+        {ecart === 0
+          ? " · le compte est bon."
+          : ecart > 0
+            ? ` · ${ecart} carte${ecart > 1 ? "s" : ""} de trop.`
+            : ` · il en manque ${-ecart}.`}
+      </p>
+
+      <ul className="mt-3 flex flex-col gap-1.5">
+        {enJeu.map((r) => (
+          <li key={r.id} className="flex items-center gap-2">
+            <span className="text-base">{r.emoji}</span>
+            <span className="min-w-0 flex-1 truncate text-xs">{r.name}</span>
+            <button
+              onClick={() => onSelection(ajusterRole(selection, r.id, -1))}
+              aria-label={`Un ${r.name} de moins`}
+              className="h-7 w-7 rounded-lg border border-border text-sm"
+            >
+              −
+            </button>
+            <span className="w-5 text-center font-display text-sm font-black">
+              {selection[r.id]}
+            </span>
+            <button
+              onClick={() => onSelection(ajusterRole(selection, r.id, 1))}
+              aria-label={`Un ${r.name} de plus`}
+              className="h-7 w-7 rounded-lg border border-border text-sm"
+            >
+              +
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-3 flex flex-col gap-2">
+        {ecart < 0 && (
+          <Button
+            variant="ghost"
+            onClick={() => onSelection(ajusterRole(selection, "simple-villageois", -ecart))}
+          >
+            Compléter avec {-ecart} Simple{-ecart > 1 ? "s" : ""} Villageois
+          </Button>
+        )}
+        <Button variant="ghost" onClick={() => onSelection(compositionAuto(effectif))}>
+          Reprendre la composition conseillée pour {effectif}
+        </Button>
+      </div>
+
+      <details className="mt-3">
+        <summary className="cursor-pointer text-[11px] text-primary">Ajouter un rôle</summary>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {absents.map((r) => (
+            <button
+              key={r.id}
+              onClick={() => onSelection(ajusterRole(selection, r.id, 1))}
+              className="rounded-lg border border-border bg-secondary px-2 py-1 text-[11px]"
+            >
+              {r.emoji} {r.name}
+            </button>
+          ))}
+        </div>
+      </details>
+    </div>
   );
 }
 

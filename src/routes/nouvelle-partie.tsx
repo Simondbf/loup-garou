@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Modal, PageHeader, RoleDetail, RoleSigil } from "@/components/ui-kit";
-import { CAMP_LABEL, ROLES, ROLES_BY_ID, type Camp, type Role } from "@/data/roles";
+import { CAMP_LABEL, ROLES_BY_ID, type Camp, type Role } from "@/data/roles";
+import { ROLES_DISTRIBUABLES, compositionAuto } from "@/data/composition";
 import { createGame, dealCards } from "@/lib/party.functions";
 import { useGame } from "@/lib/game-store";
 import { cn } from "@/lib/utils";
@@ -29,38 +30,6 @@ export const Route = createFileRoute("/nouvelle-partie")({
 
 const MIN = 7;
 const MAX = 30;
-
-/** Rôles réellement distribuables : Amoureux et Capitaine découlent du jeu, pas de la pioche. */
-const ROLES_DISTRIBUABLES = ROLES.filter((r) => !r.derived);
-
-/**
- * Composition de secours quand aucun préréglage n'existe : environ un tiers de la table
- * côté loups, et le moins de Simples Villageois possible (rôle sans pouvoir).
- */
-function compositionAuto(count: number): Record<string, number> {
-  const loups = Math.max(2, Math.round(count / 3));
-  const base: Record<string, number> = { "loup-garou": loups, voyante: 1, sorciere: 1 };
-  let reste = count - loups - 2;
-  for (const id of [
-    "chasseur",
-    "cupidon",
-    "salvateur",
-    "petite-fille",
-    "ancien",
-    "renard",
-    "idiot-du-village",
-    "bouc-emissaire",
-    "montreur-ours",
-    "juge-begue",
-    "servante-devouee",
-  ]) {
-    if (reste <= 0) break;
-    base[id] = 1;
-    reste -= 1;
-  }
-  if (reste > 0) base["simple-villageois"] = reste;
-  return base;
-}
 
 function NouvellePartie() {
   const navigate = useNavigate();
@@ -150,7 +119,7 @@ function NouvellePartie() {
         title="Nouvelle partie"
         subtitle={
           step === 1
-            ? "Combien de joueurs autour de la table ? (le Maître du Jeu n'en fait pas partie)"
+            ? "Combien de joueurs attendez-vous ? (le Maître du Jeu n'en fait pas partie)"
             : "La composition conseillée est déjà prête : ajustez-la comme vous voulez."
         }
         back={step === 1 ? "/" : undefined}
@@ -214,7 +183,8 @@ function NouvellePartie() {
             </button>
           </div>
           <p className="mt-3 text-center text-xs text-muted-foreground">
-            De {MIN} à {MAX} joueurs.
+            De {MIN} à {MAX} joueurs. En multi-téléphones, ce nombre ne sert qu'à préparer la
+            composition : l'effectif réel se comptera tout seul dans le salon.
           </p>
 
           <div className="surface mt-5 flex w-full items-center gap-3 p-4">
