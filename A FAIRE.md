@@ -87,6 +87,22 @@ Le Capitaine est une option de partie (`hostState.avecCapitaine`, cochée par
 défaut dans l'écran de composition). Décochée : ni élection, ni succession, ni
 voix double, et une égalité ne fait aucune victime.
 
+## Fin de partie
+`vainqueur()` recalcule le gagnant à chaque envoi d'état — c'est une propriété
+de la table, pas un événement à retenir. Ordre : l'Ange noté par la conduite,
+les Amoureux de camps opposés derniers en lice, le Joueur de Flûte quand tous
+les survivants sont envoûtés, le Loup-Garou Blanc dernier debout, la meute
+quand il ne reste qu'elle, le village quand il n'y a plus ni Loup ni solitaire.
+
+L'annonce ne coupe jamais un enchaînement : le fil du jour garde les cartes à
+retourner et les pouvoirs à déclencher, et ne place l'écran de victoire qu'au
+bout. C'est ce qui laisse la balle d'un Chasseur renverser une partie déjà
+gagnée. Les téléphones des joueurs affichent la même phrase et toutes les
+cartes se retournent.
+
+Pas encore traité : l'Abominable Sectaire, dont la victoire dépend d'un
+découpage de la table que l'application ne connaît pas.
+
 ## Ce que le MJ n'a plus
 - Pas d'onglet Joueurs : les profils sont cliquables dans le déroulé.
 - Pas de rangement en cercle (`moveSeat` supprimé).

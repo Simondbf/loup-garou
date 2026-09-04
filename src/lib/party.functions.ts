@@ -115,6 +115,8 @@ export interface HostState {
    * trancher les égalités.
    */
   avecCapitaine?: boolean;
+  /** L'Ange a été éliminé au premier vote : il gagne seul, la partie s'arrête. */
+  angeGagne?: boolean;
 }
 
 /** Un tour de vote du village. */
@@ -240,6 +242,8 @@ export interface GameDTO {
   voitLeCimetiere: boolean;
   /** État des seules places portées par cet appareil. */
   mesEtats: EtatPersonnel[];
+  /** Camp ou rôle vainqueur, dès que la partie est jouée. */
+  vainqueur: Vainqueur | null;
   /**
    * Code de la partie qui prend la suite, quand le Maître du Jeu a relancé.
    * Chaque téléphone le voit et bascule tout seul : personne n'a de nouveau
@@ -348,6 +352,101 @@ async function seatsDe(db: Base, gameId: string) {
   })) as AnyRow[];
 }
 
+/** Camp ou rôle qui remporte la partie, avec la phrase à annoncer. */
+export interface Vainqueur {
+  /** Identifiant du camp ou du rôle, pour la mise en forme. */
+  cle: string;
+  /** Phrase prête à lire, la même sur tous les téléphones. */
+  texte: string;
+}
+
+/**
+ * Qui a gagné, s'il y a un gagnant.
+ *
+ * Recalculé à chaque envoi d'état plutôt qu'écrit quelque part : la
+ * condition de victoire est une propriété de la table, pas un événement à
+ * retenir. Un joueur ressuscité par erreur remet donc la partie en cours
+ * toute seule.
+ *
+ * L'ordre compte. Les victoires solitaires passent avant celles des camps :
+ * l'Ange qui se fait pendre au premier vote gagne même s'il ne reste que
+ * des villageois, et le Joueur de Flûte l'emporte sur un village qui a
+ * pourtant tué tous les Loups.
+ */
+export function vainqueur(game: AnyRow, seats: AnyRow[], etat: HostState): Vainqueur | null {
+  if (game["status"] !== "dealt") return null;
+  const vivants = seats.filter((s) => s["alive"]);
+  if (vivants.length === 0) {
+    return {
+      cle: "personne",
+      texte: "Plus personne n'a survécu : la partie s'arrête sans vainqueur.",
+    };
+  }
+
+  const roleDe = (s: AnyRow) => ROLES_BY_ID[(s["role_id"] as string) || ""];
+  const devenus = etat.devenusLoups ?? [];
+  const estLoup = (s: AnyRow) => {
+    const r = roleDe(s);
+    return (
+      r?.camp === "loups" ||
+      r?.id === "loup-garou-blanc" ||
+      devenus.includes(s["position"] as number)
+    );
+  };
+
+  // L'Ange pendu au premier vote : sa victoire est un fait de jeu, notée par
+  // la conduite du jour au moment où elle survient.
+  if (etat.angeGagne) return { cle: "ange", texte: "Félicitations, l'Ange gagne !" };
+
+  // Les Amoureux de camps opposés, derniers en lice.
+  if (vivants.length === 2) {
+    const [a, b] = vivants as [AnyRow, AnyRow];
+    const memeCouple = a["lover_group"] && a["lover_group"] === b["lover_group"];
+    if (memeCouple && estLoup(a) !== estLoup(b)) {
+      return { cle: "amoureux", texte: "Félicitations, les Amoureux gagnent !" };
+    }
+  }
+
+  // Le Joueur de Flûte : tous les survivants sont sous son charme.
+  const flutiste = vivants.find((s) => roleDe(s)?.id === "joueur-de-flute");
+  if (flutiste) {
+    const charmes = etat.charmed ?? [];
+    const autres = vivants.filter((s) => s["position"] !== flutiste["position"]);
+    if (autres.length > 0 && autres.every((s) => charmes.includes(s["position"] as number))) {
+      return { cle: "joueur-de-flute", texte: "Félicitations, le Joueur de Flûte gagne !" };
+    }
+  }
+
+  // Le Loup-Garou Blanc ne gagne que seul.
+  const blanc = vivants.find((s) => roleDe(s)?.id === "loup-garou-blanc");
+  if (blanc && vivants.length === 1) {
+    return { cle: "loup-garou-blanc", texte: "Félicitations, le Loup-Garou Blanc gagne !" };
+  }
+
+  const loups = vivants.filter(estLoup);
+
+  // La meute a dévoré tout le monde — sauf s'il reste un Loup-Garou Blanc
+  // parmi eux : il lui reste ses frères à égorger avant de gagner.
+  if (loups.length === vivants.length && !blanc) {
+    return { cle: "loups", texte: "Félicitations, les Loups-Garous ont gagné !" };
+  }
+
+  // Le village, s'il ne reste plus un Loup ni un solitaire capable de gagner.
+  if (loups.length === 0) {
+    const solitaires = vivants.filter((s) => {
+      const r = roleDe(s);
+      // L'Ange qui a survécu à son premier vote redevient un villageois
+      // ordinaire : il ne retarde plus la victoire du village.
+      return r?.camp === "solitaire" && r.id !== "ange";
+    });
+    if (solitaires.length === 0) {
+      return { cle: "villageois", texte: "Félicitations, les villageois ont gagné !" };
+    }
+  }
+
+  return null;
+}
+
 /**
  * L'état d'une place, tel que son porteur a le droit de le voir.
  *
@@ -446,7 +545,10 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
   // deux ou trois y donnerait les cartes des morts à des vivants.
   const mesPlaces = seats.filter((s) => s["device_token"] && s["device_token"] === token);
   const voitLeCimetiere = isHost || (mesPlaces.length === 1 && !mesPlaces[0]?.["alive"]);
-  const finie = game["status"] === "ended";
+  const gagnant = vainqueur(game, seats, (game["host_state"] ?? {}) as HostState);
+  // Partie gagnée ou close : toutes les cartes se retournent, comme on les
+  // étale sur la table quand la dernière est tombée.
+  const finie = game["status"] === "ended" || gagnant !== null;
 
   return {
     code: game["code"],
@@ -472,6 +574,7 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
     mySeats,
     voitLeCimetiere,
     suite: (game["suite"] as string) || "",
+    vainqueur: gagnant,
     mesEtats: seats
       .filter((s) => s["device_token"] && s["device_token"] === token)
       .map((s) => etatPersonnel(s, seats, (game["host_state"] ?? {}) as HostState, game)),

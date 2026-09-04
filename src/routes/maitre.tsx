@@ -402,6 +402,11 @@ function Maitre() {
                       }),
                     )
                   }
+                  onTerminer={async () => {
+                    const dto = await endGame({ data: { code: game.code, token } });
+                    saveSession({ code: dto.code, host: true });
+                    apply(dto);
+                  }}
                 />
               )}
 
@@ -528,11 +533,12 @@ function Maitre() {
                 apply(dto);
               }}
             >
-              Terminer la partie
+              Arrêter la partie en cours
             </Button>
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
-              La partie suivante s'ouvre aussitôt avec les mêmes joueurs et un nouveau code.
-              Personne n'a rien à retaper : chaque téléphone suit tout seul.
+              À n'utiliser que pour abandonner : quand un camp gagne, le déroulé vous l'annonce tout
+              seul. La partie suivante s'ouvre aussitôt avec les mêmes joueurs et un nouveau code,
+              que personne n'a besoin de retaper.
             </p>
           </div>
 

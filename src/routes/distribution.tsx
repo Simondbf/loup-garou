@@ -119,6 +119,18 @@ function EcranJoueur() {
         </>
       )}
 
+      {!seat && game.vainqueur && (
+        <div className="surface mb-4 border border-primary/40 p-5 text-center">
+          <p className="font-display text-xl leading-tight font-black text-primary">
+            {game.vainqueur.texte}
+          </p>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Toutes les cartes sont retournées. Restez sur cet écran : la partie suivante s'ouvrira
+            avec les mêmes joueurs.
+          </p>
+        </div>
+      )}
+
       {!seat && avantCartes && !game.singleDevice && (
         <section className="mt-6">
           <h2 className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">

@@ -54,6 +54,7 @@ interface ActionsJour {
   onServante: (servante: number, morte: number) => Promise<void> | void;
   onEtat: (patch: HostState) => Promise<void> | void;
   onNuitSuivante: () => Promise<void> | void;
+  onTerminer: () => Promise<void> | void;
 }
 
 const CAUSES: Record<string, string> = {
@@ -75,6 +76,7 @@ export function ConduiteJour({
   onServante,
   onEtat,
   onNuitSuivante,
+  onTerminer,
 }: { game: GameDTO } & ActionsJour) {
   const etapes = useMemo(
     () =>
@@ -86,8 +88,9 @@ export function ConduiteJour({
         onServante,
         onEtat,
         onNuitSuivante,
+        onTerminer,
       }),
-    [game, onJour, onMort, onCapitaine, onPublic, onServante, onEtat, onNuitSuivante],
+    [game, onJour, onMort, onCapitaine, onPublic, onServante, onEtat, onNuitSuivante, onTerminer],
   );
 
   const { conseils } = useConseils();
@@ -510,10 +513,10 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
         emoji: "😇",
         titre: "L'Ange l'emporte",
         annonce: "« L'Ange a été éliminé au premier vote : il gagne, seul. »",
-        consigne:
-          "Retournez sa carte et arrêtez la partie : personne d'autre ne gagne. Vous pouvez la clore avec le bouton rouge en bas de cet écran.",
+        consigne: "Retournez sa carte : la partie s'arrête là, personne d'autre ne gagne.",
         aide: "S'il avait survécu à ce premier tour, il serait redevenu un Simple Villageois pour le reste de la partie.",
         pret: true,
+        onValider: () => a.onEtat({ angeGagne: true }),
         rendu: () => <FicheJoueur nom={nom(position)} role={r} />,
       });
     }
@@ -767,6 +770,10 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
 
   for (let t = 1; t <= tours; t++) {
     const v = (jour.votes ?? [])[t - 1] ?? undefined;
+    // Un camp a déjà gagné : on ne rouvre pas un débat. Les tours entamés,
+    // eux, restent dans le fil — leurs morts ont encore une carte à
+    // retourner et des pouvoirs à déclencher.
+    if (game.vainqueur && v === undefined) break;
     const baillonnes = vivants.filter((s) => s.statuses.includes("baillonne"));
     const sansVote = vivants.filter((s) => s.statuses.includes("sans-vote"));
     const prives = etat.privesJour === game.night ? (etat.privesDeVote ?? []) : [];
@@ -981,22 +988,67 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
 
   /* ---------------- La nuit tombe ---------------- */
 
-  e.push({
-    id: "cloture",
-    emoji: "🌙",
-    titre: `Fin du jour ${game.night}`,
-    annonce: "« La nuit tombe sur le village. »",
-    consigne:
-      "Vérifiez qu'il reste des survivants dans les deux camps avant de lancer la nuit suivante. Le bâillon du Magicien tombe à cet instant.",
-    pret: true,
-    valider: `🌙 Nuit ${game.night + 1}`,
-    onValider: a.onNuitSuivante,
-    rendu: () => (
-      <p className="rounded-xl border border-border bg-secondary p-3 text-center text-xs">
-        {vivants.length} survivant{vivants.length > 1 ? "s" : ""} sur {seats.length} joueurs.
-      </p>
-    ),
-  });
+  // Les morts du dernier tour ont toujours leur carte et leurs pouvoirs à
+  // traiter avant qu'on annonce quoi que ce soit : c'est la balle du
+  // Chasseur qui peut encore renverser la partie.
+  e.push(...mortsDuJour());
+
+  if (game.vainqueur) {
+    e.push({
+      id: "fin",
+      emoji: "🏆",
+      titre: "Partie terminée",
+      annonce: game.vainqueur.texte,
+      consigne:
+        "Annoncez-le à voix haute : toutes les cartes viennent de se retourner sur les téléphones. La partie suivante s'ouvrira avec les mêmes joueurs.",
+      pret: true,
+      valider: "Terminer la partie",
+      onValider: a.onTerminer,
+      rendu: () => (
+        <ul className="flex flex-col gap-2">
+          {[...seats]
+            .sort((x, y) => x.position - y.position)
+            .map((s) => {
+              const r = roleDe(s.position);
+              return (
+                <li
+                  key={s.position}
+                  className="flex items-center gap-3 rounded-xl border border-border bg-secondary p-3"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-semibold">
+                      {nom(s.position)}
+                      <span className="text-muted-foreground"> — </span>
+                      <span className="text-primary">{r?.name ?? "carte inconnue"}</span>
+                    </span>
+                    <span className="block text-[10px] text-muted-foreground">
+                      {s.alive ? "survivant" : "éliminé"}
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
+        </ul>
+      ),
+    });
+  } else {
+    e.push({
+      id: "cloture",
+      emoji: "🌙",
+      titre: `Fin du jour ${game.night}`,
+      annonce: "« La nuit tombe sur le village. »",
+      consigne:
+        "Vérifiez qu'il reste des survivants dans les deux camps avant de lancer la nuit suivante. Le bâillon du Magicien tombe à cet instant.",
+      pret: true,
+      valider: `🌙 Nuit ${game.night + 1}`,
+      onValider: a.onNuitSuivante,
+      rendu: () => (
+        <p className="rounded-xl border border-border bg-secondary p-3 text-center text-xs">
+          {vivants.length} survivant{vivants.length > 1 ? "s" : ""} sur {seats.length} joueurs.
+        </p>
+      ),
+    });
+  }
 
   /* Une même étape peut être proposée par deux tours de vote : on ne la
      garde qu'une fois, à sa première place dans le fil. */
