@@ -404,13 +404,6 @@ function Maitre() {
                   onBaillon={(position) =>
                     void run(gagPlayer({ data: { code: game.code, token, position } }))
                   }
-                  onRevelation={(de, vers) =>
-                    void run(
-                      pushReveal({
-                        data: { code: game.code, token, toPosition: de, targetPosition: vers },
-                      }),
-                    )
-                  }
                 />
               )}
 

@@ -107,6 +107,8 @@ export interface GameDTO {
   thiefVariant: string;
   selection: Record<string, number>;
   centerCards: string[];
+  /** Les trois cartes du Comédien, posées face visible : connues de tous. */
+  comedienCartes: string[];
   gagHistory: { night: number; position: number }[];
   hostState: HostState;
   /** Actions de la nuit en cours — visible du seul Maître du Jeu */
@@ -229,6 +231,7 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
     selection: (game["selection"] ?? {}) as Record<string, number>,
     // Les deux cartes du centre n'appartiennent qu'au Voleur : elles ne sont
     // envoyées qu'à l'appareil qui porte sa place, et au Maître du Jeu.
+    comedienCartes: (game["comedien_cartes"] ?? []) as string[],
     centerCards:
       isHost || seats.some((s) => s["role_id"] === "voleur" && s["device_token"] === token)
         ? ((game["center_cards"] ?? []) as string[])
@@ -285,6 +288,7 @@ export const createGame = createServerFn({ method: "POST" })
       selection: Record<string, number>;
       thiefVariant?: "centre" | "echange";
       singleDevice?: boolean;
+      comedienCartes?: string[];
     }) => d,
   )
   .handler(async ({ data }) => {
@@ -328,6 +332,7 @@ export const createGame = createServerFn({ method: "POST" })
       phase: "lobby",
       night: 0,
       thief_variant: data.thiefVariant ?? "centre",
+      comedien_cartes: (data.comedienCartes ?? []).slice(0, 3),
       single_device: single,
       host_state: {
         potionVie: true,

@@ -40,7 +40,6 @@ export function ConduiteNuit({
   onLovers,
   onVol,
   onBaillon,
-  onRevelation,
 }: {
   game: GameDTO;
   onAction: (patch: PatchNuit) => void;
@@ -49,11 +48,10 @@ export function ConduiteNuit({
   onLovers: (positions: number[]) => void;
   onVol: (position: number, avec: number) => void;
   onBaillon: (position: number) => void;
-  onRevelation: (de: number, vers: number) => void;
 }) {
   const etapes = useMemo(
-    () => construire(game, { onAction, onLovers, onVol, onBaillon, onRevelation }),
-    [game, onAction, onLovers, onVol, onBaillon, onRevelation],
+    () => construire(game, { onAction, onLovers, onVol, onBaillon }),
+    [game, onAction, onLovers, onVol, onBaillon],
   );
 
   const nuit = game.nuit ?? {};
@@ -174,16 +172,12 @@ function Profils({
   joueurs,
   choisis,
   sur,
-  bloque,
-  raisonBloque,
   nom,
   roleDe,
 }: {
   joueurs: SeatDTO[];
   choisis: number[];
   sur: (p: number) => void;
-  bloque?: (p: number) => boolean;
-  raisonBloque?: string;
   nom: (p: number) => string;
   roleDe: (p: number) => Role | undefined;
 }) {
@@ -193,19 +187,15 @@ function Profils({
   return (
     <div className="grid grid-cols-2 gap-2">
       {joueurs.map((s) => {
-        const inactif = bloque?.(s.position) ?? false;
         const actif = choisis.includes(s.position);
         const r = roleDe(s.position);
         return (
           <button
             key={s.position}
-            disabled={inactif}
-            title={inactif ? raisonBloque : undefined}
             onClick={() => sur(s.position)}
             className={cn(
               "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition",
               actif ? "border-primary bg-primary/15 text-primary" : "border-border bg-secondary",
-              inactif && "opacity-30",
             )}
           >
             <span className="text-lg">{r?.emoji ?? "❔"}</span>
@@ -265,10 +255,9 @@ function construire(
     onLovers: (positions: number[]) => void;
     onVol: (position: number, avec: number) => void;
     onBaillon: (position: number) => void;
-    onRevelation: (de: number, vers: number) => void;
   },
 ): Etape[] {
-  const { onAction, onLovers, onVol, onBaillon, onRevelation } = actions;
+  const { onAction, onLovers, onVol, onBaillon } = actions;
   const nuit = game.nuit ?? {};
   const etat = game.hostState ?? {};
   const vivants = game.seats.filter((s) => s.alive);
@@ -290,40 +279,6 @@ function construire(
   const R = (id: string) => ROLES_BY_ID[id]!;
   const e: Etape[] = [];
   const ok = () => true;
-
-  /* ---- Voleur ---- */
-  const voleur = porteur("voleur");
-  if (voleur && (premiere || game.thiefVariant === "echange")) {
-    const echange = game.thiefVariant === "echange";
-    e.push({
-      id: "voleur",
-      role: R("voleur"),
-      appel: "« Le Voleur se réveille. »",
-      consigne: echange
-        ? "Touchez le joueur avec qui il échange sa carte. L'échange est immédiat : les deux devront revoir leur carte au réveil."
-        : "Montrez-lui les deux cartes du centre. Il en prend une, définitivement.",
-      aide: "Le Voleur change de personnage et joue le nouveau jusqu'à la fin. Si les deux cartes du centre sont des Loups-Garous, il est obligé d'en prendre un.",
-      pret: () => !echange || nuit.voleurEchange !== undefined,
-      rendu: () =>
-        echange ? (
-          <Profils
-            joueurs={vivants.filter((s) => s.position !== voleur.position)}
-            choisis={nuit.voleurEchange !== undefined ? [nuit.voleurEchange] : []}
-            sur={(p) => {
-              onVol(voleur.position, p);
-              onAction({ voleurEchange: p });
-            }}
-            nom={nom}
-            roleDe={roleDe}
-          />
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Cartes au centre :{" "}
-            {game.centerCards.map((id) => ROLES_BY_ID[id]?.name ?? id).join(" · ") || "aucune"}
-          </p>
-        ),
-    });
-  }
 
   /* ---- Cupidon, puis les Amoureux ---- */
   if (enJeu.has("cupidon") && premiere) {
@@ -476,10 +431,28 @@ function construire(
       aide: "Les trois cartes viennent du centre, jamais des joueurs : personne n'est dépossédé. Aucune carte de Loup-Garou parmi elles.",
       pret: ok,
       rendu: () => (
-        <p className="text-xs text-muted-foreground">
-          Ces cartes restent physiques : notez de tête le pouvoir emprunté, puis appelez le rôle
-          correspondant à son tour si besoin.
-        </p>
+        <>
+          <div className="flex flex-col gap-2">
+            {(game.comedienCartes ?? []).map((id) => {
+              const r = ROLES_BY_ID[id];
+              return (
+                <div
+                  key={id}
+                  className="flex items-center gap-3 rounded-xl border border-border bg-secondary p-3"
+                >
+                  <span className="text-xl">{r?.emoji ?? "❔"}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold">{r?.name ?? id}</p>
+                    <p className="truncate text-[10px] text-muted-foreground">{r?.short}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Retirez du centre la carte qu'il choisit, et appelez ce rôle à son tour cette nuit.
+          </p>
+        </>
       ),
     });
   }
@@ -496,17 +469,15 @@ function construire(
       rendu: () => (
         <>
           <Profils
-            joueurs={vivants}
+            joueurs={vivants.filter((s) => s.position !== etat.protectionPrecedente)}
             choisis={nuit.protection !== undefined ? [nuit.protection] : []}
-            bloque={(p) => etat.protectionPrecedente === p}
-            raisonBloque="protégé la nuit dernière"
             sur={(p) => onAction({ protection: nuit.protection === p ? null : p })}
             nom={nom}
             roleDe={roleDe}
           />
           {etat.protectionPrecedente ? (
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Interdit cette nuit : {nom(etat.protectionPrecedente)}, déjà protégé hier.
+              {nom(etat.protectionPrecedente)} n'apparaît pas : déjà protégé la nuit dernière.
             </p>
           ) : null}
         </>
@@ -528,14 +499,7 @@ function construire(
         <Profils
           joueurs={vivants.filter((s) => s.position !== voyante.position)}
           choisis={nuit.voyante !== undefined ? [nuit.voyante] : []}
-          sur={(p) => {
-            if (nuit.voyante === p) {
-              onAction({ voyante: null });
-            } else {
-              onAction({ voyante: p });
-              onRevelation(voyante.position, p);
-            }
-          }}
+          sur={(p) => onAction({ voyante: nuit.voyante === p ? null : p })}
           nom={nom}
           roleDe={roleDe}
         />
@@ -546,7 +510,7 @@ function construire(
       role: R("voyante"),
       appel: "Montrez-lui cette carte, à l'abri de tous les regards.",
       consigne:
-        "Tournez l'écran vers elle seule. Si elle joue sur son propre téléphone, la carte y est déjà apparue.",
+        "Tournez l'écran vers elle seule, le temps qu'elle regarde, puis reprenez le téléphone.",
       aide: "Ne dites rien à voix haute : personne d'autre ne doit savoir ce qu'elle a vu.",
       pret: ok,
       rendu: () =>
@@ -627,13 +591,8 @@ function construire(
       rendu: () => (
         <>
           <Profils
-            joueurs={vivants}
+            joueurs={vivants.filter((s) => !estLoup(s))}
             choisis={nuit.victimeLoups !== undefined ? [nuit.victimeLoups] : []}
-            bloque={(p) => {
-              const s = vivants.find((x) => x.position === p);
-              return s ? estLoup(s) : false;
-            }}
-            raisonBloque="la meute ne se dévore pas elle-même"
             sur={(p) => onAction({ victimeLoups: nuit.victimeLoups === p ? null : p })}
             nom={nom}
             roleDe={roleDe}
@@ -732,13 +691,8 @@ function construire(
       pret: () => nuit.secondeVictime !== undefined,
       rendu: () => (
         <Profils
-          joueurs={vivants}
+          joueurs={vivants.filter((s) => !estLoup(s) && s.position !== nuit.victimeLoups)}
           choisis={nuit.secondeVictime !== undefined ? [nuit.secondeVictime] : []}
-          bloque={(p) => {
-            const s = vivants.find((x) => x.position === p);
-            return (s ? estLoup(s) : false) || p === nuit.victimeLoups;
-          }}
-          raisonBloque="déjà dévoré, ou membre de la meute"
           sur={(p) => onAction({ secondeVictime: nuit.secondeVictime === p ? null : p })}
           nom={nom}
           roleDe={roleDe}
@@ -844,10 +798,8 @@ function construire(
         return (
           <>
             <Profils
-              joueurs={vivants.filter((x) => x.position !== flutiste.position)}
+              joueurs={charmables}
               choisis={choisis}
-              bloque={(p) => deja.includes(p)}
-              raisonBloque="déjà envoûté"
               sur={(p) =>
                 onAction({
                   charmes: choisis.includes(p)
@@ -883,13 +835,45 @@ function construire(
           choisis={game.seats
             .filter((s) => s.statuses.includes("baillonne"))
             .map((s) => s.position)}
-          bloque={(p) => game.gagHistory.some((h) => h.position === p && game.night - h.night < 3)}
-          raisonBloque="muselé il y a moins de trois nuits"
           sur={(p) => onBaillon(p)}
           nom={nom}
           roleDe={roleDe}
         />
       ),
+    });
+  }
+
+  /* ---- Voleur ---- */
+  const voleur = porteur("voleur");
+  if (voleur && (premiere || game.thiefVariant === "echange")) {
+    const echange = game.thiefVariant === "echange";
+    e.push({
+      id: "voleur",
+      role: R("voleur"),
+      appel: "« Le Voleur se réveille, en tout dernier. »",
+      consigne: echange
+        ? "Touchez le joueur avec qui il échange sa carte. L'échange est immédiat : les deux devront revoir leur carte au réveil."
+        : "Montrez-lui les deux cartes du centre. Il en prend une, définitivement.",
+      aide: "Il vole une identité à la toute fin de la nuit, quand tous les autres ont déjà agi. Le rôle volé change de mains sur-le-champ : au réveil, les deux joueurs devront revérifier leur carte.",
+      pret: () => !echange || nuit.voleurEchange !== undefined,
+      rendu: () =>
+        echange ? (
+          <Profils
+            joueurs={vivants.filter((s) => s.position !== voleur.position)}
+            choisis={nuit.voleurEchange !== undefined ? [nuit.voleurEchange] : []}
+            sur={(p) => {
+              onVol(voleur.position, p);
+              onAction({ voleurEchange: p });
+            }}
+            nom={nom}
+            roleDe={roleDe}
+          />
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Cartes au centre :{" "}
+            {game.centerCards.map((id) => ROLES_BY_ID[id]?.name ?? id).join(" · ") || "aucune"}
+          </p>
+        ),
     });
   }
 

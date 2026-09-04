@@ -65,7 +65,8 @@ function compositionAuto(count: number): Record<string, number> {
 function NouvellePartie() {
   const navigate = useNavigate();
   const { token, saveSession } = useGame();
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [cartesComedien, setCartesComedien] = useState<string[]>([]);
   const [count, setCount] = useState(8);
   const [saisie, setSaisie] = useState("8");
   const [singleDevice, setSingleDevice] = useState(false);
@@ -123,6 +124,7 @@ function NouvellePartie() {
           selection,
           thiefVariant: varianteVoleur,
           singleDevice,
+          comedienCartes: cartesComedien,
         },
       });
       saveSession({ code, host: true });
@@ -152,7 +154,7 @@ function NouvellePartie() {
             : "La composition conseillée est déjà prête : ajustez-la comme vous voulez."
         }
         back={step === 1 ? "/" : undefined}
-        onBack={step === 2 ? () => setStep(1) : undefined}
+        onBack={step === 1 ? undefined : () => setStep(step === 3 ? 2 : 1)}
         backLabel={step === 2 ? "Nombre de joueurs" : "Retour"}
       />
 
@@ -359,17 +361,87 @@ function NouvellePartie() {
             <Button
               className="w-full py-4"
               disabled={total !== cible || busy}
-              onClick={() => void lancer()}
+              onClick={() => (selection["comedien"] ? setStep(3) : void lancer())}
             >
               {total === cible
                 ? busy
                   ? "Création…"
-                  : singleDevice
-                    ? "Créer la partie"
-                    : "Générer le code de partie"
+                  : selection["comedien"]
+                    ? "Choisir les 3 cartes du Comédien →"
+                    : singleDevice
+                      ? "Créer la partie"
+                      : "Générer le code de partie"
                 : total < cible
                   ? `Il manque ${cible - total} carte(s)`
                   : `${total - cible} carte(s) en trop`}
+            </Button>
+          </div>
+        </section>
+      )}
+
+      {step === 3 && (
+        <section>
+          <div className="surface p-5">
+            <h2 className="font-display text-base font-black">Les trois cartes du Comédien</h2>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Le Comédien n'a pas de pouvoir à lui : chaque nuit, il emprunte celui d'une carte
+              posée face visible au centre de la table. Choisissez trois rôles supplémentaires, en
+              plus de ceux déjà distribués. Ces trois cartes ne sont données à personne.
+            </p>
+            <p className="mt-2 rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs text-primary">
+              Comme elles sont posées face visible, tout le village les connaît : elles seront
+              affichées sur tous les téléphones, comme la carte du Villageois-Villageois.
+            </p>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Aucune carte de Loup-Garou n'est autorisée. Si le Voleur est aussi en jeu, posez
+              d'abord ses deux cartes, puis ces trois-là.
+            </p>
+          </div>
+
+          <p className="mt-4 mb-2 text-xs tracking-widest text-muted-foreground uppercase">
+            {cartesComedien.length} sur 3 choisies
+          </p>
+          <div className="grid grid-cols-2 gap-2 pb-28">
+            {ROLES_DISTRIBUABLES.filter(
+              (r) => r.camp !== "loups" && r.id !== "comedien" && r.id !== "simple-villageois",
+            ).map((r) => {
+              const choisie = cartesComedien.includes(r.id);
+              return (
+                <button
+                  key={r.id}
+                  onClick={() =>
+                    setCartesComedien((c) =>
+                      c.includes(r.id) ? c.filter((x) => x !== r.id) : [...c, r.id].slice(-3),
+                    )
+                  }
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left",
+                    choisie
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-secondary",
+                  )}
+                >
+                  <span className="text-lg">{r.emoji}</span>
+                  <span className="min-w-0 flex-1 truncate text-xs font-semibold">{r.name}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md border-t border-border bg-background/95 p-4 backdrop-blur">
+            {erreur && <p className="mb-2 text-center text-xs text-destructive">{erreur}</p>}
+            <Button
+              className="w-full py-4"
+              disabled={cartesComedien.length !== 3 || busy}
+              onClick={() => void lancer()}
+            >
+              {cartesComedien.length !== 3
+                ? `Choisissez encore ${3 - cartesComedien.length} carte(s)`
+                : busy
+                  ? "Création…"
+                  : singleDevice
+                    ? "Créer la partie"
+                    : "Générer le code de partie"}
             </Button>
           </div>
         </section>

@@ -156,6 +156,31 @@ function EcranJoueur() {
         />
       )}
 
+      {!seat && game.comedienCartes.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
+            Les trois cartes du Comédien
+          </h2>
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            Posées face visible au centre : le Comédien en emprunte le pouvoir, une par nuit.
+          </p>
+          <ul className="flex flex-col gap-2">
+            {game.comedienCartes.map((id) => {
+              const r = ROLES_BY_ID[id];
+              return (
+                <li key={id} className="surface flex items-center gap-3 p-3">
+                  <span className="text-2xl">{r?.emoji ?? "❔"}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{r?.name ?? id}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">{r?.short}</p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {!seat && <CartesPubliques seats={game.seats} />}
 
       {game.voitLeCimetiere && !seat && <Cimetiere seats={game.seats} />}
