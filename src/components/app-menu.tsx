@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { RolesPanel } from "@/components/panels/roles-panel";
 import { ReglesPanel } from "@/components/panels/regles-panel";
+import { useTheme, type Theme } from "@/lib/theme";
+import { cn } from "@/lib/utils";
 
 type Vue = "menu" | "roles" | "regles";
 
@@ -20,6 +22,7 @@ const TITRES: Record<Exclude<Vue, "menu">, string> = {
  */
 export function AppMenu() {
   const [vue, setVue] = useState<Vue | null>(null);
+  const { theme, setTheme } = useTheme();
 
   return (
     <>
@@ -55,6 +58,32 @@ export function AppMenu() {
                 </span>
               </button>
             ))}
+            <div className="mt-6">
+              <p className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
+                Apparence
+              </p>
+              <div className="flex gap-1 rounded-xl bg-secondary p-1">
+                {(
+                  [
+                    ["sombre", "🌙 Sombre"],
+                    ["clair", "☀️ Clair"],
+                    ["appareil", "📱 Appareil"],
+                  ] as [Theme, string][]
+                ).map(([valeur, label]) => (
+                  <button
+                    key={valeur}
+                    onClick={() => setTheme(valeur)}
+                    className={cn(
+                      "flex-1 rounded-lg px-2 py-2 text-[11px] font-semibold transition",
+                      theme === valeur ? "bg-card text-primary shadow-sm" : "text-muted-foreground",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <button
               onClick={() => setVue(null)}
               className="mt-2 w-full rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"

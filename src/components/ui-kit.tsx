@@ -3,8 +3,6 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { CAMP_LABEL, type Camp, type Role } from "@/data/roles";
 
-
-
 export function Button({
   children,
   variant = "primary",
@@ -164,14 +162,14 @@ export function RoleArt({ role, className }: { role: Role; className?: string })
       role="img"
       aria-label={`Carte ${role.name}`}
     >
-      <span className="role-face-text font-display text-center text-2xl leading-tight font-black tracking-wide">
-        {role.name}
+      {/* Seulement l'emblème : le nom du rôle est déjà affiché juste
+          en dessous par l'appelant, l'afficher ici faisait doublon. */}
+      <span className="role-face-text text-6xl leading-none" aria-hidden="true">
+        {role.emoji}
       </span>
     </div>
   );
 }
-
-
 
 export function Modal({
   open,

@@ -89,6 +89,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    scripts: [
+      {
+        // Posé avant le premier rendu : sans cela l'écran clignote en noir
+        // pour qui a choisi le mode clair.
+        children: `(function(){try{var t=localStorage.getItem('lg-theme');var c=t==='clair'||(t==='appareil'&&matchMedia('(prefers-color-scheme: light)').matches);if(c)document.documentElement.classList.add('clair');}catch(e){}})()`,
+      },
+    ],
     links: [
       // Les polices sont servies par l'application (voir src/styles.css),
       // il n'y a donc plus aucun appel vers Google Fonts.

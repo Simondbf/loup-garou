@@ -10,8 +10,6 @@ import {
   dealCards,
   endGame,
   gagPlayer,
-  hostTakeSeat,
-  moveSeat,
   pushReveal,
   resetSeen,
   resolveNight,
@@ -62,7 +60,6 @@ function Maitre() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [lovers, setLoversSel] = useState<number[]>([]);
   const [revealFrom, setRevealFrom] = useState<number | null>(null);
-  const [rangement, setRangement] = useState(false);
   const [bilan, setBilan] = useState<{
     morts: { position: number; cause: string }[];
     sauves: { position: number; raison: string }[];
@@ -162,93 +159,42 @@ function Maitre() {
             {game.seats.map((s) => (
               <li key={s.position} className="surface flex items-center gap-3 p-3">
                 <span className="w-6 text-xs text-muted-foreground">{s.position}</span>
-                <ChampPrenom
-                  valeur={s.name}
-                  onEnregistrer={(nom) =>
-                    void run(
-                      setSeatName({
-                        data: { code: game.code, token, position: s.position, name: nom },
-                      }),
-                    )
-                  }
-                  placeholder={s.claimed ? "Prénom" : "Place libre"}
-                  className="min-w-0 flex-1"
-                />
-                {!game.singleDevice && rangement && (
-                  <div className="flex shrink-0 flex-col">
-                    <button
-                      aria-label="Monter d'une place"
-                      onClick={() =>
-                        void run(
-                          moveSeat({
-                            data: { code: game.code, token, position: s.position, vers: "haut" },
-                          }),
-                        )
-                      }
-                      className="rounded-t-lg border border-border px-2 text-[11px] leading-4 text-muted-foreground"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      aria-label="Descendre d'une place"
-                      onClick={() =>
-                        void run(
-                          moveSeat({
-                            data: { code: game.code, token, position: s.position, vers: "bas" },
-                          }),
-                        )
-                      }
-                      className="rounded-b-lg border border-t-0 border-border px-2 text-[11px] leading-4 text-muted-foreground"
-                    >
-                      ↓
-                    </button>
-                  </div>
-                )}
-                {!game.singleDevice && (
-                  <button
-                    onClick={() =>
+                {game.singleDevice ? (
+                  <ChampPrenom
+                    valeur={s.name}
+                    onEnregistrer={(nom) =>
                       void run(
-                        hostTakeSeat({
-                          data: { code: game.code, token, position: s.position, take: !s.mine },
+                        setSeatName({
+                          data: { code: game.code, token, position: s.position, name: nom },
                         }),
                       )
                     }
-                    className={cn(
-                      "rounded-lg border px-2 py-1.5 text-[11px]",
-                      s.mine
-                        ? "border-primary bg-primary/15 text-primary"
-                        : "border-border text-muted-foreground",
-                    )}
-                  >
-                    {s.mine ? "sur mon tél." : s.claimed ? "connecté" : "libre"}
-                  </button>
+                    placeholder="Prénom"
+                    className="min-w-0 flex-1"
+                  />
+                ) : (
+                  <>
+                    {/* En multi-appareils, chaque joueur saisit son prénom sur
+                        son propre téléphone. Le MJ ne fait que regarder les
+                        connexions arriver : il anime, il ne joue pas. */}
+                    <span className="min-w-0 flex-1 truncate text-sm">
+                      {s.name || <span className="text-muted-foreground italic">en attente…</span>}
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-lg border px-2 py-1 text-[11px]",
+                        s.claimed
+                          ? "border-primary/50 bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground",
+                      )}
+                    >
+                      {s.claimed ? "connecté" : "libre"}
+                    </span>
+                  </>
                 )}
               </li>
             ))}
           </ul>
-
-          {!game.singleDevice && (
-            <div className="surface p-3">
-              <button
-                onClick={() => setRangement((v) => !v)}
-                className="flex w-full items-center justify-between gap-3 text-left"
-              >
-                <span className="font-display text-sm font-bold">
-                  Ranger dans l'ordre de la table
-                </span>
-                <span className="text-[11px] text-muted-foreground">
-                  {rangement ? "masquer" : "facultatif"}
-                </span>
-              </button>
-              {rangement && (
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Les flèches ↑ ↓ font remonter ou descendre un joueur. Utile seulement si vous
-                  jouez le Montreur d'Ours ou le Renard, dont les pouvoirs portent sur les voisins
-                  directs. Sinon, laissez la liste telle quelle.
-                </p>
-              )}
-            </div>
-          )}
 
           <Button
             className="w-full py-4"

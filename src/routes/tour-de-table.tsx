@@ -171,41 +171,31 @@ function TourDeTable() {
           rouvrir une carte.
         </p>
 
-        <Button className="mt-4 w-full py-4" onClick={() => setEtape("passage")}>
-          {dernier ? "✅ J'ai vu ma carte" : "✅ J'ai vu ma carte"}
+        {/* Pas d'écran intermédiaire : le joueur valide et l'écran suivant est
+            déjà la saisie du prénom du voisin, donc sa carte est cachée au
+            moment où il passe le téléphone. */}
+        <Button
+          className="mt-4 w-full py-4"
+          onClick={() => (dernier ? setEtape("passage") : suivant())}
+        >
+          {dernier ? "✅ Terminé, rendre le téléphone au Maître du Jeu" : "✅ J'ai vu, au suivant"}
         </Button>
       </main>
     );
   }
 
-  /* ---------------- Écran de passage ---------------- */
+  /* ---------------- Fin du tour ---------------- */
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 pb-16 text-center">
-      {dernier ? (
-        <>
-          <p className="text-5xl">🌙</p>
-          <h1 className="mt-4 font-display text-2xl font-black">Tout le monde a sa carte</h1>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Rends le téléphone au Maître du Jeu. La première nuit peut commencer.
-          </p>
-          <Button className="mt-8 w-full py-4" onClick={() => void navigate({ to: "/maitre" })}>
-            🎭 Ouvrir le tableau du Maître du Jeu
-          </Button>
-        </>
-      ) : (
-        <>
-          <p className="text-5xl">📱</p>
-          <h1 className="mt-4 font-display text-2xl font-black">Passe le téléphone</h1>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Au joueur suivant, sans regarder son écran. Il reste {total - index - 1} carte
-            {total - index - 1 > 1 ? "s" : ""} à distribuer.
-          </p>
-          <Button className="mt-8 w-full py-4" onClick={suivant}>
-            Je suis le joueur suivant →
-          </Button>
-        </>
-      )}
+      <p className="text-5xl">🌙</p>
+      <h1 className="mt-4 font-display text-2xl font-black">Tout le monde a sa carte</h1>
+      <p className="mt-3 text-sm text-muted-foreground">
+        Rends le téléphone au Maître du Jeu. La première nuit peut commencer.
+      </p>
+      <Button className="mt-8 w-full py-4" onClick={() => void navigate({ to: "/maitre" })}>
+        🎭 Ouvrir le tableau du Maître du Jeu
+      </Button>
     </main>
   );
 }
