@@ -40,6 +40,7 @@ export function ConduiteNuit({
   onResoudre,
   onLovers,
   onVol,
+  onVolCentre,
   onBaillon,
 }: {
   game: GameDTO;
@@ -48,11 +49,12 @@ export function ConduiteNuit({
   onResoudre: () => void;
   onLovers: (positions: number[]) => void;
   onVol: (position: number, avec: number) => void;
+  onVolCentre: (position: number, carte: string) => void;
   onBaillon: (position: number) => void;
 }) {
   const etapes = useMemo(
-    () => construire(game, { onAction, onLovers, onVol, onBaillon }),
-    [game, onAction, onLovers, onVol, onBaillon],
+    () => construire(game, { onAction, onLovers, onVol, onVolCentre, onBaillon }),
+    [game, onAction, onLovers, onVol, onVolCentre, onBaillon],
   );
 
   const { conseils } = useConseils();
@@ -287,10 +289,11 @@ function construire(
     onAction: (patch: PatchNuit) => void;
     onLovers: (positions: number[]) => void;
     onVol: (position: number, avec: number) => void;
+    onVolCentre: (position: number, carte: string) => void;
     onBaillon: (position: number) => void;
   },
 ): Etape[] {
-  const { onAction, onLovers, onVol, onBaillon } = actions;
+  const { onAction, onLovers, onVol, onVolCentre, onBaillon } = actions;
   const nuit = game.nuit ?? {};
   const etat = game.hostState ?? {};
   const vivants = game.seats.filter((s) => s.alive);
@@ -931,10 +934,10 @@ function construire(
       role: R("voleur"),
       appel: "« Le Voleur se réveille, en tout dernier. »",
       consigne: echange
-        ? "Touchez le joueur avec qui il échange sa carte. L'échange est immédiat : les deux devront revoir leur carte au réveil."
-        : "Montrez-lui les deux cartes du centre. Il en prend une, définitivement.",
-      aide: "Il vole une identité à la toute fin de la nuit, quand tous les autres ont déjà agi. Le rôle volé change de mains sur-le-champ : au réveil, les deux joueurs devront revérifier leur carte.",
-      pret: () => !echange || nuit.voleurEchange !== undefined,
+        ? "Touchez le joueur avec qui il échange sa carte. L'échange est immédiat."
+        : "Lisez-lui les deux cartes du centre, numérotées, et demandez-lui son choix. Touchez celle qu'il prend : elle est à lui pour le reste de la partie.",
+      aide: "Il vole une identité à la toute fin de la nuit, quand tous les autres ont déjà agi. Le rôle change de mains sur-le-champ — c'est pour cela que tout le monde revérifie sa carte au réveil.",
+      pret: () => (echange ? nuit.voleurEchange !== undefined : nuit.voleurCarte !== undefined),
       rendu: () =>
         echange ? (
           <Profils
@@ -948,10 +951,46 @@ function construire(
             roleDe={roleDe}
           />
         ) : (
-          <p className="text-xs text-muted-foreground">
-            Cartes au centre :{" "}
-            {game.centerCards.map((id) => ROLES_BY_ID[id]?.name ?? id).join(" · ") || "aucune"}
-          </p>
+          <>
+            <div className="flex flex-col gap-2">
+              {game.centerCards.map((id, i) => {
+                const r = ROLES_BY_ID[id];
+                const pris = nuit.voleurCarte === id;
+                return (
+                  <button
+                    key={`${id}-${i}`}
+                    onClick={() => {
+                      onVolCentre(voleur.position, id);
+                      onAction({ voleurCarte: id });
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl border p-3 text-left",
+                      pris
+                        ? "border-primary bg-primary/15 text-primary"
+                        : "border-border bg-secondary",
+                    )}
+                  >
+                    <span className="w-5 text-center text-sm font-semibold tabular-nums">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-semibold">{r?.name ?? id}</span>
+                      <span className="block truncate text-[10px] text-muted-foreground">
+                        {r?.short}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+              {game.centerCards.length === 0 && (
+                <p className="text-xs text-destructive">Aucune carte au centre.</p>
+              )}
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Ne montrez pas cet écran : les deux rôles se disent à voix haute, il répond par un
+              numéro.
+            </p>
+          </>
         ),
     });
   }

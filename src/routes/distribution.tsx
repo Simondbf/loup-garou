@@ -4,13 +4,7 @@ import { Button, PageHeader, RoleArt, CampBadge } from "@/components/ui-kit";
 import { ChampPrenom } from "@/components/champ-prenom";
 import { CAMP_LABEL, ROLES_BY_ID } from "@/data/roles";
 import { useGame } from "@/lib/game-store";
-import {
-  markSeen,
-  setSeatName,
-  thiefChoose,
-  type EtatPersonnel,
-  type SeatDTO,
-} from "@/lib/party.functions";
+import { markSeen, setSeatName, type EtatPersonnel, type SeatDTO } from "@/lib/party.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/distribution")({
@@ -232,10 +226,6 @@ function EcranJoueur() {
       {seat && revele && seat.roleId && (
         <CarteRevelee
           seat={seat}
-          code={game.code}
-          token={token}
-          centerCards={game.centerCards}
-          onApply={apply}
           onClose={() => {
             setActive(null);
             setRevele(false);
@@ -491,26 +481,9 @@ function Cimetiere({ seats }: { seats: SeatDTO[] }) {
   );
 }
 
-function CarteRevelee({
-  seat,
-  code,
-  token,
-  centerCards,
-  onApply,
-  onClose,
-}: {
-  seat: SeatDTO;
-  code: string;
-  token: string;
-  centerCards: string[];
-  onApply: (dto: Awaited<ReturnType<typeof thiefChoose>>) => void;
-  onClose: () => void;
-}) {
+function CarteRevelee({ seat, onClose }: { seat: SeatDTO; onClose: () => void }) {
   const role = ROLES_BY_ID[seat.roleId!];
   if (!role) return null;
-  // Variante « cartes au centre » seulement : le vol de rôle est piloté par
-  // le Maître du Jeu depuis son écran, comme toutes les actions de la nuit.
-  const voleurCentre = role.id === "voleur" && centerCards.length > 0;
 
   return (
     <div className="animate-flip-in flex flex-col gap-4">
@@ -537,31 +510,6 @@ function CarteRevelee({
           </p>
         )}
       </div>
-
-      {voleurCentre && (
-        <div className="surface p-4">
-          <p className="font-display text-sm font-bold">Deux cartes au centre</p>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            {centerCards.map((cid: string, i: number) => {
-              const r = ROLES_BY_ID[cid];
-              return (
-                <button
-                  key={`${cid}-${i}`}
-                  onClick={() =>
-                    void thiefChoose({
-                      data: { code, token, position: seat.position, centerRoleId: cid },
-                    }).then(onApply)
-                  }
-                  className={cn("text-left")}
-                >
-                  {r && <RoleArt role={r} className="aspect-[3/4]" />}
-                  <p className="mt-1 text-center text-xs text-muted-foreground">Prendre</p>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       <Button variant="ghost" className="w-full py-4" onClick={onClose}>
         J'ai compris, cacher la carte

@@ -195,6 +195,8 @@ export interface NuitEnCours {
   poisonVoulu?: boolean;
   /** Carte du centre choisie par le Comédien cette nuit. */
   comedien?: string;
+  /** Carte du centre prise par le Voleur, en variante « cartes au centre ». */
+  voleurCarte?: string;
   /** Enfant Sauvage : modèle désigné la première nuit, recopié dans hostState */
   modele?: number;
   /** Chien-Loup : camp choisi la première nuit, recopié dans hostState */
@@ -564,10 +566,9 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
     // Les trois cartes du Comédien restent chez le Maître du Jeu : il les
     // lit à voix haute, numérotées, et le joueur répond par un numéro.
     comedienCartes: isHost ? ((game["comedien_cartes"] ?? []) as string[]) : [],
-    centerCards:
-      isHost || seats.some((s) => s["role_id"] === "voleur" && s["device_token"] === token)
-        ? ((game["center_cards"] ?? []) as string[])
-        : [],
+    // Comme les cartes du Comédien : le MJ les lit, le Voleur répond. Aucune
+    // action de nuit ne se joue sur le téléphone d'un joueur.
+    centerCards: isHost ? ((game["center_cards"] ?? []) as string[]) : [],
     gagHistory: (game["gag_history"] ?? []) as { night: number; position: number }[],
     hostState: isHost ? ((game["host_state"] ?? {}) as HostState) : {},
     nuit: isHost ? ((game["nuit"] ?? {}) as NuitEnCours) : {},
@@ -1624,6 +1625,19 @@ export const resolveNight = createServerFn({ method: "POST" })
       ordreDepart: ordre,
     };
     if (infecte !== undefined) journalDuJour.infecte = infecte;
+
+    // Chacun son téléphone : au réveil, tout le monde revérifie sa carte. Le
+    // Voleur a pu changer d'identité pendant la nuit, l'Infect Père des
+    // Loups en a peut-être retourné une autre, et la Servante Dévouée
+    // récupérera une carte au grand jour. Sans cette vérification, un joueur
+    // resterait persuadé de jouer un rôle qui n'est plus le sien.
+    if (!game["single_device"]) {
+      for (const place of seats) {
+        if (place["alive"] && place["seen"]) {
+          await db.pb.modifier("seats", place["id"], { seen: false });
+        }
+      }
+    }
 
     await db.pb.modifier("games", game["id"], {
       host_state: { ...etat, ...patchEtat },

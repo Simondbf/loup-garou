@@ -33,6 +33,7 @@ import {
   setSelection,
   validerProfils,
   setSeatName,
+  thiefChoose,
   thiefSwap,
   type HostState,
   type PatchJour,
@@ -427,6 +428,13 @@ function Maitre() {
                   onResoudre={() => void run(resolveNight({ data: { code: game.code, token } }))}
                   onVol={(position, avec) =>
                     void run(thiefSwap({ data: { code: game.code, token, position, avec } }))
+                  }
+                  onVolCentre={(position, carte) =>
+                    void run(
+                      thiefChoose({
+                        data: { code: game.code, token, position, centerRoleId: carte },
+                      }),
+                    )
                   }
                   onBaillon={(position) =>
                     void run(gagPlayer({ data: { code: game.code, token, position } }))
