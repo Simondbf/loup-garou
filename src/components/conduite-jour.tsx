@@ -647,7 +647,7 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
 
   /* Le Joueur de Flûte : les envoûtés sont prévenus chaque matin. */
   const charmed = (etat.charmed ?? []).filter((p) => siege(p)?.alive);
-  if (charmed.length > 0) {
+  if (charmed.length > 0 && !game.vainqueur) {
     e.push({
       id: "envoutes",
       role: R("joueur-de-flute"),
@@ -668,7 +668,7 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
 
   /* Le Montreur d'Ours grogne au lever du jour. */
   const montreur = vivants.find((s) => s.roleId === "montreur-ours");
-  if (montreur && vivants.length >= 3) {
+  if (montreur && vivants.length >= 3 && !game.vainqueur) {
     const i = vivants.findIndex((s) => s.position === montreur.position);
     const gauche = vivants[(i - 1 + vivants.length) % vivants.length];
     const droite = vivants[(i + 1) % vivants.length];
@@ -724,11 +724,38 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
 
   /* ---------------- L'élection du Capitaine ---------------- */
 
+  // Première journée d'une partie où la question n'a pas été tranchée à la
+  // composition — c'est le cas du mode un seul téléphone, où l'on passe
+  // directement de la création au tour de table.
+  if (etat.avecCapitaine === undefined && !game.vainqueur) {
+    e.push({
+      id: "capitaine-option",
+      role: R("capitaine"),
+      emoji: "🎖️",
+      titre: "Jouez-vous avec un Capitaine ?",
+      consigne:
+        "Le Capitaine est élu par le village. Sa voix compte double, il tranche les égalités, et il désigne son successeur en mourant. Sans lui, une égalité au vote ne fait aucune victime.",
+      aide: "La question ne sera plus posée : la réponse vaut pour toute la partie.",
+      pret: true,
+      rendu: () => (
+        <div className="flex flex-col gap-2">
+          <GrosBouton onClick={() => void a.onEtat({ avecCapitaine: true })}>
+            Oui, le village élit un Capitaine
+          </GrosBouton>
+          <GrosBouton onClick={() => void a.onEtat({ avecCapitaine: false })}>
+            Non, on joue sans
+          </GrosBouton>
+        </div>
+      ),
+    });
+  }
+
   if (
-    etat.avecCapitaine !== false &&
+    etat.avecCapitaine === true &&
     !vivants.some((s) => s.isCaptain) &&
     !etat.chargePerdue &&
-    vivants.length > 1
+    vivants.length > 1 &&
+    !game.vainqueur
   ) {
     const elu = choix["capitaine-election"];
     e.push({

@@ -187,7 +187,8 @@ function EcranJoueur() {
                 s.seen &&
                 (game.singleDevice ? (
                   <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-center text-xs text-muted-foreground">
-                    Carte déjà consultée. Pour la revoir, demandez au Maître du Jeu de la rouvrir.
+                    Carte déjà consultée. Pour la revoir, demandez au Maître du Jeu : elle s'affiche
+                    sur son écran.
                   </p>
                 ) : (
                   /* Chacun a son téléphone : il peut revoir sa carte autant

@@ -561,7 +561,9 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
     selection: (game["selection"] ?? {}) as Record<string, number>,
     // Les deux cartes du centre n'appartiennent qu'au Voleur : elles ne sont
     // envoyées qu'à l'appareil qui porte sa place, et au Maître du Jeu.
-    comedienCartes: (game["comedien_cartes"] ?? []) as string[],
+    // Les trois cartes du Comédien restent chez le Maître du Jeu : il les
+    // lit à voix haute, numérotées, et le joueur répond par un numéro.
+    comedienCartes: isHost ? ((game["comedien_cartes"] ?? []) as string[]) : [],
     centerCards:
       isHost || seats.some((s) => s["role_id"] === "voleur" && s["device_token"] === token)
         ? ((game["center_cards"] ?? []) as string[])
