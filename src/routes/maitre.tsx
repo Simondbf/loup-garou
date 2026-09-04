@@ -174,6 +174,7 @@ function Maitre() {
               variante={game.thiefVariant}
               unSeulTelephone
               comedienCartes={game.comedienCartes}
+              avecCapitaine={game.hostState.avecCapitaine !== false}
               onSelection={(selection) =>
                 void run(setSelection({ data: { code: game.code, token, selection } }))
               }
@@ -182,6 +183,11 @@ function Maitre() {
                   setSelection({
                     data: { code: game.code, token, selection: game.selection, comedienCartes },
                   }),
+                )
+              }
+              onCapitaine={(avecCapitaine) =>
+                void run(
+                  setHostState({ data: { code: game.code, token, patch: { avecCapitaine } } }),
                 )
               }
             />
@@ -279,6 +285,7 @@ function Maitre() {
               variante={game.thiefVariant}
               unSeulTelephone={false}
               comedienCartes={game.comedienCartes}
+              avecCapitaine={game.hostState.avecCapitaine !== false}
               onSelection={(selection) =>
                 void run(setSelection({ data: { code: game.code, token, selection } }))
               }
@@ -287,6 +294,11 @@ function Maitre() {
                   setSelection({
                     data: { code: game.code, token, selection: game.selection, comedienCartes },
                   }),
+                )
+              }
+              onCapitaine={(avecCapitaine) =>
+                void run(
+                  setHostState({ data: { code: game.code, token, patch: { avecCapitaine } } }),
                 )
               }
             />
@@ -594,16 +606,20 @@ function Composition({
   variante,
   unSeulTelephone,
   comedienCartes,
+  avecCapitaine,
   onSelection,
   onComedien,
+  onCapitaine,
 }: {
   effectif: number;
   selection: Record<string, number>;
   variante: string;
   unSeulTelephone: boolean;
   comedienCartes: string[];
+  avecCapitaine: boolean;
   onSelection: (selection: Record<string, number>) => void;
   onComedien: (cartes: string[]) => void;
+  onCapitaine: (avec: boolean) => void;
 }) {
   const attendu = cartesAttendues(effectif, selection, variante);
   const total = Object.values(selection).reduce((a, b) => a + b, 0);
@@ -691,6 +707,22 @@ function Composition({
           </section>
         );
       })}
+
+      <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-xl border border-border p-3">
+        <input
+          type="checkbox"
+          checked={avecCapitaine}
+          onChange={(e) => onCapitaine(e.target.checked)}
+          className="h-5 w-5 shrink-0 accent-primary"
+        />
+        <span className="min-w-0">
+          <span className="block text-xs font-semibold">Jouer avec un Capitaine</span>
+          <span className="block text-[11px] text-muted-foreground">
+            Élu le premier jour, sa voix compte double et il désigne son successeur en mourant. Sans
+            lui, une égalité au vote ne fait aucune victime.
+          </span>
+        </span>
+      </label>
 
       {(selection["comedien"] ?? 0) > 0 && (
         <section className="mt-5 rounded-xl border border-border p-3">

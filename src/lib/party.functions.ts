@@ -108,6 +108,13 @@ export interface HostState {
   privesJour?: number;
   /** L'Idiot était Capitaine et a été gracié : l'écharpe est perdue pour de bon. */
   chargePerdue?: boolean;
+  /**
+   * Le village joue-t-il avec un Capitaine ? Absent vaut oui — c'est la
+   * règle officielle, et la plupart des tables le gardent. Mis à faux, ni
+   * élection au premier jour, ni succession à sa mort, ni voix double pour
+   * trancher les égalités.
+   */
+  avecCapitaine?: boolean;
 }
 
 /** Un tour de vote du village. */

@@ -70,6 +70,23 @@ tête reposée, pas pendant un déploiement.
    rien retaper. Le MJ reste le MJ ; pour en changer, on se passe le téléphone,
    d'où les prénoms de nouveau modifiables.
 
+## Ordre d'une journée
+1. Lever du jour : les morts de la nuit, puis la carte de chacun.
+2. Ce que ces morts déclenchent, tout de suite : la balle du Chasseur dévoré,
+   la succession de l'écharpe, la gangrène du Chevalier — avec la carte et les
+   déclenchements de chaque nouvelle victime, en boucle.
+3. Envoûtés du Flûtiste, grognement de l'Ours.
+4. Élection du Capitaine, si la table y joue et que l'écharpe est vacante.
+5. Débat, puis vote.
+6. Égalité : le Bouc Émissaire, sinon la voix du Capitaine, sinon personne.
+7. Carte du condamné, puis la même boucle de déclenchements.
+8. Second vote du Juge Bègue, le cas échéant.
+9. Clôture : la nuit tombe.
+
+Le Capitaine est une option de partie (`hostState.avecCapitaine`, cochée par
+défaut dans l'écran de composition). Décochée : ni élection, ni succession, ni
+voix double, et une égalité ne fait aucune victime.
+
 ## Ce que le MJ n'a plus
 - Pas d'onglet Joueurs : les profils sont cliquables dans le déroulé.
 - Pas de rangement en cercle (`moveSeat` supprimé).

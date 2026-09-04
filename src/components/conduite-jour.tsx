@@ -412,7 +412,7 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
     }
 
     /* L'écharpe passe de main en main : le Capitaine choisit son successeur. */
-    if (s.isCaptain) {
+    if (s.isCaptain && etat.avecCapitaine !== false) {
       const cle = `capitaine-${position}`;
       const suivant = choix[cle];
       liste.push({
@@ -636,6 +636,12 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
 
   for (const m of mortsNuit) e.push(...declencheurs(m.position));
 
+  // La balle d'un Chasseur dévoré cette nuit part au lever du jour, et sa
+  // victime a droit à sa carte retournée et à ses propres déclenchements
+  // avant que le village ne débatte. Les identifiants étant stables, les
+  // étapes déjà franchies ne reviennent pas.
+  e.push(...mortsDuJour());
+
   /* Le Joueur de Flûte : les envoûtés sont prévenus chaque matin. */
   const charmed = (etat.charmed ?? []).filter((p) => siege(p)?.alive);
   if (charmed.length > 0) {
@@ -715,7 +721,12 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
 
   /* ---------------- L'élection du Capitaine ---------------- */
 
-  if (game.night <= 1 && !vivants.some((s) => s.isCaptain) && !etat.chargePerdue) {
+  if (
+    etat.avecCapitaine !== false &&
+    !vivants.some((s) => s.isCaptain) &&
+    !etat.chargePerdue &&
+    vivants.length > 1
+  ) {
     const elu = choix["capitaine-election"];
     e.push({
       id: "capitaine-election",
@@ -788,12 +799,14 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
               Émissaire.
             </li>
           )}
-          <li className="rounded-xl border border-border bg-secondary p-3">
-            🎖️{" "}
-            {vivants.find((s) => s.isCaptain)
-              ? `${nom(vivants.find((s) => s.isCaptain)!.position)} porte l'écharpe : sa voix compte double.`
-              : "Pas de Capitaine en jeu : en cas d'égalité, personne ne tranche."}
-          </li>
+          {etat.avecCapitaine !== false && (
+            <li className="rounded-xl border border-border bg-secondary p-3">
+              🎖️{" "}
+              {vivants.find((s) => s.isCaptain)
+                ? `${nom(vivants.find((s) => s.isCaptain)!.position)} porte l'écharpe : sa voix compte double.`
+                : "Pas de Capitaine en jeu : en cas d'égalité, personne ne tranche."}
+            </li>
+          )}
         </ul>
       ),
     });
@@ -832,7 +845,7 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
 
     if (v && v.designe === 0) {
       const bouc = vivants.find((s) => s.roleId === "bouc-emissaire");
-      const capitaine = vivants.find((s) => s.isCaptain);
+      const capitaine = etat.avecCapitaine === false ? undefined : vivants.find((s) => s.isCaptain);
       const tranche = v.tranche;
       e.push({
         id: `egalite-${t}`,
