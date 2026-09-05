@@ -69,13 +69,20 @@ export function compositionAuto(count: number, unSeulTelephone = true): Record<s
   return base;
 }
 
-/** Nombre de cartes à distribuer, cartes du centre du Voleur comprises. */
+/**
+ * Nombre de cartes à réunir : une par joueur, plus celles du centre.
+ *
+ * Deux pour le Voleur, trois pour le Comédien — ces dernières sont tirées au
+ * sort parmi les cartes de village au moment de la distribution.
+ */
 export function cartesAttendues(
   count: number,
   selection: Record<string, number>,
   variante: string,
 ) {
-  return count + (selection["voleur"] && variante === "centre" ? 2 : 0);
+  return (
+    count + (selection["voleur"] && variante === "centre" ? 2 : 0) + (selection["comedien"] ? 3 : 0)
+  );
 }
 
 /** Ajoute ou retire un exemplaire d'un rôle, sans dépasser le maximum du livret. */

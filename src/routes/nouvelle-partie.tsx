@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Button, Modal, PageHeader, RoleDetail, RoleSigil } from "@/components/ui-kit";
-import { CAMP_LABEL, ROLES_BY_ID, type Camp, type Role } from "@/data/roles";
+import { ROLES_BY_ID, type Role } from "@/data/roles";
+import { ChoixRoles } from "@/components/choix-roles";
 import { compositionAuto, rolesDistribuables } from "@/data/composition";
 import { createGame, dealCards } from "@/lib/party.functions";
 import { useGame } from "@/lib/game-store";
@@ -35,7 +36,6 @@ function NouvellePartie() {
   const navigate = useNavigate();
   const { token, saveSession } = useGame();
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [cartesComedien, setCartesComedien] = useState<string[]>([]);
   const [count, setCount] = useState(8);
   const [saisie, setSaisie] = useState("8");
   const [singleDevice, setSingleDevice] = useState(false);
@@ -101,7 +101,6 @@ function NouvellePartie() {
           selection: singleDevice ? selection : {},
           thiefVariant: varianteVoleur,
           singleDevice,
-          comedienCartes: singleDevice ? cartesComedien : [],
         },
       });
       saveSession({ code, host: true });
@@ -131,7 +130,7 @@ function NouvellePartie() {
             : "La composition conseillée est déjà prête : ajustez-la comme vous voulez."
         }
         back={step === 1 ? "/" : undefined}
-        onBack={step === 1 ? undefined : () => setStep(step === 3 ? 2 : 1)}
+        onBack={step === 1 ? undefined : () => setStep(1)}
         backLabel={step === 2 ? "Nombre de joueurs" : "Retour"}
       />
 
@@ -201,6 +200,7 @@ function NouvellePartie() {
               !singleDevice && "hidden",
             )}
           >
+            {" "}
             De {MIN} à {MAX} joueurs.
           </p>
 
@@ -213,6 +213,7 @@ function NouvellePartie() {
                 className="h-5 w-5 shrink-0 accent-primary"
               />
               <span className="font-display text-sm font-bold">
+                {" "}
                 Un seul téléphone pour tout le monde
               </span>
             </label>
@@ -228,6 +229,7 @@ function NouvellePartie() {
 
           {!singleDevice && (
             <p className="mt-4 text-center text-xs text-muted-foreground">
+              {" "}
               Vous n'avez rien à compter : donnez le code à la table, les profils arriveront
               d'eux-mêmes et les cartes se choisiront ensuite, une fois le village au complet.
             </p>
@@ -255,6 +257,7 @@ function NouvellePartie() {
                   className="rounded-lg border border-border px-2 py-1 text-[11px]"
                   onClick={completerVillageois}
                 >
+                  {" "}
                   Compléter en Villageois
                 </button>
               )}
@@ -271,184 +274,41 @@ function NouvellePartie() {
             onClick={() => setSelection(compositionAuto(count))}
             className="mb-4 w-full rounded-xl border border-border bg-secondary px-3 py-3 text-left text-xs"
           >
-            <span className="block font-display font-bold">✨ Composer automatiquement</span>
+            <span className="block font-display font-bold"> Composer automatiquement</span>
             <span className="block text-muted-foreground">
+              {" "}
               Une table équilibrée pour {count} joueurs, que vous pouvez ensuite retoucher.
             </span>
           </button>
 
-          {(["loups", "villageois", "ambigu", "solitaire"] as Camp[]).map((camp) => (
-            <div key={camp} className="mb-5">
-              <h2 className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
-                {CAMP_LABEL[camp]}
-              </h2>
-              <ul className="flex flex-col gap-2">
-                {pioche
-                  .filter((r) => r.camp === camp)
-                  .map((role) => (
-                    <li key={role.id} className="surface p-2.5">
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => setDetail(role)} aria-label={`Détails ${role.name}`}>
-                          <RoleSigil role={role} size="sm" />
-                        </button>
-                        <button
-                          className="min-w-0 flex-1 text-left"
-                          onClick={() => setDetail(role)}
-                        >
-                          <span className="block truncate text-sm font-semibold">{role.name}</span>
-                          <p className="truncate text-[11px] text-muted-foreground">{role.short}</p>
-                        </button>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => ajuster(role.id, -1)}
-                            className="btn-base btn-ghost h-8 w-8 p-0"
-                            aria-label="Retirer"
-                          >
-                            −
-                          </button>
-                          <span className="w-5 text-center text-sm font-bold">
-                            {selection[role.id] ?? 0}
-                          </span>
-                          <button
-                            onClick={() => ajuster(role.id, 1)}
-                            className="btn-base btn-ghost h-8 w-8 p-0"
-                            aria-label="Ajouter"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
+          <ChoixRoles
+            pioche={pioche}
+            selection={selection}
+            onSelection={setSelection}
+            onDetail={setDetail}
+          />
 
-                      {role.id === "voleur" && selection["voleur"] ? (
-                        <>
-                          <div className="mt-2 flex gap-1 rounded-xl bg-secondary p-1">
-                            {(
-                              [
-                                ["echange", "Vol de rôle"],
-                                ["centre", "2 cartes au centre"],
-                              ] as const
-                            ).map(([v, label]) => (
-                              <button
-                                key={v}
-                                disabled={singleDevice && v === "echange"}
-                                onClick={() => setThiefVariant(v)}
-                                className={cn(
-                                  "flex-1 rounded-lg px-2 py-1.5 text-[11px] font-semibold transition",
-                                  varianteVoleur === v
-                                    ? "bg-card text-primary shadow-sm"
-                                    : "text-muted-foreground",
-                                  singleDevice && v === "echange" && "opacity-40",
-                                )}
-                              >
-                                {label}
-                              </button>
-                            ))}
-                          </div>
-                          <p className="mt-2 text-[11px] text-muted-foreground">
-                            {singleDevice
-                              ? "Avec un seul téléphone : automatiquement 2 cartes au milieu. Le vol de rôle obligerait chacun à repasser voir sa carte chaque matin."
-                              : varianteVoleur === "echange"
-                                ? "Chaque nuit, le Voleur échange sa carte avec celle d'un joueur. Les deux devront revoir leur carte au lever du jour."
-                                : "Deux cartes de plus sont mises au centre. La première nuit, le Voleur en prend une définitivement."}
-                          </p>
-                        </>
-                      ) : null}
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          ))}
-
-          <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md border-t border-border bg-background/95 p-4 backdrop-blur">
-            {erreur && <p className="mb-2 text-center text-xs text-destructive">{erreur}</p>}
-            <Button
-              className="w-full py-4"
-              disabled={total !== cible || busy}
-              onClick={() => (selection["comedien"] ? setStep(3) : void lancer())}
-            >
-              {total === cible
-                ? busy
-                  ? "Création…"
-                  : selection["comedien"]
-                    ? "Choisir les 3 cartes du Comédien →"
-                    : singleDevice
-                      ? "Créer la partie"
-                      : "Générer le code de partie"
-                : total < cible
-                  ? `Il manque ${cible - total} carte(s)`
-                  : `${total - cible} carte(s) en trop`}
-            </Button>
-          </div>
-        </section>
-      )}
-
-      {step === 3 && (
-        <section>
-          <div className="surface p-5">
-            <h2 className="font-display text-base font-black">Les trois cartes du Comédien</h2>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Le Comédien n'a pas de pouvoir à lui : chaque nuit, il emprunte celui d'une carte
-              posée face visible au centre de la table. Choisissez trois rôles supplémentaires, en
-              plus de ceux déjà distribués. Ces trois cartes ne sont données à personne.
+          {selection["comedien"] ? (
+            <p className="mb-3 rounded-xl border border-border p-3 text-[11px] text-muted-foreground">
+              {" "}
+              Le Comédien réclame trois cartes de village en plus des vôtres. Elles seront tirées au
+              sort à la distribution et posées au centre, face cachée.
             </p>
-            <p className="mt-2 rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs text-primary">
-              Comme elles sont posées face visible, tout le village les connaît : elles seront
-              affichées sur tous les téléphones, comme la carte du Villageois-Villageois.
-            </p>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              Aucune carte de Loup-Garou n'est autorisée. Si le Voleur est aussi en jeu, posez
-              d'abord ses deux cartes, puis ces trois-là.
-            </p>
-          </div>
+          ) : null}
 
-          <p className="mt-4 mb-2 text-xs tracking-widest text-muted-foreground uppercase">
-            {cartesComedien.length} sur 3 choisies
-          </p>
-          <div className="grid grid-cols-2 gap-2 pb-28">
-            {pioche
-              .filter(
-                (r) => r.camp !== "loups" && r.id !== "comedien" && r.id !== "simple-villageois",
-              )
-              .map((r) => {
-                const choisie = cartesComedien.includes(r.id);
-                return (
-                  <button
-                    key={r.id}
-                    onClick={() =>
-                      setCartesComedien((c) =>
-                        c.includes(r.id) ? c.filter((x) => x !== r.id) : [...c, r.id].slice(-3),
-                      )
-                    }
-                    className={cn(
-                      "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left",
-                      choisie
-                        ? "border-primary bg-primary/15 text-primary"
-                        : "border-border bg-secondary",
-                    )}
-                  >
-                    <span className="text-lg">{r.emoji}</span>
-                    <span className="min-w-0 flex-1 truncate text-xs font-semibold">{r.name}</span>
-                  </button>
-                );
-              })}
-          </div>
-
-          <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md border-t border-border bg-background/95 p-4 backdrop-blur">
-            {erreur && <p className="mb-2 text-center text-xs text-destructive">{erreur}</p>}
-            <Button
-              className="w-full py-4"
-              disabled={cartesComedien.length !== 3 || busy}
-              onClick={() => void lancer()}
-            >
-              {cartesComedien.length !== 3
-                ? `Choisissez encore ${3 - cartesComedien.length} carte(s)`
-                : busy
-                  ? "Création…"
-                  : singleDevice
-                    ? "Créer la partie"
-                    : "Générer le code de partie"}
-            </Button>
-          </div>
+          <Button
+            className="w-full py-4"
+            disabled={total !== cible || busy}
+            onClick={() => void lancer()}
+          >
+            {total === cible
+              ? busy
+                ? "Création…"
+                : "Créer la partie"
+              : total < cible
+                ? `Il manque ${cible - total} carte(s)`
+                : `${total - cible} carte(s) en trop`}
+          </Button>
         </section>
       )}
 
@@ -460,15 +320,18 @@ function NouvellePartie() {
         <div className="p-1">
           <h2 className="font-display text-lg font-bold">Un seul téléphone ?</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            {" "}
             Cochez cette case si la table n'utilise qu'un appareil : le téléphone du Maître du Jeu
             porte toutes les places et circule de joueur en joueur au moment de la distribution.
           </p>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            {" "}
             Laissez-la décochée pour jouer avec plusieurs appareils : un code de partie est généré,
             et chacun rejoint avec son téléphone — un appareil peut aussi porter deux ou trois
             joueurs.
           </p>
           <Button className="mt-4 w-full" onClick={() => setAideAppareil(false)}>
+            {" "}
             J'ai compris
           </Button>
         </div>

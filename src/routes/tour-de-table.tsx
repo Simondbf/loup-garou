@@ -116,6 +116,7 @@ function TourDeTable() {
 
         <div className="surface p-5">
           <label className="text-xs text-muted-foreground" htmlFor="prenom">
+            {" "}
             Ton prénom
           </label>
           <input
@@ -128,6 +129,7 @@ function TourDeTable() {
             className="mt-2 w-full rounded-xl border border-border bg-input px-4 py-4 text-center font-display text-2xl outline-none focus:border-primary"
           />
           <p className="mt-3 text-[11px] text-muted-foreground">
+            {" "}
             Ta carte s'affichera juste après. Assure-toi que personne ne regarde par-dessus ton
             épaule.
           </p>
@@ -136,7 +138,7 @@ function TourDeTable() {
             disabled={busy || prenom.trim().length === 0}
             onClick={() => void decouvrir()}
           >
-            {busy ? "…" : "🎴 Découvrir ma carte"}
+            {busy ? "…" : " Découvrir ma carte"}
           </Button>
         </div>
 
@@ -178,6 +180,7 @@ function TourDeTable() {
         </div>
 
         <p className="mt-4 text-center text-[11px] text-muted-foreground">
+          {" "}
           Retiens ton rôle. Tu ne pourras pas revenir en arrière : seul le Maître du Jeu peut
           rouvrir une carte.
         </p>
@@ -189,7 +192,7 @@ function TourDeTable() {
           className="mt-4 w-full py-4"
           onClick={() => (dernier ? setEtape("passage") : suivant())}
         >
-          {dernier ? "✅ Terminé, rendre le téléphone au Maître du Jeu" : "✅ J'ai vu, au suivant"}
+          {dernier ? " Terminé, rendre le téléphone au Maître du Jeu" : " J'ai vu, au suivant"}
         </Button>
       </main>
     );
@@ -199,13 +202,15 @@ function TourDeTable() {
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 pb-16 text-center">
-      <p className="text-5xl">🌙</p>
+      <p className="text-5xl"></p>
       <h1 className="mt-4 font-display text-2xl font-black">Tout le monde a sa carte</h1>
       <p className="mt-3 text-sm text-muted-foreground">
+        {" "}
         Rends le téléphone au Maître du Jeu. La première nuit peut commencer.
       </p>
       <Button className="mt-8 w-full py-4" onClick={() => void navigate({ to: "/maitre" })}>
-        🎭 Ouvrir le tableau du Maître du Jeu
+        {" "}
+        Ouvrir le tableau du Maître du Jeu
       </Button>
     </main>
   );

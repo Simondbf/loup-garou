@@ -94,6 +94,7 @@ function EcranJoueur() {
             return (
               <div className="surface p-4">
                 <p className="text-xs text-muted-foreground">
+                  {" "}
                   Joueur {mine.filter((s) => s.name).length + 1} sur {mine.length}
                 </p>
                 <h2 className="mt-1 font-display text-lg font-black">Votre prénom</h2>
@@ -104,6 +105,7 @@ function EcranJoueur() {
                   className="mt-3 w-full"
                 />
                 <p className="mt-2 text-[11px] text-muted-foreground">
+                  {" "}
                   Une fois validé, passez le téléphone au joueur suivant s'il y en a un. Pour
                   corriger un prénom, demandez au Maître du Jeu de libérer le profil.
                 </p>
@@ -119,6 +121,7 @@ function EcranJoueur() {
             {game.vainqueur.texte}
           </p>
           <p className="mt-2 text-[11px] text-muted-foreground">
+            {" "}
             Toutes les cartes sont retournées. Restez sur cet écran : la partie suivante s'ouvrira
             avec les mêmes joueurs.
           </p>
@@ -128,6 +131,7 @@ function EcranJoueur() {
       {!seat && avantCartes && !game.singleDevice && (
         <section className="mt-6">
           <h2 className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
+            {" "}
             Le village · {game.seats.filter((s) => s.name).length} sur {game.seats.length}
           </h2>
           <ul className="flex flex-wrap gap-2">
@@ -160,6 +164,7 @@ function EcranJoueur() {
               {!s.alive && s.roleId ? (
                 <div className="mt-3 rounded-xl border border-border bg-secondary p-4 text-center">
                   <p className="text-[11px] text-muted-foreground">
+                    {" "}
                     Vous êtes éliminé — votre carte reste visible
                   </p>
                   <p className="font-display text-xl font-black text-primary">
@@ -174,6 +179,7 @@ function EcranJoueur() {
               ) : null}
               {s.alive && !s.seen && (
                 <Button className="mt-3 w-full" onClick={() => void ouvrir(s)}>
+                  {" "}
                   Découvrir ma carte
                 </Button>
               )}
@@ -181,6 +187,7 @@ function EcranJoueur() {
                 s.seen &&
                 (game.singleDevice ? (
                   <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-center text-xs text-muted-foreground">
+                    {" "}
                     Carte déjà consultée. Pour la revoir, demandez au Maître du Jeu : elle s'affiche
                     sur son écran.
                   </p>
@@ -188,6 +195,7 @@ function EcranJoueur() {
                   /* Chacun a son téléphone : il peut revoir sa carte autant
                      de fois qu'il veut, sans rien demander à personne. */
                   <Button variant="ghost" className="mt-3 w-full" onClick={() => void ouvrir(s)}>
+                    {" "}
                     Revoir ma carte
                   </Button>
                 ))}
@@ -198,6 +206,7 @@ function EcranJoueur() {
           ))}
           {mine.length === 0 && (
             <li className="surface p-4 text-sm text-muted-foreground">
+              {" "}
               Aucune place attribuée à cet appareil.
             </li>
           )}
@@ -206,18 +215,21 @@ function EcranJoueur() {
 
       {seat && !revele && (
         <div className="surface card-back animate-rise flex flex-col items-center gap-4 p-8 text-center">
-          <div className="text-5xl">🌑</div>
+          <div className="text-5xl"></div>
           <p className="font-display text-xl font-bold">{seat.name || `Place ${seat.position}`}</p>
           <p className="text-xs text-muted-foreground">
+            {" "}
             Assurez-vous que personne ne regarde par-dessus votre épaule.
           </p>
           <Button className="w-full" onClick={() => void voirCarte(seat)}>
+            {" "}
             Retourner la carte
           </Button>
           <button
             className="text-xs text-muted-foreground underline"
             onClick={() => setActive(null)}
           >
+            {" "}
             Annuler
           </button>
         </div>
@@ -259,7 +271,7 @@ function MonEtat({ seat, etat }: { seat: SeatDTO; etat: EtatPersonnel | undefine
     points.push({
       cle: "mort",
       texte:
-        "☠️ Vous êtes éliminé. Vous suivez la partie en silence : ni parole, ni geste, ni regard appuyé.",
+        " Vous êtes éliminé. Vous suivez la partie en silence : ni parole, ni geste, ni regard appuyé.",
       alerte: true,
     });
   }
@@ -267,43 +279,43 @@ function MonEtat({ seat, etat }: { seat: SeatDTO; etat: EtatPersonnel | undefine
     points.push({
       cle: "capitaine",
       texte:
-        "🎖️ Vous portez l'écharpe : votre voix compte double, et vous désignerez votre successeur en mourant.",
+        " Vous portez l'écharpe : votre voix compte double, et vous désignerez votre successeur en mourant.",
     });
   }
   if (etat?.potionVie !== undefined) {
     points.push({
       cle: "vie",
       texte: etat.potionVie
-        ? "🧪 Potion de vie : encore en main."
-        : "🧪 Potion de vie : déjà versée, elle ne servira plus.",
+        ? " Potion de vie : encore en main."
+        : " Potion de vie : déjà versée, elle ne servira plus.",
     });
   }
   if (etat?.potionMort !== undefined) {
     points.push({
       cle: "mort-potion",
       texte: etat.potionMort
-        ? "☠️ Potion de mort : encore en main."
-        : "☠️ Potion de mort : déjà versée, elle ne servira plus.",
+        ? " Potion de mort : encore en main."
+        : " Potion de mort : déjà versée, elle ne servira plus.",
     });
   }
   if (etat?.protectionInterdite) {
     points.push({
       cle: "salvateur",
-      texte: `🛡️ Vous ne pouvez pas reprotéger ${etat.protectionInterdite} cette nuit : c'était déjà votre choix la nuit dernière.`,
+      texte: ` Vous ne pouvez pas reprotéger ${etat.protectionInterdite} cette nuit : c'était déjà votre choix la nuit dernière.`,
     });
   }
   if (etat?.loupBlancCetteNuit !== undefined) {
     points.push({
       cle: "blanc",
       texte: etat.loupBlancCetteNuit
-        ? "🌕 Cette nuit, vous vous réveillez seul après la meute : vous pouvez dévorer un Loup-Garou."
-        : "🌕 Pas de réveil solitaire cette nuit : votre pouvoir revient la nuit prochaine.",
+        ? " Cette nuit, vous vous réveillez seul après la meute : vous pouvez dévorer un Loup-Garou."
+        : " Pas de réveil solitaire cette nuit : votre pouvoir revient la nuit prochaine.",
     });
   }
   if (etat?.modele) {
     points.push({
       cle: "modele",
-      texte: `🧒 Votre modèle est ${etat.modele}. Tant qu'il vit, vous êtes villageois ; s'il tombe, vous rejoignez la meute.`,
+      texte: ` Votre modèle est ${etat.modele}. Tant qu'il vit, vous êtes villageois ; s'il tombe, vous rejoignez la meute.`,
     });
   }
   if (etat?.chienLoup) {
@@ -311,39 +323,39 @@ function MonEtat({ seat, etat }: { seat: SeatDTO; etat: EtatPersonnel | undefine
       cle: "chien",
       texte:
         etat.chienLoup === "loups"
-          ? "🐕 Vous avez choisi les Loups-Garous. Ce choix est définitif et personne ne le connaît."
-          : "🐕 Vous avez choisi le village. Ce choix est définitif et personne ne le connaît.",
+          ? " Vous avez choisi les Loups-Garous. Ce choix est définitif et personne ne le connaît."
+          : " Vous avez choisi le village. Ce choix est définitif et personne ne le connaît.",
     });
   }
   if (etat?.passeCoteLoups) {
     points.push({
       cle: "converti",
       texte:
-        "🩸 Vous êtes désormais du côté des Loups-Garous. Vous gardez votre pouvoir, mais vous ne gagnez plus avec le village.",
+        " Vous êtes désormais du côté des Loups-Garous. Vous gardez votre pouvoir, mais vous ne gagnez plus avec le village.",
       alerte: true,
     });
   }
   if (etat?.pouvoirConsomme) {
-    points.push({ cle: "consomme", texte: "⚪ Votre pouvoir à usage unique est déjà dépensé." });
+    points.push({ cle: "consomme", texte: " Votre pouvoir à usage unique est déjà dépensé." });
   }
   if (etat?.baillonne) {
     points.push({
       cle: "baillon",
       texte:
-        "🤐 Vous ne prononcez pas un mot pendant le débat d'aujourd'hui. Les gestes sont permis, et vous votez normalement.",
+        " Vous ne prononcez pas un mot pendant le débat d'aujourd'hui. Les gestes sont permis, et vous votez normalement.",
       alerte: true,
     });
   }
   if (etat?.sansVote) {
     points.push({
       cle: "sans-vote",
-      texte: "🤡 Gracié par le village : vous restez en jeu, mais vous ne votez plus jamais.",
+      texte: " Gracié par le village : vous restez en jeu, mais vous ne votez plus jamais.",
     });
   }
   if (etat?.priveDeVote) {
     points.push({
       cle: "prive",
-      texte: "🐐 Le Bouc Émissaire vous prive de vote pour la journée.",
+      texte: " Le Bouc Émissaire vous prive de vote pour la journée.",
       alerte: true,
     });
   }
@@ -351,7 +363,7 @@ function MonEtat({ seat, etat }: { seat: SeatDTO; etat: EtatPersonnel | undefine
     points.push({
       cle: "ancien",
       texte:
-        "⚰️ L'Ancien est tombé sous un coup du village : plus aucun villageois n'a de pouvoir jusqu'à la fin de la partie.",
+        " L'Ancien est tombé sous un coup du village : plus aucun villageois n'a de pouvoir jusqu'à la fin de la partie.",
       alerte: true,
     });
   }
@@ -392,6 +404,7 @@ function CartesPubliques({ seats }: { seats: SeatDTO[] }) {
   return (
     <section className="mt-8">
       <h2 className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
+        {" "}
         Cartes connues de tous
       </h2>
       <ul className="flex flex-col gap-2">
@@ -443,6 +456,7 @@ function Cimetiere({ seats }: { seats: SeatDTO[] }) {
     <section className="mt-8">
       <h2 className="mb-1 text-xs tracking-widest text-muted-foreground uppercase">Cimetière</h2>
       <p className="mb-3 text-[11px] text-muted-foreground">
+        {" "}
         Vous êtes éliminé : vous voyez maintenant les cartes tombées, en direct. Ne dites rien aux
         vivants — ni à voix haute, ni par gestes.
       </p>
@@ -499,12 +513,14 @@ function CarteRevelee({ seat, onClose }: { seat: SeatDTO; onClose: () => void })
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{role.description}</p>
         {role.id === "villageois-villageois" && (
           <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-xs">
+            {" "}
             Votre carte est publique : le Maître du Jeu annoncera à tout le village que vous êtes un
             authentique villageois.
           </p>
         )}
         {role.id === "magicien" && (
           <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-xs">
+            {" "}
             Le joueur que vous bâillonnez pourra encore voter et communiquer par gestes, mais pas
             parler.
           </p>
@@ -512,6 +528,7 @@ function CarteRevelee({ seat, onClose }: { seat: SeatDTO; onClose: () => void })
       </div>
 
       <Button variant="ghost" className="w-full py-4" onClick={onClose}>
+        {" "}
         J'ai compris, cacher la carte
       </Button>
     </div>

@@ -30,12 +30,11 @@ function Accueil() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-5 py-16">
       <div className="animate-rise text-center">
-        <div className="mx-auto mb-7 flex h-24 w-24 animate-glow items-center justify-center rounded-full border border-primary/30 bg-card text-5xl">
-          🌕
-        </div>
+        <div className="mx-auto mb-7 flex h-24 w-24 animate-glow items-center justify-center rounded-full border border-primary/30 bg-card text-5xl"></div>
         <p className="text-xs tracking-[0.35em] text-muted-foreground uppercase">Les nuits de</p>
         <h1 className="mt-2 text-4xl font-black text-gradient-moon">Thiercelieux</h1>
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          {" "}
           Le Maître du Jeu crée la partie et donne un code. Les joueurs rejoignent avec leur
           téléphone — seuls, à deux ou à plusieurs sur le même appareil.
         </p>
@@ -47,7 +46,8 @@ function Accueil() {
             to={session!.host ? "/maitre" : "/distribution"}
             className="w-full py-4 text-base"
           >
-            ↩️ Reprendre la partie {game!.code}
+            {" "}
+            Reprendre la partie {game!.code}
           </LinkButton>
         )}
         <LinkButton
@@ -55,17 +55,20 @@ function Accueil() {
           variant={reprise ? "ghost" : "primary"}
           className="w-full py-4 text-base"
         >
-          🎖️ Créer une partie (Maître du Jeu)
+          {" "}
+          Créer une partie (Maître du Jeu)
         </LinkButton>
         <LinkButton to="/rejoindre" variant="ghost" className="w-full py-4 text-base">
-          🔑 Rejoindre avec un code
+          {" "}
+          Rejoindre avec un code
         </LinkButton>
       </div>
 
       <p className="mt-10 text-center text-xs text-muted-foreground">
-        7 joueurs minimum · cartes et règles dans le menu ☰
+        7 joueurs minimum · cartes et règles dans le menu
       </p>
       <p className="mt-4 text-center text-[10px] leading-relaxed text-muted-foreground/70">
+        {" "}
         Application fortement inspirée, mais sans aucun lien, du jeu des Loups-Garous de
         Thiercelieux créé par Philippe des Pallières et Hervé Marly.
       </p>

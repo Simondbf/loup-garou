@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, CampBadge, Modal, RoleSigil } from "@/components/ui-kit";
+import { Button, CampBadge, Modal } from "@/components/ui-kit";
 import { ROLES_BY_ID, type Role } from "@/data/roles";
 import { CLOTURE, OUVERTURE } from "@/data/nuit";
 import { useConseils } from "@/lib/conseils";
@@ -66,10 +66,12 @@ export function ConduiteNuit({
     return (
       <div className="surface p-5">
         <p className="text-sm text-muted-foreground">
+          {" "}
           Plus aucun rôle à appeler : tous les porteurs de pouvoir nocturne ont été éliminés.
         </p>
         <Button className="mt-4 w-full py-4" onClick={onResoudre}>
-          ☀️ Lever du jour
+          {" "}
+          Lever du jour
         </Button>
       </div>
     );
@@ -82,6 +84,7 @@ export function ConduiteNuit({
     <div className="flex flex-col gap-3">
       <div className="surface p-4">
         <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
+          {" "}
           Nuit {game.night} · étape {index + 1} sur {etapes.length}
         </p>
         <div className="mt-2 flex h-1 gap-1">
@@ -105,7 +108,6 @@ export function ConduiteNuit({
 
       <div className="surface p-5">
         <div className="flex items-center gap-3">
-          <RoleSigil role={etape.role} />
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-lg font-black">{etape.role.name}</h2>
             <p className="truncate text-[11px] text-muted-foreground">
@@ -143,10 +145,12 @@ export function ConduiteNuit({
         </Button>
         {dernier ? (
           <Button className="flex-1" disabled={!pret} onClick={onResoudre}>
-            ☀️ Lever du jour
+            {" "}
+            Lever du jour
           </Button>
         ) : (
           <Button className="flex-1" disabled={!pret} onClick={() => onEtape(index + 1)}>
+            {" "}
             Suivant →
           </Button>
         )}
@@ -154,6 +158,7 @@ export function ConduiteNuit({
 
       {!pret && (
         <p className="text-center text-[11px] text-destructive">
+          {" "}
           Cette étape attend une désignation avant de continuer.
         </p>
       )}
@@ -185,7 +190,7 @@ export function BoutonAide({ role }: { role: Role }) {
       >
         <span className="flex h-5 w-5 items-center justify-center rounded-full border border-border font-semibold">
           ?
-        </span>
+        </span>{" "}
         Aide
       </button>
 
@@ -194,6 +199,7 @@ export function BoutonAide({ role }: { role: Role }) {
         <CampBadge camp={role.camp} className="mt-2" />
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{role.short}</p>
         <Button variant="ghost" className="mt-5 w-full" onClick={() => setOuvert(false)}>
+          {" "}
           Fermer
         </Button>
       </Modal>
@@ -407,8 +413,8 @@ function construire(
           <div className="flex gap-2">
             {(
               [
-                ["villageois", "🧑‍🌾 Villageois"],
-                ["loups", "🐺 Loup-Garou"],
+                ["villageois", " Villageois"],
+                ["loups", " Loup-Garou"],
               ] as ["villageois" | "loups", string][]
             ).map(([v, label]) => (
               <button
@@ -498,11 +504,13 @@ function construire(
             })}
             {cartes.length === 0 && (
               <p className="text-xs text-destructive">
+                {" "}
                 Aucune carte n'a été posée au centre pour le Comédien.
               </p>
             )}
           </div>
           <p className="mt-2 text-[11px] text-muted-foreground">
+            {" "}
             Ne montrez pas cet écran : les trois rôles se disent à voix haute, il répond par un
             numéro.
           </p>
@@ -624,6 +632,7 @@ function construire(
               {oui ? "OUI — au moins un Loup" : "NON — aucun Loup"}
             </p>
             <p className="mt-2 text-[11px] text-muted-foreground">
+              {" "}
               Trio flairé : {trio.map((s) => nom(s.position)).join(", ")}.
             </p>
           </>
@@ -652,6 +661,7 @@ function construire(
             roleDe={roleDe}
           />
           <p className="mt-2 text-[11px] text-muted-foreground">
+            {" "}
             Meute :{" "}
             {vivants
               .filter(estLoup)
@@ -685,6 +695,7 @@ function construire(
           />
           {nuit.loupBlanc !== undefined && (
             <Annuler onClick={() => onAction({ loupBlanc: null })}>
+              {" "}
               Finalement, il ne dévore personne
             </Annuler>
           )}
@@ -706,6 +717,7 @@ function construire(
       rendu: () =>
         nuit.victimeLoups === undefined ? (
           <p className="text-xs text-muted-foreground">
+            {" "}
             Aucune victime désignée : personne à infecter cette nuit.
           </p>
         ) : (
@@ -719,8 +731,8 @@ function construire(
             )}
           >
             {nuit.infection
-              ? `🩸 ${nom(nuit.victimeLoups)} est infecté au lieu d'être dévoré`
-              : `🩸 Infecter ${nom(nuit.victimeLoups)}`}
+              ? ` ${nom(nuit.victimeLoups)} est infecté au lieu d'être dévoré`
+              : ` Infecter ${nom(nuit.victimeLoups)}`}
           </button>
         ),
     });
@@ -774,10 +786,12 @@ function construire(
         <>
           {nuit.victimeLoups === undefined ? (
             <p className="text-xs text-muted-foreground">
+              {" "}
               Aucune victime cette nuit : il n'y a personne à lui montrer.
             </p>
           ) : nuit.infection ? (
             <p className="text-xs text-muted-foreground">
+              {" "}
               La victime est infectée, elle ne meurt pas : la potion de vie n'a rien à faire ici.
             </p>
           ) : (
@@ -849,6 +863,7 @@ function construire(
               roleDe={roleDe}
             />
             <Annuler onClick={() => onAction({ poisonVoulu: null, poison: null })}>
+              {" "}
               Finalement, elle n'empoisonne personne
             </Annuler>
           </>
@@ -987,6 +1002,7 @@ function construire(
               )}
             </div>
             <p className="mt-2 text-[11px] text-muted-foreground">
+              {" "}
               Ne montrez pas cet écran : les deux rôles se disent à voix haute, il répond par un
               numéro.
             </p>

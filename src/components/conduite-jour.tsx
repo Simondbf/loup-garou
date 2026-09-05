@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { BoutonAide } from "@/components/conduite-nuit";
-import { Button, CampBadge, RoleSigil } from "@/components/ui-kit";
+import { Button, CampBadge } from "@/components/ui-kit";
 import { ROLES_BY_ID, type Role } from "@/data/roles";
 import { useConseils } from "@/lib/conseils";
 import type { GameDTO, HostState, PatchJour, SeatDTO, TourDeVote } from "@/lib/party.functions";
@@ -28,7 +28,6 @@ import { cn } from "@/lib/utils";
 interface EtapeJour {
   /** Identifiant stable : c'est lui qui retient qu'une étape est franchie. */
   id: string;
-  emoji: string;
   titre: string;
   /** Rôle concerné, quand l'étape en a un. */
   role?: Role;
@@ -109,6 +108,7 @@ export function ConduiteJour({
     return (
       <div className="surface p-5">
         <p className="text-sm text-muted-foreground">
+          {" "}
           La journée est terminée. Lancez la nuit suivante depuis le bandeau ci-dessus.
         </p>
       </div>
@@ -119,6 +119,7 @@ export function ConduiteJour({
     <div className="flex flex-col gap-3">
       <div className="surface p-4">
         <p className="text-[11px] tracking-widest text-muted-foreground uppercase">
+          {" "}
           Jour {game.night} · étape {rang + 1} sur {etapes.length}
         </p>
         <div className="mt-2 flex h-1 gap-1">
@@ -136,16 +137,6 @@ export function ConduiteJour({
 
       <div className="surface p-5">
         <div className="flex items-center gap-3">
-          {etape.role ? (
-            <RoleSigil role={etape.role} />
-          ) : (
-            <span
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-border bg-secondary text-2xl"
-              aria-hidden
-            >
-              {etape.emoji}
-            </span>
-          )}
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-lg font-black">{etape.titre}</h2>
             {etape.role && (
@@ -192,6 +183,7 @@ export function ConduiteJour({
 
       {!etape.pret && (
         <p className="text-center text-[11px] text-destructive">
+          {" "}
           Cette étape attend une décision avant de continuer.
         </p>
       )}
@@ -199,8 +191,9 @@ export function ConduiteJour({
       {etape.role && <BoutonAide role={etape.role} />}
 
       <p className="text-center text-[11px] text-muted-foreground">
+        {" "}
         Revenir en arrière rouvre l'étape précédente, mais ne ressuscite personne : une mort marquée
-        par erreur s'annule depuis l'onglet 👥 Joueurs.
+        par erreur s'annule depuis l'onglet Joueurs.
       </p>
     </div>
   );
@@ -355,7 +348,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
     const offreServante = servanteDispo && servante && servante.position !== position;
     liste.push({
       id: `carte-${position}`,
-      emoji: "🃏",
       titre: `La carte de ${nom(position)}`,
       consigne: offreServante
         ? "Laissez d'abord un instant à la Servante Dévouée pour se dévoiler. Si personne ne bouge, retournez la carte : elle s'affiche aussitôt sur tous les téléphones."
@@ -366,17 +358,19 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
           <FicheJoueur nom={nom(position)} role={r} />
           {prise ? (
             <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-xs text-muted-foreground">
-              🧹 La Servante Dévouée a pris cette carte sans la montrer. Personne ne saura jamais
-              qui était {nom(position)}.
+              {" "}
+              La Servante Dévouée a pris cette carte sans la montrer. Personne ne saura jamais qui
+              était {nom(position)}.
             </p>
           ) : (
             <div className="mt-3 flex flex-col gap-2">
               <GrosBouton onClick={() => void a.onPublic(position, true)} actif={s.publicRole}>
-                {s.publicRole ? "🃏 Carte retournée" : "🃏 Retourner sa carte"}
+                {s.publicRole ? " Carte retournée" : " Retourner sa carte"}
               </GrosBouton>
               {offreServante && servante && (
                 <GrosBouton onClick={() => void a.onServante(servante.position, position)}>
-                  🧹 La Servante Dévouée prend cette carte
+                  {" "}
+                  La Servante Dévouée prend cette carte
                 </GrosBouton>
               )}
             </div>
@@ -392,7 +386,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
       liste.push({
         id: cle,
         role: R("chasseur"),
-        emoji: "🎯",
         titre: "La balle du Chasseur",
         annonce: "« Le Chasseur tire une dernière balle. »",
         consigne:
@@ -421,7 +414,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
       liste.push({
         id: cle,
         role: R("capitaine"),
-        emoji: "🎖️",
         titre: "L'écharpe du Capitaine",
         annonce: "« Le Capitaine désigne son successeur. »",
         consigne:
@@ -448,7 +440,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
       liste.push({
         id: `ancien-${position}`,
         role: R("ancien"),
-        emoji: "🧓",
         titre: "Le village perd ses pouvoirs",
         annonce: "« Vous avez tué l'Ancien : le village est frappé de dépit. »",
         consigne:
@@ -457,6 +448,7 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
         pret: true,
         rendu: () => (
           <p className="rounded-xl border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
+            {" "}
             À dire au village, sans détour : les pouvoirs sont éteints.
           </p>
         ),
@@ -470,7 +462,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
       liste.push({
         id: `bouc-${position}`,
         role: R("bouc-emissaire"),
-        emoji: "🐐",
         titre: "La rancune du Bouc Émissaire",
         annonce: "« Le Bouc Émissaire désigne qui n'aura pas le droit de voter demain. »",
         consigne:
@@ -497,6 +488,7 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
                 onClick={() => void a.onEtat({ privesDeVote: [], privesJour: demain })}
                 actif={etat.privesJour === demain && prives.length === 0}
               >
+                {" "}
                 Il ne prive personne de vote
               </GrosBouton>
             </div>
@@ -510,7 +502,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
       liste.push({
         id: `ange-${position}`,
         role: R("ange"),
-        emoji: "😇",
         titre: "L'Ange l'emporte",
         annonce: "« L'Ange a été éliminé au premier vote : il gagne, seul. »",
         consigne: "Retournez sa carte : la partie s'arrête là, personne d'autre ne gagne.",
@@ -537,7 +528,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
       liste.push({
         id: cle,
         role: R("chevalier-epee-rouillee"),
-        emoji: "⚔️",
         titre: "L'épée rouillée",
         consigne:
           "Le premier Loup-Garou assis à sa gauche attrape la gangrène : il mourra pendant la nuit qui vient, et vous l'annoncerez demain matin. Touchez-le pour le marquer.",
@@ -582,7 +572,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
 
   e.push({
     id: "lever",
-    emoji: "☀️",
     titre: `Lever du jour ${game.night}`,
     annonce: "« Le village se réveille. »",
     consigne:
@@ -592,6 +581,7 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
       <>
         {mortsNuit.length === 0 ? (
           <p className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-center text-sm font-semibold text-primary">
+            {" "}
             « Cette nuit, personne n'est mort. »
           </p>
         ) : (
@@ -601,6 +591,7 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
                 key={m.position}
                 className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-sm font-semibold text-primary"
               >
+                {" "}
                 « {nom(m.position)} est mort cette nuit. » —{" "}
                 <span className="font-normal">{CAUSES[m.cause] ?? m.cause}</span>
               </li>
@@ -611,6 +602,7 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
         {(sauves.length > 0 || jour.infecte !== undefined || jour.enfantTransforme) && (
           <>
             <p className="mt-5 text-[11px] tracking-widest text-destructive uppercase">
+              {" "}
               Pour vous seul — ne dites rien
             </p>
             <ul className="mt-1 flex flex-col gap-1 text-xs text-muted-foreground">
@@ -651,7 +643,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
     e.push({
       id: "envoutes",
       role: R("joueur-de-flute"),
-      emoji: "🎶",
       titre: "Les envoûtés",
       consigne:
         "Faites signe à ces joueurs qu'ils sont sous le charme. Ils se reconnaissent entre eux, mais ne savent pas qui joue de la flûte.",
@@ -680,7 +671,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
     e.push({
       id: "ours",
       role: R("montreur-ours"),
-      emoji: "🐻",
       titre: "Le grognement de l'ours",
       consigne: game.singleDevice
         ? "Annoncez le grognement à voix haute, avant le débat, sans dire de quel côté il vient."
@@ -710,6 +700,7 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
           </>
         ) : (
           <p className="rounded-xl border border-border bg-secondary p-3 text-xs">
+            {" "}
             Côté Loups en ce moment :{" "}
             {vivants
               .filter(estLoup)
@@ -731,7 +722,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
     e.push({
       id: "capitaine-option",
       role: R("capitaine"),
-      emoji: "🎖️",
       titre: "Jouez-vous avec un Capitaine ?",
       consigne:
         "Le Capitaine est élu par le village. Sa voix compte double, il tranche les égalités, et il désigne son successeur en mourant. Sans lui, une égalité au vote ne fait aucune victime.",
@@ -740,9 +730,11 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
       rendu: () => (
         <div className="flex flex-col gap-2">
           <GrosBouton onClick={() => void a.onEtat({ avecCapitaine: true })}>
+            {" "}
             Oui, le village élit un Capitaine
           </GrosBouton>
           <GrosBouton onClick={() => void a.onEtat({ avecCapitaine: false })}>
+            {" "}
             Non, on joue sans
           </GrosBouton>
         </div>
@@ -761,7 +753,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
     e.push({
       id: "capitaine-election",
       role: R("capitaine"),
-      emoji: "🎖️",
       titre: "Élection du Capitaine",
       annonce: "« Le village élit son Capitaine. »",
       consigne:
@@ -807,7 +798,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
 
     e.push({
       id: `debat-${t}`,
-      emoji: "💬",
       titre: t === 1 ? "Débat du village" : "Second débat",
       annonce: t === 1 ? "« Le débat est ouvert. »" : "« Le Juge Bègue exige un second vote. »",
       consigne:
@@ -817,25 +807,25 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
         <ul className="flex flex-col gap-2 text-xs">
           {baillonnes.length > 0 && (
             <li className="rounded-xl border border-border bg-secondary p-3">
-              🤐 {baillonnes.map((s) => nom(s.position)).join(", ")} ne peut pas prononcer un mot
+              {baillonnes.map((s) => nom(s.position)).join(", ")} ne peut pas prononcer un mot
               aujourd'hui, mais vote et peut faire des gestes.
             </li>
           )}
           {sansVote.length > 0 && (
             <li className="rounded-xl border border-border bg-secondary p-3">
-              🤡 {sansVote.map((s) => nom(s.position)).join(", ")} a été gracié : il parle, mais ne
+              {sansVote.map((s) => nom(s.position)).join(", ")} a été gracié : il parle, mais ne
               vote plus jamais.
             </li>
           )}
           {prives.length > 0 && (
             <li className="rounded-xl border border-border bg-secondary p-3">
-              🐐 {prives.map((p) => nom(p)).join(", ")} : privé de vote aujourd'hui par le Bouc
+              {prives.map((p) => nom(p)).join(", ")} : privé de vote aujourd'hui par le Bouc
               Émissaire.
             </li>
           )}
           {etat.avecCapitaine !== false && (
             <li className="rounded-xl border border-border bg-secondary p-3">
-              🎖️{" "}
+              {" "}
               {vivants.find((s) => s.isCaptain)
                 ? `${nom(vivants.find((s) => s.isCaptain)!.position)} porte l'écharpe : sa voix compte double.`
                 : "Pas de Capitaine en jeu : en cas d'égalité, personne ne tranche."}
@@ -847,7 +837,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
 
     e.push({
       id: `vote-${t}`,
-      emoji: "🗳️",
       titre: t === 1 ? "Vote du village" : "Second vote",
       annonce: "« Le village désigne celui qu'il envoie au bûcher. »",
       consigne:
@@ -870,7 +859,8 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
               onClick={() => void a.onJour({ votes: majVotes(t, { designe: 0 }) })}
               actif={v?.designe === 0}
             >
-              ⚖️ Le village est à égalité
+              {" "}
+              Le village est à égalité
             </GrosBouton>
           </div>
         </>
@@ -883,7 +873,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
       const tranche = v.tranche;
       e.push({
         id: `egalite-${t}`,
-        emoji: "⚖️",
         titre: "Égalité des voix",
         consigne: bouc
           ? "Le Bouc Émissaire paie pour tout le monde : c'est lui qui est éliminé à la place du village."
@@ -907,7 +896,8 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
                   actif={tranche === bouc.position}
                   danger
                 >
-                  🐐 Le Bouc Émissaire est éliminé
+                  {" "}
+                  Le Bouc Émissaire est éliminé
                 </GrosBouton>
               </div>
             </>
@@ -924,6 +914,7 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
               onClick={() => void a.onJour({ votes: majVotes(t, { designe: 0, tranche: 0 }) })}
               actif={tranche === 0}
             >
+              {" "}
               Personne n'est éliminé aujourd'hui
             </GrosBouton>
           ),
@@ -942,7 +933,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
       e.push({
         id: `idiot-${t}`,
         role: R("idiot-du-village"),
-        emoji: "🤡",
         titre: "L'Idiot est gracié",
         annonce: "« Le village a voté contre l'Idiot du Village : il est gracié. »",
         consigne:
@@ -953,6 +943,7 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
           viseSiege.isCaptain ? (
             <>
               <p className="mb-2 text-xs text-muted-foreground">
+                {" "}
                 Il portait l'écharpe : gracié, il ne la transmet pas. La charge de Capitaine est
                 définitivement perdue.
               </p>
@@ -965,7 +956,8 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
                 }
                 actif={etat.chargePerdue === true}
               >
-                🎖️ L'écharpe disparaît de la partie
+                {" "}
+                L'écharpe disparaît de la partie
               </GrosBouton>
             </>
           ) : (
@@ -980,7 +972,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
       e.push({
         id: "juge-begue",
         role: R("juge-begue"),
-        emoji: "⚖️",
         titre: "Le Juge Bègue",
         consigne:
           "S'il vous a fait le signe convenu, un second vote a lieu immédiatement. Sinon, la journée s'achève ici.",
@@ -999,12 +990,14 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
               onClick={() => void a.onJour({ secondTour: true })}
               actif={jour.secondTour === true}
             >
-              ⚖️ Il a fait le signe : second vote
+              {" "}
+              Il a fait le signe : second vote
             </GrosBouton>
             <GrosBouton
               onClick={() => void a.onJour({ secondTour: false })}
               actif={jour.secondTour === false}
             >
+              {" "}
               Rien ne se passe, la journée s'achève
             </GrosBouton>
           </div>
@@ -1023,7 +1016,6 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
   if (game.vainqueur) {
     e.push({
       id: "fin",
-      emoji: "🏆",
       titre: "Partie terminée",
       annonce: game.vainqueur.texte,
       consigne:
@@ -1061,13 +1053,12 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
   } else {
     e.push({
       id: "cloture",
-      emoji: "🌙",
       titre: `Fin du jour ${game.night}`,
       annonce: "« La nuit tombe sur le village. »",
       consigne:
         "Vérifiez qu'il reste des survivants dans les deux camps avant de lancer la nuit suivante. Le bâillon du Magicien tombe à cet instant.",
       pret: true,
-      valider: `🌙 Nuit ${game.night + 1}`,
+      valider: `Nuit ${game.night + 1}`,
       onValider: a.onNuitSuivante,
       rendu: () => (
         <p className="rounded-xl border border-border bg-secondary p-3 text-center text-xs">

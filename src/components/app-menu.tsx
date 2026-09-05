@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 type Vue = "menu" | "roles" | "regles";
 
 const ENTREES: { vue: Vue; emoji: string; label: string; detail: string }[] = [
-  { vue: "roles", emoji: "🃏", label: "Les cartes", detail: "Tous les rôles et leurs pouvoirs" },
-  { vue: "regles", emoji: "📖", label: "Règles", detail: "Déroulé d'une nuit, d'un jour, du vote" },
+  { vue: "roles", emoji: "", label: "Les cartes", detail: "Tous les rôles et leurs pouvoirs" },
+  { vue: "regles", emoji: "", label: "Règles", detail: "Déroulé d'une nuit, d'un jour, du vote" },
 ];
 
 const TITRES: Record<Exclude<Vue, "menu">, string> = {
@@ -32,9 +32,7 @@ export function AppMenu() {
         onClick={() => setVue("menu")}
         aria-label="Ouvrir le menu"
         className="fixed top-3 right-3 z-40 flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-card/80 text-lg backdrop-blur active:scale-95"
-      >
-        ☰
-      </button>
+      ></button>
 
       {vue === "menu" && (
         <div
@@ -62,14 +60,15 @@ export function AppMenu() {
             ))}
             <div className="mt-6">
               <p className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
+                {" "}
                 Apparence
               </p>
               <div className="flex gap-1 rounded-xl bg-secondary p-1">
                 {(
                   [
-                    ["sombre", "🌙 Sombre"],
-                    ["clair", "☀️ Clair"],
-                    ["appareil", "📱 Appareil"],
+                    ["sombre", " Sombre"],
+                    ["clair", " Clair"],
+                    ["appareil", " Appareil"],
                   ] as [Theme, string][]
                 ).map(([valeur, label]) => (
                   <button
@@ -88,6 +87,7 @@ export function AppMenu() {
 
             <div className="mt-6">
               <p className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
+                {" "}
                 Maître du Jeu
               </p>
               <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-secondary p-3">
@@ -100,6 +100,7 @@ export function AppMenu() {
                 <span className="min-w-0">
                   <span className="block text-xs font-semibold">Conseils pendant la partie</span>
                   <span className="block text-[11px] text-muted-foreground">
+                    {" "}
                     Rappels de règle sous chaque étape. La description du rôle affiché reste
                     accessible par le bouton « ? Aide ».
                   </span>
@@ -111,6 +112,7 @@ export function AppMenu() {
               onClick={() => setVue(null)}
               className="mt-4 w-full rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground"
             >
+              {" "}
               Fermer
             </button>
           </nav>
@@ -132,6 +134,7 @@ export function AppMenu() {
                 onClick={() => setVue(null)}
                 className="text-sm text-muted-foreground transition-colors hover:text-primary"
               >
+                {" "}
                 Fermer
               </button>
             </header>

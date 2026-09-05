@@ -907,24 +907,14 @@ export const removeSeat = createServerFn({ method: "POST" })
 
 /** Le MJ retouche la composition depuis le salon, une fois l'effectif connu. */
 export const setSelection = createServerFn({ method: "POST" })
-  .inputValidator(
-    (d: {
-      code: string;
-      token: string;
-      selection: Record<string, number>;
-      comedienCartes?: string[];
-    }) => d,
-  )
+  .inputValidator((d: { code: string; token: string; selection: Record<string, number> }) => d)
   .handler(async ({ data }) => {
     const db = await base();
     const game = await requireHost(db, data.code, data.token);
     if (!AVANT_DISTRIBUTION.includes(game["status"] as string)) {
       throw new Error("Les cartes sont déjà distribuées");
     }
-    await db.pb.modifier("games", game["id"], {
-      selection: data.selection,
-      ...(data.comedienCartes ? { comedien_cartes: data.comedienCartes.slice(0, 3) } : {}),
-    });
+    await db.pb.modifier("games", game["id"], { selection: data.selection });
     const fresh = await loadGame(db, data.code);
     return buildDTO(db, fresh, data.token);
   });
@@ -981,13 +971,41 @@ export const dealCards = createServerFn({ method: "POST" })
     const count = game["player_count"] as number;
     if (count < PLACES_MIN) throw new Error(`Il faut au moins ${PLACES_MIN} joueurs`);
     const withThief = pool.includes("voleur") && game["thief_variant"] === "centre";
-    if (pool.length !== count + (withThief ? 2 : 0)) {
+    const withComedien = pool.includes("comedien");
+    const supplement = (withThief ? 2 : 0) + (withComedien ? 3 : 0);
+    if (pool.length !== count + supplement) {
       throw new Error("La composition ne correspond pas au nombre de joueurs");
     }
 
-    const shuffled = shuffle(pool);
-    const dealt = shuffled.slice(0, count);
-    const center = withThief ? shuffled.slice(count, count + 2) : [];
+    // Le Comédien tire au sort : ses trois cartes sortent du même mélange que
+    // les autres, à ceci près qu'elles doivent être des cartes de village —
+    // jamais un Loup-Garou, jamais un solitaire. On les met de côté avant de
+    // distribuer le reste.
+    const villageois = (id: string) => ROLES_BY_ID[id]?.camp === "villageois";
+    let reste = shuffle(pool);
+    const cartesComedien: string[] = [];
+    if (withComedien) {
+      for (const id of reste) {
+        if (cartesComedien.length < 3 && id !== "comedien" && villageois(id)) {
+          cartesComedien.push(id);
+        }
+      }
+      const aRetirer = [...cartesComedien];
+      reste = reste.filter((id) => {
+        const i = aRetirer.indexOf(id);
+        if (i === -1) return true;
+        aRetirer.splice(i, 1);
+        return false;
+      });
+      if (cartesComedien.length < 3) {
+        throw new Error(
+          "Le Comédien réclame trois cartes de village en plus : ajoutez-en à la composition",
+        );
+      }
+    }
+
+    const dealt = reste.slice(0, count);
+    const center = withThief ? reste.slice(count, count + 2) : [];
 
     const seats = await seatsDe(db, game["id"]);
     for (let i = 0; i < count; i++) {
@@ -1009,6 +1027,7 @@ export const dealCards = createServerFn({ method: "POST" })
       phase: "nuit",
       night: 1,
       center_cards: center,
+      comedien_cartes: cartesComedien,
     });
 
     const fresh = await loadGame(db, data.code);
@@ -1639,11 +1658,22 @@ export const resolveNight = createServerFn({ method: "POST" })
       }
     }
 
+    // Le Comédien défausse la carte qu'il vient de jouer : il n'a plus que
+    // les deux autres pour les nuits suivantes.
+    // Un seul exemplaire part à la défausse : deux cartes du centre peuvent
+    // porter le même rôle, et il ne perd que celle qu'il vient de jouer.
+    const cartesComedien = [...((game["comedien_cartes"] ?? []) as string[])];
+    if (nuit.comedien) {
+      const i = cartesComedien.indexOf(nuit.comedien);
+      if (i !== -1) cartesComedien.splice(i, 1);
+    }
+
     await db.pb.modifier("games", game["id"], {
       host_state: { ...etat, ...patchEtat },
       nuit: {},
       jour: journalDuJour,
       phase: "jour",
+      comedien_cartes: cartesComedien,
     });
 
     const fresh = await loadGame(db, data.code);

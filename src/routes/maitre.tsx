@@ -1,15 +1,17 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Button, CampBadge, LinkButton, PageHeader, RoleSigil } from "@/components/ui-kit";
+import { Button, CampBadge, LinkButton, Modal, PageHeader, RoleDetail } from "@/components/ui-kit";
 import { ConduiteJour } from "@/components/conduite-jour";
 import { ConduiteNuit } from "@/components/conduite-nuit";
-import { CAMP_LABEL, ROLES_BY_ID } from "@/data/roles";
+import { ROLES_BY_ID, type Role } from "@/data/roles";
+import { ChoixRoles } from "@/components/choix-roles";
 import {
   ajusterRole,
   cartesAttendues,
   compositionAuto,
   rolesDistribuables,
 } from "@/data/composition";
+import { useConseils } from "@/lib/conseils";
 import { useGame } from "@/lib/game-store";
 import {
   PLACES_MAX,
@@ -71,6 +73,7 @@ function Maitre() {
   // Le MJ passe l'essentiel de la partie à conduire la nuit : c'est l'onglet
   // qui doit s'ouvrir en premier une fois les cartes distribuées.
   const [onglet, setOnglet] = useState<Onglet>("nuit");
+  const { conseils } = useConseils();
   const [erreur, setErreur] = useState<string | null>(null);
   const [revealFrom, setRevealFrom] = useState<number | null>(null);
 
@@ -113,6 +116,9 @@ function Maitre() {
   return (
     <main className="mx-auto min-h-screen w-full max-w-md px-5 pt-10 pb-16">
       <PageHeader
+        {...(game.status === "lobby" || game.status === "composition"
+          ? { back: "/", backLabel: "Accueil" }
+          : {})}
         title={game.singleDevice ? "Un seul téléphone" : `Code ${game.code}`}
         subtitle={
           game.status === "lobby"
@@ -165,6 +171,7 @@ function Maitre() {
               </button>
             </div>
             <p className="text-center text-[11px] text-muted-foreground">
+              {" "}
               Ajoutez ou retirez des joueurs maintenant : après, le téléphone commence à tourner et
               chacun saisit son prénom à son tour.
             </p>
@@ -174,17 +181,9 @@ function Maitre() {
               selection={game.selection}
               variante={game.thiefVariant}
               unSeulTelephone
-              comedienCartes={game.comedienCartes}
               avecCapitaine={game.hostState.avecCapitaine !== false}
               onSelection={(selection) =>
                 void run(setSelection({ data: { code: game.code, token, selection } }))
-              }
-              onComedien={(comedienCartes) =>
-                void run(
-                  setSelection({
-                    data: { code: game.code, token, selection: game.selection, comedienCartes },
-                  }),
-                )
               }
               onCapitaine={(avecCapitaine) =>
                 void run(
@@ -201,6 +200,7 @@ function Maitre() {
                 await navigate({ to: "/tour-de-table" });
               }}
             >
+              {" "}
               Commencer la distribution
             </Button>
           </section>
@@ -210,12 +210,14 @@ function Maitre() {
           <section className="flex flex-col gap-3">
             <div className="surface p-5 text-center">
               <p className="text-xs tracking-widest text-muted-foreground uppercase">
+                {" "}
                 Code de partie
               </p>
               <p className="font-display text-5xl font-black tracking-[0.3em] text-gradient-moon">
                 {game.code}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
+                {" "}
                 Chacun ouvre l'application, choisit « Rejoindre », entre ce code puis son prénom.
                 Les profils s'affichent ici au fur et à mesure.
               </p>
@@ -250,12 +252,13 @@ function Maitre() {
                     }
                     className="shrink-0 rounded-lg border border-border px-2 py-1 text-[11px] text-muted-foreground"
                   >
-                    {s.name ? "Libérer" : "✕"}
+                    {s.name ? "Libérer" : ""}
                   </button>
                 </li>
               ))}
               {game.seats.length === 0 && (
                 <li className="surface p-4 text-center text-xs text-muted-foreground">
+                  {" "}
                   Le village est encore vide. Donnez le code à voix haute.
                 </li>
               )}
@@ -268,6 +271,7 @@ function Maitre() {
                 void run(validerProfils({ data: { code: game.code, token, valide: true } }))
               }
             >
+              {" "}
               Valider les profils
             </Button>
             <p className="text-center text-[11px] text-muted-foreground">
@@ -285,17 +289,9 @@ function Maitre() {
               selection={game.selection}
               variante={game.thiefVariant}
               unSeulTelephone={false}
-              comedienCartes={game.comedienCartes}
               avecCapitaine={game.hostState.avecCapitaine !== false}
               onSelection={(selection) =>
                 void run(setSelection({ data: { code: game.code, token, selection } }))
-              }
-              onComedien={(comedienCartes) =>
-                void run(
-                  setSelection({
-                    data: { code: game.code, token, selection: game.selection, comedienCartes },
-                  }),
-                )
               }
               onCapitaine={(avecCapitaine) =>
                 void run(
@@ -309,9 +305,11 @@ function Maitre() {
               disabled={!distributionPossible}
               onClick={() => void run(dealCards({ data: { code: game.code, token } }))}
             >
+              {" "}
               Distribuer les cartes
             </Button>
             <p className="text-center text-[11px] text-muted-foreground">
+              {" "}
               Un retardataire peut encore rejoindre avec le code {game.code} : l'effectif se met à
               jour tout seul, vous n'aurez qu'une carte de plus à poser.
             </p>
@@ -333,8 +331,8 @@ function Maitre() {
           <div className={cn("mb-4 flex gap-2", !game.singleDevice && "hidden")}>
             {(
               [
-                ["nuit", "🌙 Conduire"],
-                ["reveals", "👁️ Montrer"],
+                ["nuit", " Conduire"],
+                ["reveals", " Montrer"],
               ] as [Onglet, string][]
             ).map(([id, label]) => (
               <button
@@ -354,7 +352,8 @@ function Maitre() {
 
           {game.singleDevice && (
             <LinkButton to="/distribution" variant="ghost" className="mb-4 w-full py-3 text-sm">
-              📱 Faire tourner le téléphone (prénoms + cartes)
+              {" "}
+              Faire tourner le téléphone (prénoms + cartes)
             </LinkButton>
           )}
 
@@ -363,7 +362,7 @@ function Maitre() {
               <div className="surface flex items-center justify-between p-4">
                 <div>
                   <p className="font-display text-base font-black">
-                    {game.phase === "nuit" ? `🌙 Nuit ${game.night}` : `☀️ Jour ${game.night}`}
+                    {game.phase === "nuit" ? ` Nuit ${game.night}` : ` Jour ${game.night}`}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     {game.phase === "nuit"
@@ -442,19 +441,20 @@ function Maitre() {
                 />
               )}
 
-              {sansAppel.length > 0 && (
+              {sansAppel.length > 0 && conseils && (
                 <div className="surface border border-destructive/40 p-4">
                   <h2 className="font-display text-sm font-bold text-destructive">
+                    {" "}
                     À ne jamais appeler à voix haute
                   </h2>
                   <p className="mt-1 text-[11px] text-muted-foreground">
+                    {" "}
                     Ces rôles sont en jeu mais n'ont pas de tour à eux. Prononcer leur nom suffirait
                     à les griller.
                   </p>
                   <ul className="mt-3 flex flex-col gap-3">
                     {sansAppel.map((r) => (
                       <li key={r.id} className="flex items-start gap-3">
-                        <RoleSigil role={r} size="sm" />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold">{r.name}</p>
                           <p className="text-[11px] text-muted-foreground">
@@ -476,9 +476,11 @@ function Maitre() {
               {game.hostState.villageSansPouvoirs && (
                 <div className="surface border border-destructive/60 p-4">
                   <h2 className="font-display text-sm font-bold text-destructive">
-                    ⚰️ L'Ancien a été éliminé par le village
+                    {" "}
+                    L'Ancien a été éliminé par le village
                   </h2>
                   <p className="mt-1 text-xs leading-relaxed">
+                    {" "}
                     Annoncez-le à voix haute au village : par dépit, tous les villageois perdent
                     leur pouvoir pour le reste de la partie. Voyante, Sorcière, Salvateur, Renard,
                     Chasseur… n'agissent plus, et inutile de continuer à les appeler la nuit — tout
@@ -492,6 +494,7 @@ function Maitre() {
                 <div className="surface p-4">
                   <h2 className="font-display text-sm font-bold">Bâillon du Magicien</h2>
                   <p className="mt-1 text-[11px] text-muted-foreground">
+                    {" "}
                     Le joueur désigné ne pourra pas parler demain, mais votera. Une même cible ne
                     peut pas être re-désignée avant trois nuits.
                   </p>
@@ -541,9 +544,11 @@ function Maitre() {
                 apply(dto);
               }}
             >
-              Arrêter la partie en cours
+              {" "}
+              Abandonner la partie en cours
             </Button>
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
+              {" "}
               À n'utiliser que pour abandonner : quand un camp gagne, le déroulé vous l'annonce tout
               seul. La partie suivante s'ouvre aussitôt avec les mêmes joueurs et un nouveau code,
               que personne n'a besoin de retaper.
@@ -555,6 +560,7 @@ function Maitre() {
               <div className="surface p-4">
                 <h2 className="font-display text-sm font-bold">Montrer une carte</h2>
                 <p className="mt-1 text-[11px] text-muted-foreground">
+                  {" "}
                   Pour la Voyante, le Chaman, la Gitane… touchez le joueur dont la carte doit être
                   vue. Elle s'affiche ici : tournez l'écran vers celui qui a le droit de la voir.
                 </p>
@@ -594,6 +600,7 @@ function Maitre() {
                         className="mt-4 w-full"
                         onClick={() => setRevealFrom(null)}
                       >
+                        {" "}
                         Cacher
                       </Button>
                     </div>
@@ -619,20 +626,16 @@ function Composition({
   selection,
   variante,
   unSeulTelephone,
-  comedienCartes,
   avecCapitaine,
   onSelection,
-  onComedien,
   onCapitaine,
 }: {
   effectif: number;
   selection: Record<string, number>;
   variante: string;
   unSeulTelephone: boolean;
-  comedienCartes: string[];
   avecCapitaine: boolean;
   onSelection: (selection: Record<string, number>) => void;
-  onComedien: (cartes: string[]) => void;
   onCapitaine: (avec: boolean) => void;
 }) {
   const attendu = cartesAttendues(effectif, selection, variante);
@@ -642,6 +645,7 @@ function Composition({
   // places n'y suit pas la table.
   const pioche = rolesDistribuables(unSeulTelephone);
   const cartesCentre = attendu - effectif;
+  const [detail, setDetail] = useState<Role | null>(null);
 
   return (
     <div className="surface p-4">
@@ -668,59 +672,14 @@ function Composition({
             : ` · il en manque ${-ecart}.`}
       </p>
 
-      {/* L'ordre du livret : le village, la meute, les ambigus, puis les solitaires. */}
-      {(["villageois", "loups", "ambigu", "solitaire", "special"] as const).map((camp) => {
-        const duCamp = pioche.filter((r) => r.camp === camp);
-        if (duCamp.length === 0) return null;
-        return (
-          <section key={camp} className="mt-4">
-            <h3 className="text-[11px] tracking-widest text-muted-foreground uppercase">
-              {CAMP_LABEL[camp]}
-            </h3>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {duCamp.map((r) => {
-                const n = selection[r.id] ?? 0;
-                return (
-                  <div
-                    key={r.id}
-                    className={cn(
-                      "flex flex-col justify-between rounded-xl border px-3 py-2",
-                      n > 0 ? "border-primary bg-primary/10" : "border-border bg-secondary",
-                    )}
-                  >
-                    <button
-                      onClick={() => onSelection(ajusterRole(selection, r.id, 1))}
-                      className="min-w-0 text-left text-xs leading-tight font-semibold"
-                    >
-                      {r.name}
-                    </button>
-                    <div className="mt-2 flex items-center justify-between">
-                      <button
-                        onClick={() => onSelection(ajusterRole(selection, r.id, -1))}
-                        disabled={n === 0}
-                        aria-label={`Un ${r.name} de moins`}
-                        className="h-6 w-6 rounded-lg border border-border text-xs disabled:opacity-30"
-                      >
-                        −
-                      </button>
-                      <span className="w-6 text-center text-sm font-semibold tabular-nums">
-                        {n}
-                      </span>
-                      <button
-                        onClick={() => onSelection(ajusterRole(selection, r.id, 1))}
-                        aria-label={`Un ${r.name} de plus`}
-                        className="h-6 w-6 rounded-lg border border-border text-xs"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
+      <div className="mt-4">
+        <ChoixRoles
+          pioche={pioche}
+          selection={selection}
+          onSelection={onSelection}
+          onDetail={setDetail}
+        />
+      </div>
 
       <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-xl border border-border p-3">
         <input
@@ -732,6 +691,7 @@ function Composition({
         <span className="min-w-0">
           <span className="block text-xs font-semibold">Jouer avec un Capitaine</span>
           <span className="block text-[11px] text-muted-foreground">
+            {" "}
             Élu le premier jour, sa voix compte double et il désigne son successeur en mourant. Sans
             lui, une égalité au vote ne fait aucune victime.
           </span>
@@ -739,47 +699,11 @@ function Composition({
       </label>
 
       {(selection["comedien"] ?? 0) > 0 && (
-        <section className="mt-5 rounded-xl border border-border p-3">
-          <h3 className="text-[11px] tracking-widest text-muted-foreground uppercase">
-            Les trois cartes du Comédien
-          </h3>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Elles se posent au centre de la table, face cachée. Jamais de Loup-Garou parmi elles :
-            seuls des rôles du village sont proposés. {comedienCartes.length} sur 3 choisies.
-          </p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {pioche
-              .filter(
-                (r) =>
-                  r.camp === "villageois" &&
-                  r.id !== "comedien" &&
-                  r.id !== "villageois-villageois",
-              )
-              .map((r) => {
-                const prise = comedienCartes.includes(r.id);
-                return (
-                  <button
-                    key={r.id}
-                    onClick={() =>
-                      onComedien(
-                        prise
-                          ? comedienCartes.filter((x) => x !== r.id)
-                          : [...comedienCartes, r.id].slice(-3),
-                      )
-                    }
-                    className={cn(
-                      "rounded-lg border px-2 py-1 text-[11px]",
-                      prise
-                        ? "border-primary bg-primary/15 text-primary"
-                        : "border-border bg-secondary",
-                    )}
-                  >
-                    {r.name}
-                  </button>
-                );
-              })}
-          </div>
-        </section>
+        <p className="mt-4 rounded-xl border border-border p-3 text-[11px] text-muted-foreground">
+          {" "}
+          Le Comédien réclame trois cartes de village en plus des vôtres. Elles seront tirées au
+          sort au moment de la distribution, comme les autres, et posées au centre face cachée.
+        </p>
       )}
 
       <div className="mt-4 flex flex-col gap-2">
@@ -788,6 +712,7 @@ function Composition({
             variant="ghost"
             onClick={() => onSelection(ajusterRole(selection, "simple-villageois", -ecart))}
           >
+            {" "}
             Compléter avec {-ecart} Simple{-ecart > 1 ? "s" : ""} Villageois
           </Button>
         )}
@@ -795,9 +720,14 @@ function Composition({
           variant="ghost"
           onClick={() => onSelection(compositionAuto(effectif, unSeulTelephone))}
         >
+          {" "}
           Reprendre la composition conseillée pour {effectif}
         </Button>
       </div>
+
+      <Modal open={!!detail} onClose={() => setDetail(null)}>
+        {detail && <RoleDetail role={detail} onClose={() => setDetail(null)} />}
+      </Modal>
     </div>
   );
 }
