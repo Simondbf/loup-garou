@@ -245,6 +245,31 @@ function EcranJoueur() {
         />
       )}
 
+      {/* Face visible au centre de la table. Elles disparaissent le temps
+          qu'un joueur regarde la sienne, puisque tout l'écran change. */}
+      {!seat && !avantCartes && game.comedienCartes.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-2 text-xs tracking-widest text-muted-foreground uppercase">
+            Au centre de la table
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {game.comedienCartes.map((id, i) => {
+              const r = ROLES_BY_ID[id];
+              return (
+                <li key={`${id}-${i}`} className="surface p-3">
+                  <p className="text-sm font-semibold">{r?.name ?? id}</p>
+                  <p className="text-[11px] text-muted-foreground">{r?.short}</p>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Le Comédien en choisit une chaque nuit et en joue le pouvoir jusqu'au soir suivant. La
+            carte jouée quitte alors le jeu.
+          </p>
+        </section>
+      )}
+
       {!seat && !avantCartes && <CartesPubliques seats={game.seats} />}
 
       {game.voitLeCimetiere && !seat && !avantCartes && <Cimetiere seats={game.seats} />}

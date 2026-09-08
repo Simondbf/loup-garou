@@ -570,9 +570,11 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
     selection: (game["selection"] ?? {}) as Record<string, number>,
     // Les deux cartes du centre n'appartiennent qu'au Voleur : elles ne sont
     // envoyées qu'à l'appareil qui porte sa place, et au Maître du Jeu.
-    // Les trois cartes du Comédien restent chez le Maître du Jeu : il les
-    // lit à voix haute, numérotées, et le joueur répond par un numéro.
-    comedienCartes: isHost ? ((game["comedien_cartes"] ?? []) as string[]) : [],
+    // Les trois cartes du Comédien sont posées face visible au centre de la
+    // table : tout le monde sait ce qu'il peut prendre. C'est ce qui rend le
+    // rôle intéressant — quand le Maître du Jeu appelle la Voyante alors
+    // qu'aucun joueur n'en a la carte, le village en tire ses conclusions.
+    comedienCartes: (game["comedien_cartes"] ?? []) as string[],
     // Comme les cartes du Comédien : le MJ les lit, le Voleur répond. Aucune
     // action de nuit ne se joue sur le téléphone d'un joueur.
     centerCards: isHost ? ((game["center_cards"] ?? []) as string[]) : [],

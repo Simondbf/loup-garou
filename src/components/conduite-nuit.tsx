@@ -346,9 +346,10 @@ function construire(
       id: "comedien",
       role: R("comedien"),
       appel: "« Le Comédien se réveille et choisit une carte au centre. »",
-      consigne:
-        "Lisez-lui les trois rôles à voix haute, dans l'ordre, et demandez-lui le numéro. Touchez celui qu'il annonce : il joue ce pouvoir jusqu'à demain soir, puis la carte quitte le jeu.",
-      aide: "Les trois cartes viennent du centre, jamais des joueurs : personne n'est dépossédé. Aucune carte de Loup-Garou parmi elles. Appelez ensuite le rôle choisi à son tour dans la nuit.",
+      consigne: game.singleDevice
+        ? "Lisez-lui les trois rôles à voix haute, dans l'ordre, et demandez-lui le numéro. Touchez celui qu'il désigne : le personnage choisi sera appelé à son tour, plus loin dans la nuit."
+        : "Il désigne une des trois cartes, que toute la table voit sur son téléphone. Touchez-la : le personnage choisi sera appelé à son tour, plus loin dans la nuit.",
+      aide: "Il joue ce pouvoir cette nuit et toute la journée qui suit, puis la carte quitte le jeu. Les trois cartes viennent du centre, jamais des joueurs, et aucune n'est un Loup-Garou. Le village voit lesquelles : quand vous appellerez un personnage dont plus personne n'a la carte, chacun saura que c'est lui.",
       pret: () => nuit.comedien !== undefined,
       rendu: () => (
         <>
