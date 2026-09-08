@@ -103,6 +103,15 @@ cartes se retournent.
 Pas encore traité : l'Abominable Sectaire, dont la victoire dépend d'un
 découpage de la table que l'application ne connaît pas.
 
+## Le Comédien
+Réveillé en tout premier chaque nuit, avant tout le monde. Il choisit une des
+trois cartes du centre — tirées au sort parmi les rôles de village à la
+distribution — et joue aussitôt ce pouvoir : le rôle emprunté est appelé à sa
+place habituelle dans la nuit, avec le Comédien pour porteur. Le pouvoir vaut
+encore la journée suivante (`hostState.comedienRole` / `comedienJour`), donc
+la carte du Chasseur le fait tirer en mourant ce jour-là. Sa carte retournée
+reste pourtant le Comédien. La carte jouée est ensuite défaussée.
+
 ## Ce que le MJ n'a plus
 - Pas d'onglet Joueurs : les profils sont cliquables dans le déroulé.
 - Pas de rangement en cercle (`moveSeat` supprimé).

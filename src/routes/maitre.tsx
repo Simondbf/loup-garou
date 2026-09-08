@@ -73,6 +73,7 @@ function Maitre() {
   // Le MJ passe l'essentiel de la partie à conduire la nuit : c'est l'onglet
   // qui doit s'ouvrir en premier une fois les cartes distribuées.
   const [onglet, setOnglet] = useState<Onglet>("nuit");
+  const [correction, setCorrection] = useState(false);
   const { conseils } = useConseils();
   const [erreur, setErreur] = useState<string | null>(null);
   const [revealFrom, setRevealFrom] = useState<number | null>(null);
@@ -533,6 +534,62 @@ function Maitre() {
               )}
             </section>
           )}
+
+          {/* Une mort marquée par erreur fausse toute la fin de partie et rien
+              d'autre ne permet de la défaire : ce raccourci discret existe
+              pour ça, et pour rien d'autre. */}
+          {game.seats.some((s) => !s.alive) && (
+            <div className="mt-8 text-center">
+              <button
+                onClick={() => setCorrection(true)}
+                className="text-[11px] text-muted-foreground underline"
+              >
+                Corriger une mort marquée par erreur
+              </button>
+            </div>
+          )}
+
+          <Modal open={correction} onClose={() => setCorrection(false)}>
+            <h2 className="font-display text-lg font-black">Rendre quelqu'un à la vie</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              À n'utiliser qu'en cas de fausse manipulation. Le joueur revient en jeu comme s'il
+              n'était jamais tombé, et sa carte redevient secrète si elle n'avait pas été retournée.
+            </p>
+            <ul className="mt-4 flex flex-col gap-2">
+              {game.seats
+                .filter((s) => !s.alive)
+                .map((s) => (
+                  <li key={s.position} className="flex items-center gap-3">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">
+                        {s.name || `Place ${s.position}`}
+                      </span>
+                      <span className="block truncate text-[11px] text-muted-foreground">
+                        {s.roleId ? (ROLES_BY_ID[s.roleId]?.name ?? "—") : "—"}
+                      </span>
+                    </span>
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        void run(
+                          setDead({
+                            data: { code: game.code, token, position: s.position, alive: true },
+                          }),
+                        )
+                      }
+                    >
+                      Rendre à la vie
+                    </Button>
+                  </li>
+                ))}
+              {game.seats.every((s) => s.alive) && (
+                <li className="text-xs text-muted-foreground">Personne n'est tombé.</li>
+              )}
+            </ul>
+            <Button className="mt-5 w-full" onClick={() => setCorrection(false)}>
+              Fermer
+            </Button>
+          </Modal>
 
           <div className="mt-8 border-t border-border pt-4">
             <Button

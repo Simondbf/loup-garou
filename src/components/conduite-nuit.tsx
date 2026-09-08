@@ -304,7 +304,23 @@ function construire(
   const etat = game.hostState ?? {};
   const vivants = game.seats.filter((s) => s.alive);
   const enJeu = new Set(vivants.map((s) => s.roleId).filter(Boolean) as string[]);
-  const porteur = (id: string) => vivants.find((s) => s.roleId === id);
+  /**
+   * Carte prise au centre par le Comédien cette nuit. Il est réveillé en tout
+   * premier, avant tout le monde, et joue aussitôt le pouvoir choisi : le
+   * rôle emprunté est appelé à sa place habituelle dans la nuit, avec le
+   * Comédien pour porteur. C'est justement pour cela qu'il ouvre le bal —
+   * sans quoi son choix arriverait après le tour du personnage concerné.
+   */
+  const empruntee = game.nuit?.comedien;
+  const comedienSeat = vivants.find((s) => s.roleId === "comedien");
+  if (empruntee && comedienSeat) enJeu.add(empruntee);
+  /**
+   * Qui joue ce rôle cette nuit. Le Comédien répond pour la carte qu'il
+   * vient de prendre au centre : c'est lui qu'on réveillera au tour du
+   * personnage emprunté.
+   */
+  const porteur = (id: string) =>
+    vivants.find((s) => s.roleId === id) ?? (empruntee === id ? comedienSeat : undefined);
   const convertis = etat.devenusLoups ?? [];
 
   const nom = (p: number) => game.seats.find((s) => s.position === p)?.name || `Place ${p}`;
@@ -318,9 +334,67 @@ function construire(
   };
 
   const premiere = game.night <= 1;
+
   const R = (id: string) => ROLES_BY_ID[id]!;
   const e: Etape[] = [];
   const ok = () => true;
+
+  /* ---- Comédien ---- */
+  if (enJeu.has("comedien")) {
+    const cartes = game.comedienCartes ?? [];
+    e.push({
+      id: "comedien",
+      role: R("comedien"),
+      appel: "« Le Comédien se réveille et choisit une carte au centre. »",
+      consigne:
+        "Lisez-lui les trois rôles à voix haute, dans l'ordre, et demandez-lui le numéro. Touchez celui qu'il annonce : il joue ce pouvoir jusqu'à demain soir, puis la carte quitte le jeu.",
+      aide: "Les trois cartes viennent du centre, jamais des joueurs : personne n'est dépossédé. Aucune carte de Loup-Garou parmi elles. Appelez ensuite le rôle choisi à son tour dans la nuit.",
+      pret: () => nuit.comedien !== undefined,
+      rendu: () => (
+        <>
+          <div className="flex flex-col gap-2">
+            {cartes.map((id, i) => {
+              const r = ROLES_BY_ID[id];
+              const choisi = nuit.comedien === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => onAction({ comedien: choisi ? null : id })}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl border p-3 text-left",
+                    choisi
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-secondary",
+                  )}
+                >
+                  <span className="w-5 text-center text-sm font-semibold tabular-nums">
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-semibold">{r?.name ?? id}</span>
+                    <span className="block truncate text-[10px] text-muted-foreground">
+                      {r?.short}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+            {cartes.length === 0 && (
+              <p className="text-xs text-destructive">
+                {" "}
+                Aucune carte n'a été posée au centre pour le Comédien.
+              </p>
+            )}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            {" "}
+            Ne montrez pas cet écran : les trois rôles se disent à voix haute, il répond par un
+            numéro.
+          </p>
+        </>
+      ),
+    });
+  }
 
   /* ---- Cupidon, puis les Amoureux ---- */
   if (enJeu.has("cupidon") && premiere) {
@@ -460,63 +534,6 @@ function construire(
         ),
       });
     }
-  }
-
-  /* ---- Comédien ---- */
-  if (enJeu.has("comedien")) {
-    const cartes = game.comedienCartes ?? [];
-    e.push({
-      id: "comedien",
-      role: R("comedien"),
-      appel: "« Le Comédien se réveille et choisit une carte au centre. »",
-      consigne:
-        "Lisez-lui les trois rôles à voix haute, dans l'ordre, et demandez-lui le numéro. Touchez celui qu'il annonce : il joue ce pouvoir jusqu'à demain soir, puis la carte quitte le jeu.",
-      aide: "Les trois cartes viennent du centre, jamais des joueurs : personne n'est dépossédé. Aucune carte de Loup-Garou parmi elles. Appelez ensuite le rôle choisi à son tour dans la nuit.",
-      pret: () => nuit.comedien !== undefined,
-      rendu: () => (
-        <>
-          <div className="flex flex-col gap-2">
-            {cartes.map((id, i) => {
-              const r = ROLES_BY_ID[id];
-              const choisi = nuit.comedien === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => onAction({ comedien: choisi ? null : id })}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl border p-3 text-left",
-                    choisi
-                      ? "border-primary bg-primary/15 text-primary"
-                      : "border-border bg-secondary",
-                  )}
-                >
-                  <span className="w-5 text-center text-sm font-semibold tabular-nums">
-                    {i + 1}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-xs font-semibold">{r?.name ?? id}</span>
-                    <span className="block truncate text-[10px] text-muted-foreground">
-                      {r?.short}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-            {cartes.length === 0 && (
-              <p className="text-xs text-destructive">
-                {" "}
-                Aucune carte n'a été posée au centre pour le Comédien.
-              </p>
-            )}
-          </div>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {" "}
-            Ne montrez pas cet écran : les trois rôles se disent à voix haute, il répond par un
-            numéro.
-          </p>
-        </>
-      ),
-    });
   }
 
   /* ---- Salvateur ---- */

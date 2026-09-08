@@ -117,6 +117,13 @@ export interface HostState {
   avecCapitaine?: boolean;
   /** L'Ange a été éliminé au premier vote : il gagne seul, la partie s'arrête. */
   angeGagne?: boolean;
+  /**
+   * Comédien : rôle emprunté au centre, et jour où il le joue encore. Le
+   * pouvoir vaut « pour cette nuit et le jour suivant » — si la carte prise
+   * est celle du Chasseur, il tire en mourant ce jour-là.
+   */
+  comedienRole?: string;
+  comedienJour?: number;
 }
 
 /** Un tour de vote du village. */
@@ -1204,6 +1211,16 @@ export const setDead = createServerFn({ method: "POST" })
         death_phase: "",
         death_order: 0,
       });
+      // Une mort marquée par erreur a pu éteindre les pouvoirs du village :
+      // rendre l'Ancien à la vie les rallume.
+      if (target["role_id"] === "ancien") {
+        const avant = (game["host_state"] ?? {}) as HostState;
+        if (avant.villageSansPouvoirs) {
+          await db.pb.modifier("games", game["id"], {
+            host_state: { ...avant, villageSansPouvoirs: false },
+          });
+        }
+      }
     }
 
     // Ancien tombé sous un coup VILLAGEOIS — vote, poison de la Sorcière ou
@@ -1666,6 +1683,10 @@ export const resolveNight = createServerFn({ method: "POST" })
     if (nuit.comedien) {
       const i = cartesComedien.indexOf(nuit.comedien);
       if (i !== -1) cartesComedien.splice(i, 1);
+    }
+    if (nuit.comedien) {
+      patchEtat.comedienRole = nuit.comedien;
+      patchEtat.comedienJour = (game["night"] as number) ?? 1;
     }
 
     await db.pb.modifier("games", game["id"], {

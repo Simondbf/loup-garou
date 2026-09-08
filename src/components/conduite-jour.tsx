@@ -302,9 +302,26 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
 
   const siege = (p: number) => seats.find((s) => s.position === p);
   const nom = (p: number) => siege(p)?.name || `Place ${p}`;
+  /** La carte que porte cette place — celle qui sera retournée à sa mort. */
   const roleDe = (p: number) => {
     const id = siege(p)?.roleId;
     return id ? ROLES_BY_ID[id] : undefined;
+  };
+
+  /**
+   * Le pouvoir qu'exerce cette place aujourd'hui.
+   *
+   * Presque toujours celui de sa carte. L'exception est le Comédien : il
+   * joue le rôle emprunté au centre « pour cette nuit et le jour suivant »,
+   * donc s'il a pris la carte du Chasseur, c'est bien lui qui tire en
+   * mourant aujourd'hui — sa carte retournée reste pourtant le Comédien.
+   */
+  const pouvoirDe = (p: number) => {
+    const s = siege(p);
+    if (s?.roleId === "comedien" && etat.comedienJour === game.night && etat.comedienRole) {
+      return ROLES_BY_ID[etat.comedienRole];
+    }
+    return roleDe(p);
   };
   const R = (id: string) => ROLES_BY_ID[id]!;
   const estLoup = (s: SeatDTO) => {
@@ -339,7 +356,8 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
   function declencheurs(position: number): EtapeJour[] {
     const s = siege(position);
     if (!s) return [];
-    const r = roleDe(position);
+    const r = pouvoirDe(position);
+    const carte = roleDe(position);
     const prise = s.statuses.includes("carte-prise");
     const liste: EtapeJour[] = [];
 
@@ -355,7 +373,7 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
       pret: s.publicRole || prise,
       rendu: () => (
         <>
-          <FicheJoueur nom={nom(position)} role={r} />
+          <FicheJoueur nom={nom(position)} role={carte} />
           {prise ? (
             <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-xs text-muted-foreground">
               {" "}
