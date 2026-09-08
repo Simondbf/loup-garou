@@ -296,8 +296,9 @@ function NouvellePartie() {
           {selection["comedien"] ? (
             <p className="mb-3 rounded-xl border border-border p-3 text-[11px] text-muted-foreground">
               {" "}
-              Le Comédien réclame trois cartes de village en plus des vôtres. Elles seront tirées au
-              sort à la distribution et posées au centre, face cachée.
+              Les trois cartes du Comédien viennent de la boîte : elles ne comptent pas dans votre
+              composition. Trois rôles de village à pouvoir, tirés au sort parmi ceux que personne
+              ne joue, et posées au centre au vu de tous.
             </p>
           ) : null}
 

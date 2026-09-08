@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { ROLES_BY_ID } from "@/data/roles";
+import { ROLES, ROLES_BY_ID } from "@/data/roles";
 
 /**
  * Toutes les opérations de partie passent par ces fonctions serveur.
@@ -980,41 +980,40 @@ export const dealCards = createServerFn({ method: "POST" })
     const count = game["player_count"] as number;
     if (count < PLACES_MIN) throw new Error(`Il faut au moins ${PLACES_MIN} joueurs`);
     const withThief = pool.includes("voleur") && game["thief_variant"] === "centre";
-    const withComedien = pool.includes("comedien");
-    const supplement = (withThief ? 2 : 0) + (withComedien ? 3 : 0);
-    if (pool.length !== count + supplement) {
+    if (pool.length !== count + (withThief ? 2 : 0)) {
       throw new Error("La composition ne correspond pas au nombre de joueurs");
     }
 
-    // Le Comédien tire au sort : ses trois cartes sortent du même mélange que
-    // les autres, à ceci près qu'elles doivent être des cartes de village —
-    // jamais un Loup-Garou, jamais un solitaire. On les met de côté avant de
-    // distribuer le reste.
-    const villageois = (id: string) => ROLES_BY_ID[id]?.camp === "villageois";
-    let reste = shuffle(pool);
-    const cartesComedien: string[] = [];
-    if (withComedien) {
-      for (const id of reste) {
-        if (cartesComedien.length < 3 && id !== "comedien" && villageois(id)) {
-          cartesComedien.push(id);
-        }
-      }
-      const aRetirer = [...cartesComedien];
-      reste = reste.filter((id) => {
-        const i = aRetirer.indexOf(id);
-        if (i === -1) return true;
-        aRetirer.splice(i, 1);
-        return false;
-      });
-      if (cartesComedien.length < 3) {
-        throw new Error(
-          "Le Comédien réclame trois cartes de village en plus : ajoutez-en à la composition",
-        );
-      }
-    }
+    const shuffled = shuffle(pool);
+    const dealt = shuffled.slice(0, count);
+    const center = withThief ? shuffled.slice(count, count + 2) : [];
 
-    const dealt = reste.slice(0, count);
-    const center = withThief ? reste.slice(count, count + 2) : [];
+    /*
+     * Les trois cartes du Comédien viennent de la boîte, pas de la
+     * composition : ce sont des cartes en plus, que personne ne joue.
+     *
+     * Elles ne peuvent pas doubler un rôle déjà distribué — deux Voyantes la
+     * même nuit n'auraient aucun sens — et un Simple Villageois ne servirait
+     * à rien puisqu'il n'a pas de pouvoir. On tire donc parmi les rôles de
+     * village à pouvoir restés dans la boîte, et on ne complète avec des
+     * Simples Villageois que si le village est déjà si fourni qu'il n'en
+     * reste pas trois.
+     */
+    let cartesComedien: string[] = [];
+    if (dealt.includes("comedien")) {
+      const distribues = new Set(dealt);
+      const restants = ROLES.filter(
+        (r) =>
+          r.camp === "villageois" &&
+          !r.derived &&
+          r.id !== "comedien" &&
+          r.id !== "simple-villageois" &&
+          r.id !== "villageois-villageois" &&
+          !distribues.has(r.id),
+      ).map((r) => r.id);
+      cartesComedien = shuffle(restants).slice(0, 3);
+      while (cartesComedien.length < 3) cartesComedien.push("simple-villageois");
+    }
 
     const seats = await seatsDe(db, game["id"]);
     for (let i = 0; i < count; i++) {
@@ -1354,6 +1353,18 @@ export const setPhase = createServerFn({ method: "POST" })
       // reprendre la nuit suivante au milieu, avec des désignations vides.
       patch["jour"] = {};
       patch["nuit"] = {};
+
+      // Le Comédien vient de jouer sa carte toute la journée : elle part
+      // maintenant à la défausse. Un seul exemplaire, au cas où deux cartes
+      // du centre porteraient le même rôle.
+      const etatMJ = (game["host_state"] ?? {}) as HostState;
+      if (etatMJ.comedienRole && etatMJ.comedienJour === (game["night"] as number)) {
+        const restantes = [...((game["comedien_cartes"] ?? []) as string[])];
+        const i = restantes.indexOf(etatMJ.comedienRole);
+        if (i !== -1) restantes.splice(i, 1);
+        patch["comedien_cartes"] = restantes;
+        patch["host_state"] = { ...etatMJ, comedienRole: "", comedienJour: 0 };
+      }
     } else {
       // Passage au jour sans résolution de nuit (rattrapage manuel) : on
       // ouvre quand même un fil, sinon le moteur de jour n'a pas de repère
@@ -1677,15 +1688,10 @@ export const resolveNight = createServerFn({ method: "POST" })
       }
     }
 
-    // Le Comédien défausse la carte qu'il vient de jouer : il n'a plus que
-    // les deux autres pour les nuits suivantes.
-    // Un seul exemplaire part à la défausse : deux cartes du centre peuvent
-    // porter le même rôle, et il ne perd que celle qu'il vient de jouer.
-    const cartesComedien = [...((game["comedien_cartes"] ?? []) as string[])];
-    if (nuit.comedien) {
-      const i = cartesComedien.indexOf(nuit.comedien);
-      if (i !== -1) cartesComedien.splice(i, 1);
-    }
+    // La carte prise par le Comédien reste au centre toute la journée : son
+    // pouvoir vaut « cette nuit et le jour suivant », et le village doit
+    // continuer à la voir tant qu'elle est en jeu. Elle sera défaussée au
+    // coucher du soleil, quand la nuit suivante s'ouvrira.
     if (nuit.comedien) {
       patchEtat.comedienRole = nuit.comedien;
       patchEtat.comedienJour = (game["night"] as number) ?? 1;
@@ -1696,7 +1702,6 @@ export const resolveNight = createServerFn({ method: "POST" })
       nuit: {},
       jour: journalDuJour,
       phase: "jour",
-      comedien_cartes: cartesComedien,
     });
 
     const fresh = await loadGame(db, data.code);

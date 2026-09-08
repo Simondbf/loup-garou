@@ -105,12 +105,15 @@ découpage de la table que l'application ne connaît pas.
 
 ## Le Comédien
 Réveillé en tout premier chaque nuit, avant tout le monde. Il choisit une des
-trois cartes du centre — tirées au sort parmi les rôles de village à la
-distribution, mais **visibles de toute la table** sur chaque téléphone — et le
+trois cartes du centre — trois rôles de village à pouvoir tirés au sort parmi
+ceux que **personne ne joue**, hors composition puisqu'elles viennent de la
+boîte, et **visibles de toute la table** sur chaque téléphone — et le
 rôle emprunté est appelé à sa place habituelle dans la nuit, avec le Comédien
 pour porteur. Le village entend donc appeler un personnage dont plus personne
 n'a la carte, et en tire ses conclusions : c'est voulu, et c'est pour cela que
-les trois cartes sont publiques. Le pouvoir vaut
+les trois cartes sont publiques. La carte jouée reste au centre toute la
+journée, puisque le pouvoir y vaut encore, et n'est défaussée qu'à la nuit
+tombée. Le pouvoir vaut
 encore la journée suivante (`hostState.comedienRole` / `comedienJour`), donc
 la carte du Chasseur le fait tirer en mourant ce jour-là. Sa carte retournée
 reste pourtant le Comédien. La carte jouée est ensuite défaussée.

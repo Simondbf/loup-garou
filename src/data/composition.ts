@@ -72,8 +72,8 @@ export function compositionAuto(count: number, unSeulTelephone = true): Record<s
 /**
  * Nombre de cartes à réunir : une par joueur, plus celles du centre.
  *
- * Deux pour le Voleur, trois pour le Comédien — ces dernières sont tirées au
- * sort parmi les cartes de village au moment de la distribution.
+ * Deux pour le Voleur. Les trois cartes du Comédien n'en font pas partie :
+ * elles viennent de la boîte, pas de la composition.
  */
 export function cartesAttendues(
   count: number,
