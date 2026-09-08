@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button, Modal, PageHeader, RoleDetail, RoleSigil } from "@/components/ui-kit";
 import { ROLES_BY_ID, type Role } from "@/data/roles";
 import { ChoixRoles } from "@/components/choix-roles";
@@ -53,11 +53,6 @@ function NouvellePartie() {
   const pioche = rolesDistribuables(singleDevice);
 
   // La composition conseillée est pré-remplie dès l'arrivée sur l'étape 2.
-  useEffect(() => {
-    if (step !== 2) return;
-    setSelection(compositionAuto(count, singleDevice));
-  }, [step, count, singleDevice]);
-
   // La variante « vol de rôle » oblige chaque joueur à revérifier sa carte le
   // matin : impossible quand tout le monde partage un seul téléphone.
   const varianteVoleur: "centre" | "echange" = singleDevice ? "centre" : thiefVariant;
@@ -238,7 +233,17 @@ function NouvellePartie() {
           <Button
             className="mt-6 w-full py-4"
             disabled={busy}
-            onClick={() => (singleDevice ? setStep(2) : void lancer())}
+            onClick={() => {
+              if (!singleDevice) {
+                void lancer();
+                return;
+              }
+              // La composition conseillée se pose au moment où l'on ouvre
+              // l'écran des cartes, pas dans un effet qui la remettrait à
+              // zéro à chaque changement d'effectif.
+              setSelection(compositionAuto(count, singleDevice));
+              setStep(2);
+            }}
           >
             {singleDevice ? "Choisir la composition" : "Ouvrir le salon"}
           </Button>

@@ -38,21 +38,16 @@ function TourDeTable() {
   const { game, session, token, hydrated, apply } = useGame();
   const [index, setIndex] = useState(0);
   const [etape, setEtape] = useState<Etape>("prenom");
-  const [prenom, setPrenom] = useState("");
-  const [amorce, setAmorce] = useState(false);
+  // `saisie` ne retient que ce que le joueur a tapé lui-même. Tant qu'il n'a
+  // rien touché, le champ affiche le prénom déjà enregistré pour cette place
+  // — utile quand la partie reprend avec les mêmes joueurs. C'est un calcul
+  // de rendu, pas un état à synchroniser.
+  const [saisie, setSaisie] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (hydrated && !session) void navigate({ to: "/" });
   }, [hydrated, session, navigate]);
-
-  // Premier affichage : si la partie reprend des joueurs connus, la première
-  // place arrive avec son prénom déjà saisi.
-  useEffect(() => {
-    if (amorce || !game) return;
-    setPrenom(game.seats.find((s) => s.position === 1)?.name ?? "");
-    setAmorce(true);
-  }, [amorce, game]);
 
   if (!game) {
     return (
@@ -64,6 +59,7 @@ function TourDeTable() {
 
   const places = [...game.seats].sort((a, b) => a.position - b.position);
   const place = places[index];
+  const prenom = saisie ?? place?.name ?? "";
   const total = places.length;
   const dernier = index >= total - 1;
 
@@ -99,7 +95,7 @@ function TourDeTable() {
   function suivant() {
     // Après une relance, les prénoms sont déjà là : on les repropose au lieu
     // de refaire tout le tour de table.
-    setPrenom(places[index + 1]?.name ?? "");
+    setSaisie(null);
     setIndex((i) => i + 1);
     setEtape("prenom");
   }
@@ -122,7 +118,7 @@ function TourDeTable() {
           <input
             id="prenom"
             value={prenom}
-            onChange={(e) => setPrenom(e.target.value.slice(0, 24))}
+            onChange={(e) => setSaisie(e.target.value.slice(0, 24))}
             placeholder="Camille"
             autoComplete="off"
             autoFocus
