@@ -51,6 +51,7 @@ interface ActionsJour {
   onCapitaine: (position: number | null) => Promise<void> | void;
   onPublic: (position: number, valeur: boolean) => Promise<void> | void;
   onServante: (servante: number, morte: number) => Promise<void> | void;
+  onServanteAnnuler: () => Promise<void> | void;
   onEtat: (patch: HostState) => Promise<void> | void;
   onNuitSuivante: () => Promise<void> | void;
   onTerminer: () => Promise<void> | void;
@@ -73,6 +74,7 @@ export function ConduiteJour({
   onCapitaine,
   onPublic,
   onServante,
+  onServanteAnnuler,
   onEtat,
   onNuitSuivante,
   onTerminer,
@@ -85,6 +87,7 @@ export function ConduiteJour({
         onCapitaine,
         onPublic,
         onServante,
+        onServanteAnnuler,
         onEtat,
         onNuitSuivante,
         onTerminer,
@@ -375,11 +378,19 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
         <>
           <FicheJoueur nom={nom(position)} role={carte} />
           {prise ? (
-            <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-xs text-muted-foreground">
-              {" "}
-              La Servante Dévouée a pris cette carte sans la montrer. Personne ne saura jamais qui
-              était {nom(position)}.
-            </p>
+            <>
+              <p className="mt-3 rounded-xl border border-border bg-secondary p-3 text-xs text-muted-foreground">
+                La Servante Dévouée a pris cette carte sans la montrer. Personne ne saura jamais qui
+                était {nom(position)}.
+              </p>
+              {etat.servanteAvant?.morte === position && (
+                <div className="mt-2">
+                  <GrosBouton onClick={() => void a.onServanteAnnuler()}>
+                    Annuler : ce n'était pas ce qu'elle voulait
+                  </GrosBouton>
+                </div>
+              )}
+            </>
           ) : (
             <div className="mt-3 flex flex-col gap-2">
               <GrosBouton onClick={() => void a.onPublic(position, true)} actif={s.publicRole}>
@@ -996,11 +1007,12 @@ function construire(game: GameDTO, a: ActionsJour): EtapeJour[] {
         aide: "Une seule fois dans la partie. Le second vote se déroule comme le premier, sur tous les joueurs encore en vie.",
         pret: jour.secondTour !== undefined,
         onValider: async () => {
-          if (jour.secondTour) {
-            await a.onEtat({
-              pouvoirsUtilises: [...(etat.pouvoirsUtilises ?? []), "juge-begue"],
-            });
-          }
+          // Se déjuger doit rester possible : tant que l'étape n'est pas
+          // franchie, revenir dessus et répondre « non » lui rend son pouvoir.
+          const sans = (etat.pouvoirsUtilises ?? []).filter((x) => x !== "juge-begue");
+          await a.onEtat({
+            pouvoirsUtilises: jour.secondTour ? [...sans, "juge-begue"] : sans,
+          });
         },
         rendu: () => (
           <div className="flex flex-col gap-2">

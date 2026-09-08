@@ -104,19 +104,33 @@ Pas encore traité : l'Abominable Sectaire, dont la victoire dépend d'un
 découpage de la table que l'application ne connaît pas.
 
 ## Le Comédien
-Réveillé en tout premier chaque nuit, avant tout le monde. Il choisit une des
-trois cartes du centre — trois rôles de village à pouvoir tirés au sort parmi
-ceux que **personne ne joue**, hors composition puisqu'elles viennent de la
-boîte, et **visibles de toute la table** sur chaque téléphone — et le
-rôle emprunté est appelé à sa place habituelle dans la nuit, avec le Comédien
-pour porteur. Le village entend donc appeler un personnage dont plus personne
-n'a la carte, et en tire ses conclusions : c'est voulu, et c'est pour cela que
-les trois cartes sont publiques. La carte jouée reste au centre toute la
-journée, puisque le pouvoir y vaut encore, et n'est défaussée qu'à la nuit
-tombée. Le pouvoir vaut
-encore la journée suivante (`hostState.comedienRole` / `comedienJour`), donc
-la carte du Chasseur le fait tirer en mourant ce jour-là. Sa carte retournée
-reste pourtant le Comédien. La carte jouée est ensuite défaussée.
+Le Maître du Jeu choisit ses trois cartes au moment de la composition, comme
+le veut la règle : trois personnages du village à pouvoir, qu'aucun joueur ne
+tient déjà — il ne peut pas y avoir deux Voyantes la même nuit. Elles viennent
+de la boîte et ne comptent pas dans le total des cartes.
+
+Il est réveillé en tout premier chaque nuit et désigne une des trois, visibles
+de toute la table sur chaque téléphone. Le rôle emprunté est ensuite appelé à
+sa place habituelle dans la nuit, avec le Comédien pour porteur : le village
+entend appeler un personnage dont plus personne n'a la carte, et en tire ses
+conclusions — c'est voulu, et c'est pour cela que les trois cartes sont
+publiques. Le pouvoir vaut encore la journée qui suit
+(`hostState.comedienRole` / `comedienJour`), donc la carte du Chasseur le fait
+tirer en mourant ce jour-là, alors que sa carte retournée reste le Comédien.
+La carte n'est défaussée qu'à la nuit tombée.
+
+## Corriger une erreur du Maître du Jeu
+Rien de ce qui se décide la nuit n'est appliqué avant le lever du jour : la
+victime des Loups, les potions, l'infection, la protection ne sont que des
+lignes du journal, effacées d'un second toucher ou du bouton « Précédent ».
+Pour ce qui prend effet sur-le-champ, chaque geste a son retour :
+- une mort marquée par erreur se défait par le lien sous le déroulé, et rendre
+  l'Ancien à la vie rallume les pouvoirs du village ;
+- le bâillon du Magicien se déplace en touchant un autre nom, sans que le
+  premier reste interdit de bâillon pendant trois nuits ;
+- le Juge Bègue retrouve son second vote si l'on revient sur l'étape pour
+  répondre « non » ;
+- la Servante Dévouée rend la carte prise par erreur, et retrouve la sienne.
 
 ## Ce que le MJ n'a plus
 - Pas d'onglet Joueurs : les profils sont cliquables dans le déroulé.

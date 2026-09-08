@@ -24,6 +24,25 @@ export const ROLES_DISTRIBUABLES = ROLES.filter((r) => !r.derived);
  */
 export const ROLES_VOISINS = ["renard", "montreur-ours"];
 
+/**
+ * Les cartes que le Comédien peut se voir proposer.
+ *
+ * La règle demande trois cartes personnage non-Loup « ayant des capacités
+ * spéciales » : un Simple Villageois n'a rien à offrir, il est donc écarté.
+ * Un rôle déjà distribué l'est aussi — il ne peut pas y avoir deux Voyantes
+ * la même nuit — ce qui laisse les personnages du village restés en boîte.
+ */
+export function cartesComedienPossibles(selection: Record<string, number>) {
+  return ROLES_DISTRIBUABLES.filter(
+    (r) =>
+      r.camp === "villageois" &&
+      r.id !== "comedien" &&
+      r.id !== "simple-villageois" &&
+      r.id !== "villageois-villageois" &&
+      !(selection[r.id] ?? 0),
+  );
+}
+
 /** Rôles proposés selon le mode de jeu. */
 export function rolesDistribuables(unSeulTelephone: boolean) {
   if (unSeulTelephone) return ROLES_DISTRIBUABLES;

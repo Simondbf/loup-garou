@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { ROLES, ROLES_BY_ID } from "@/data/roles";
+import { ROLES_BY_ID } from "@/data/roles";
 
 /**
  * Toutes les opérations de partie passent par ces fonctions serveur.
@@ -117,6 +117,12 @@ export interface HostState {
   avecCapitaine?: boolean;
   /** L'Ange a été éliminé au premier vote : il gagne seul, la partie s'arrête. */
   angeGagne?: boolean;
+  /**
+   * Servante Dévouée : ce qu'elle tenait avant la prise, et la place dont
+   * elle a repris la carte. Le temps que le Maître du Jeu s'aperçoive d'une
+   * fausse manœuvre et fasse marche arrière.
+   */
+  servanteAvant?: { servante: number; roleAvant: string; morte: number };
   /**
    * Comédien : rôle emprunté au centre, et jour où il le joue encore. Le
    * pouvoir vaut « pour cette nuit et le jour suivant » — si la carte prise
@@ -914,6 +920,42 @@ export const removeSeat = createServerFn({ method: "POST" })
     return buildDTO(db, fresh, data.token);
   });
 
+/**
+ * Les trois cartes que le Comédien aura sous les yeux.
+ *
+ * Choisies par le Maître du Jeu au moment de la composition, comme le veut
+ * la règle : trois personnages du village à pouvoir, qu'aucun joueur ne
+ * tient déjà — sans quoi deux personnes joueraient la Voyante la même nuit.
+ */
+export const setComedienCartes = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string; cartes: string[] }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    if (!AVANT_DISTRIBUTION.includes(game["status"] as string)) {
+      throw new Error("Les cartes sont déjà distribuées");
+    }
+    const selection = (game["selection"] ?? {}) as Record<string, number>;
+    const cartes = [...new Set(data.cartes)].slice(0, 3);
+    for (const id of cartes) {
+      const role = ROLES_BY_ID[id];
+      if (
+        !role ||
+        role.camp !== "villageois" ||
+        role.derived ||
+        id === "comedien" ||
+        id === "simple-villageois" ||
+        id === "villageois-villageois"
+      ) {
+        throw new Error("Le Comédien ne prend que des personnages du village à pouvoir");
+      }
+      if (selection[id]) throw new Error(`${role.name} est déjà distribué à un joueur`);
+    }
+    await db.pb.modifier("games", game["id"], { comedien_cartes: cartes });
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
 /** Le MJ retouche la composition depuis le salon, une fois l'effectif connu. */
 export const setSelection = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; token: string; selection: Record<string, number> }) => d)
@@ -988,31 +1030,14 @@ export const dealCards = createServerFn({ method: "POST" })
     const dealt = shuffled.slice(0, count);
     const center = withThief ? shuffled.slice(count, count + 2) : [];
 
-    /*
-     * Les trois cartes du Comédien viennent de la boîte, pas de la
-     * composition : ce sont des cartes en plus, que personne ne joue.
-     *
-     * Elles ne peuvent pas doubler un rôle déjà distribué — deux Voyantes la
-     * même nuit n'auraient aucun sens — et un Simple Villageois ne servirait
-     * à rien puisqu'il n'a pas de pouvoir. On tire donc parmi les rôles de
-     * village à pouvoir restés dans la boîte, et on ne complète avec des
-     * Simples Villageois que si le village est déjà si fourni qu'il n'en
-     * reste pas trois.
-     */
-    let cartesComedien: string[] = [];
-    if (dealt.includes("comedien")) {
-      const distribues = new Set(dealt);
-      const restants = ROLES.filter(
-        (r) =>
-          r.camp === "villageois" &&
-          !r.derived &&
-          r.id !== "comedien" &&
-          r.id !== "simple-villageois" &&
-          r.id !== "villageois-villageois" &&
-          !distribues.has(r.id),
-      ).map((r) => r.id);
-      cartesComedien = shuffle(restants).slice(0, 3);
-      while (cartesComedien.length < 3) cartesComedien.push("simple-villageois");
+    // Les trois cartes du Comédien viennent de la boîte, choisies par le
+    // Maître du Jeu avec le reste de la composition : elles ne comptent pas
+    // dans le total, et sont posées face visible une fois les cartes données.
+    if (pool.includes("comedien")) {
+      const cartes = (game["comedien_cartes"] ?? []) as string[];
+      if (cartes.length !== 3) {
+        throw new Error("Choisissez les trois cartes du Comédien avant de distribuer");
+      }
     }
 
     const seats = await seatsDe(db, game["id"]);
@@ -1035,7 +1060,6 @@ export const dealCards = createServerFn({ method: "POST" })
       phase: "nuit",
       night: 1,
       center_cards: center,
-      comedien_cartes: cartesComedien,
     });
 
     const fresh = await loadGame(db, data.code);
@@ -1313,6 +1337,8 @@ export const gagPlayer = createServerFn({ method: "POST" })
     }
 
     const seats = await seatsDe(db, game["id"]);
+    // La boucle libère au passage un joueur bâillonné par erreur : le MJ
+    // touche le bon nom, et le premier retrouve la parole.
     for (const s of seats) {
       const avant = (s["statuses"] ?? []) as string[];
       const statuses = avant.filter((x) => x !== "baillonne");
@@ -1322,8 +1348,13 @@ export const gagPlayer = createServerFn({ method: "POST" })
       }
     }
 
+    // On ne garde qu'une entrée par nuit : sans cela, un nom touché par
+    // erreur resterait interdit de bâillon pendant trois nuits.
     await db.pb.modifier("games", game["id"], {
-      gag_history: [...history, { night, position: data.position }],
+      gag_history: [
+        ...history.filter((h) => h.night !== night),
+        { night, position: data.position },
+      ],
     });
 
     const fresh = await loadGame(db, data.code);
@@ -1398,6 +1429,44 @@ export const setNightAction = createServerFn({ method: "POST" })
   });
 
 /**
+ * Annuler la prise de carte de la Servante Dévouée.
+ *
+ * Une main qui glisse sur le mauvais nom, et la partie est faussée sans
+ * retour possible : la Servante joue une carte qui n'est pas la sienne et le
+ * mort emporte la mauvaise. Tant que le Maître du Jeu n'a pas franchi
+ * l'étape, il peut tout remettre en place.
+ */
+export const servanteAnnuler = createServerFn({ method: "POST" })
+  .inputValidator((d: { code: string; token: string }) => d)
+  .handler(async ({ data }) => {
+    const db = await base();
+    const game = await requireHost(db, data.code, data.token);
+    const etat = (game["host_state"] ?? {}) as HostState;
+    const avant = etat.servanteAvant;
+    if (!avant?.servante) throw new Error("Aucune prise de carte à annuler");
+
+    const seats = await seatsDe(db, game["id"]);
+    const servante = seats.find((s) => s["position"] === avant.servante);
+    const morte = seats.find((s) => s["position"] === avant.morte);
+    if (servante) {
+      await db.pb.modifier("seats", servante["id"], { role_id: avant.roleAvant, seen: true });
+    }
+    if (morte) {
+      const statuts = ((morte["statuses"] ?? []) as string[]).filter((x) => x !== "carte-prise");
+      await db.pb.modifier("seats", morte["id"], { statuses: statuts });
+    }
+
+    const patch: HostState = {
+      ...etat,
+      pouvoirsUtilises: (etat.pouvoirsUtilises ?? []).filter((x) => x !== "servante-devouee"),
+      servanteAvant: { servante: 0, roleAvant: "", morte: 0 },
+    };
+    await db.pb.modifier("games", game["id"], { host_state: patch });
+    const fresh = await loadGame(db, data.code);
+    return buildDTO(db, fresh, data.token);
+  });
+
+/**
  * Le MJ avance dans le fil de la journée.
  *
  * Contrairement à la nuit, rien n'est différé : les morts du jour sont
@@ -1463,6 +1532,11 @@ export const servanteEchange = createServerFn({ method: "POST" })
         ...(etat.pouvoirsUtilises ?? []).filter((x) => x !== nouveau),
         "servante-devouee",
       ],
+      servanteAvant: {
+        servante: data.servante,
+        roleAvant: (servante["role_id"] as string) || "",
+        morte: data.morte,
+      },
     };
     if (nouveau === "sorciere") {
       patch.potionVie = true;

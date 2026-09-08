@@ -8,6 +8,7 @@ import { ChoixRoles } from "@/components/choix-roles";
 import {
   ajusterRole,
   cartesAttendues,
+  cartesComedienPossibles,
   compositionAuto,
   rolesDistribuables,
 } from "@/data/composition";
@@ -23,6 +24,7 @@ import {
   libererProfil,
   removeSeat,
   resolveNight,
+  servanteAnnuler,
   servanteEchange,
   setCaptain,
   setDayAction,
@@ -32,6 +34,7 @@ import {
   setPublicRole,
   setLovers,
   setNightAction,
+  setComedienCartes,
   setSelection,
   validerProfils,
   setSeatName,
@@ -183,6 +186,7 @@ function Maitre() {
               variante={game.thiefVariant}
               unSeulTelephone
               avecCapitaine={game.hostState.avecCapitaine !== false}
+              comedienCartes={game.comedienCartes}
               onSelection={(selection) =>
                 void run(setSelection({ data: { code: game.code, token, selection } }))
               }
@@ -190,6 +194,9 @@ function Maitre() {
                 void run(
                   setHostState({ data: { code: game.code, token, patch: { avecCapitaine } } }),
                 )
+              }
+              onComedien={(cartes) =>
+                void run(setComedienCartes({ data: { code: game.code, token, cartes } }))
               }
             />
 
@@ -291,6 +298,7 @@ function Maitre() {
               variante={game.thiefVariant}
               unSeulTelephone={false}
               avecCapitaine={game.hostState.avecCapitaine !== false}
+              comedienCartes={game.comedienCartes}
               onSelection={(selection) =>
                 void run(setSelection({ data: { code: game.code, token, selection } }))
               }
@@ -298,6 +306,9 @@ function Maitre() {
                 void run(
                   setHostState({ data: { code: game.code, token, patch: { avecCapitaine } } }),
                 )
+              }
+              onComedien={(cartes) =>
+                void run(setComedienCartes({ data: { code: game.code, token, cartes } }))
               }
             />
 
@@ -394,6 +405,9 @@ function Maitre() {
                   }
                   onServante={(servante, morte) =>
                     run(servanteEchange({ data: { code: game.code, token, servante, morte } }))
+                  }
+                  onServanteAnnuler={() =>
+                    run(servanteAnnuler({ data: { code: game.code, token } }))
                   }
                   onEtat={(patch) => run(setHostState({ data: { code: game.code, token, patch } }))}
                   onNuitSuivante={() =>
@@ -684,16 +698,20 @@ function Composition({
   variante,
   unSeulTelephone,
   avecCapitaine,
+  comedienCartes,
   onSelection,
   onCapitaine,
+  onComedien,
 }: {
   effectif: number;
   selection: Record<string, number>;
   variante: string;
   unSeulTelephone: boolean;
   avecCapitaine: boolean;
+  comedienCartes: string[];
   onSelection: (selection: Record<string, number>) => void;
   onCapitaine: (avec: boolean) => void;
+  onComedien: (cartes: string[]) => void;
 }) {
   const attendu = cartesAttendues(effectif, selection, variante);
   const total = Object.values(selection).reduce((a, b) => a + b, 0);
