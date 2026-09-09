@@ -793,7 +793,7 @@ function Composition({
         )}
         <Button
           variant="ghost"
-          onClick={() => onSelection(compositionAuto(effectif, unSeulTelephone))}
+          onClick={() => onSelection(compositionAuto(effectif, unSeulTelephone, variante))}
         >
           {" "}
           Reprendre la composition conseillée pour {effectif}

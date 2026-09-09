@@ -50,41 +50,172 @@ export function rolesDistribuables(unSeulTelephone: boolean) {
 }
 
 /**
- * Composition de secours : environ un tiers de la table côté loups, et le
- * moins de Simples Villageois possible — c'est le seul rôle sans pouvoir,
- * donc le moins amusant à tirer.
+ * Les répartitions conseillées, de 7 à 18 joueurs.
+ *
+ * Celles du livret, à deux nuances près. Sept joueurs sort de la fourchette
+ * officielle — la boîte annonce 8 à 18 — mais la table existe quand même, et
+ * mieux vaut lui donner un équilibre correct qu'un tirage au hasard. Et le
+ * Voleur, qui apparaît à partir de douze, réclame deux Simples Villageois de
+ * plus : ils sont ajoutés plus bas, seulement en variante « cartes au
+ * centre », puisque c'est elle qui les consomme.
+ *
+ * Le nombre de Loups suit le livret : deux jusqu'à onze, trois jusqu'à
+ * quinze, quatre au-delà. Les rôles à pouvoir s'ajoutent au fur et à mesure
+ * que la table grandit, en alternant Petite Fille et Sorcière comme le fait
+ * la règle.
  */
-export function compositionAuto(count: number, unSeulTelephone = true): Record<string, number> {
-  // Le plafond `count - 2` ne sert qu'aux toutes petites tables : à trois
-  // joueurs, une meute d'un tiers ferait déjà deux loups contre un villageois.
-  const loups = Math.max(1, Math.min(Math.round(count / 3), Math.max(1, count - 2)));
-  const base: Record<string, number> = { "loup-garou": loups };
-  let reste = count - loups;
-  const ecartes = [...(unSeulTelephone ? [] : ROLES_VOISINS)];
-  // Le Salvateur étouffe une petite table : il neutralise une attaque sur
-  // deux quand il n'y a que deux Loups à convaincre.
-  if (count < 9) ecartes.push("salvateur");
-  for (const id of [
-    "voyante",
-    "sorciere",
-    "chasseur",
-    "cupidon",
-    "salvateur",
-    "petite-fille",
-    "ancien",
-    "renard",
-    "idiot-du-village",
-    "bouc-emissaire",
-    "montreur-ours",
-    "juge-begue",
-    "servante-devouee",
-  ]) {
-    if (reste <= 0) break;
-    if (ecartes.includes(id)) continue;
-    base[id] = 1;
-    reste -= 1;
+const CONSEILLEES: Record<number, Record<string, number>> = {
+  7: { "loup-garou": 2, voyante: 1, sorciere: 1, "simple-villageois": 3 },
+  8: { "loup-garou": 2, voyante: 1, chasseur: 1, "simple-villageois": 4 },
+  9: { "loup-garou": 2, voyante: 1, chasseur: 1, cupidon: 1, "simple-villageois": 4 },
+  10: {
+    "loup-garou": 2,
+    voyante: 1,
+    "petite-fille": 1,
+    chasseur: 1,
+    cupidon: 1,
+    "simple-villageois": 4,
+  },
+  11: {
+    "loup-garou": 2,
+    voyante: 1,
+    sorciere: 1,
+    chasseur: 1,
+    cupidon: 1,
+    "simple-villageois": 5,
+  },
+  12: {
+    "loup-garou": 3,
+    voyante: 1,
+    "petite-fille": 1,
+    chasseur: 1,
+    cupidon: 1,
+    voleur: 1,
+    "simple-villageois": 4,
+  },
+  13: {
+    "loup-garou": 3,
+    voyante: 1,
+    sorciere: 1,
+    chasseur: 1,
+    cupidon: 1,
+    voleur: 1,
+    "simple-villageois": 5,
+  },
+  14: {
+    "loup-garou": 3,
+    voyante: 1,
+    "petite-fille": 1,
+    chasseur: 1,
+    cupidon: 1,
+    voleur: 1,
+    "simple-villageois": 6,
+  },
+  15: {
+    "loup-garou": 3,
+    voyante: 1,
+    sorciere: 1,
+    chasseur: 1,
+    cupidon: 1,
+    voleur: 1,
+    "simple-villageois": 7,
+  },
+  16: {
+    "loup-garou": 4,
+    voyante: 1,
+    sorciere: 1,
+    "petite-fille": 1,
+    chasseur: 1,
+    cupidon: 1,
+    salvateur: 1,
+    "simple-villageois": 6,
+  },
+  17: {
+    "loup-garou": 4,
+    voyante: 1,
+    sorciere: 1,
+    "petite-fille": 1,
+    chasseur: 1,
+    cupidon: 1,
+    salvateur: 1,
+    ancien: 1,
+    "simple-villageois": 6,
+  },
+  18: {
+    "loup-garou": 4,
+    voyante: 1,
+    sorciere: 1,
+    "petite-fille": 1,
+    chasseur: 1,
+    cupidon: 1,
+    salvateur: 1,
+    ancien: 1,
+    "idiot-du-village": 1,
+    "simple-villageois": 6,
+  },
+};
+
+/** Rôles ajoutés un à un quand la table dépasse le tableau du livret. */
+const RENFORTS = [
+  "bouc-emissaire",
+  "juge-begue",
+  "servante-devouee",
+  "montreur-ours",
+  "renard",
+  "chien-loup",
+  "enfant-sauvage",
+];
+
+/**
+ * Composition conseillée pour un effectif donné.
+ *
+ * On part du tableau du livret. Au-delà de dix-huit joueurs, on prolonge : un
+ * Loup pour quatre joueurs environ, les rôles à pouvoir ajoutés un à un, et
+ * le reste en Simples Villageois. En dessous de sept, la table est trop
+ * petite pour un équilibre honnête, mais on rend quand même quelque chose de
+ * jouable plutôt que rien.
+ */
+export function compositionAuto(
+  count: number,
+  unSeulTelephone = true,
+  variante = "centre",
+): Record<string, number> {
+  const ecartes = unSeulTelephone ? [] : ROLES_VOISINS;
+  let base: Record<string, number>;
+
+  const table = CONSEILLEES[count];
+  if (table) {
+    base = { ...table };
+  } else if (count > 18) {
+    base = { ...CONSEILLEES[18]! };
+    base["loup-garou"] = Math.max(4, Math.round(count / 4));
+    let reste = count - Object.values(base).reduce((a, b) => a + b, 0);
+    for (const id of RENFORTS) {
+      if (reste <= 0) break;
+      if (ecartes.includes(id)) continue;
+      base[id] = 1;
+      reste -= 1;
+    }
+    if (reste > 0) base["simple-villageois"] = (base["simple-villageois"] ?? 0) + reste;
+  } else {
+    // Moins de sept : un Loup, la Voyante, et des villageois.
+    base = { "loup-garou": 1, voyante: 1, "simple-villageois": Math.max(0, count - 2) };
   }
-  if (reste > 0) base["simple-villageois"] = reste;
+
+  // Les rôles de voisinage ne marchent qu'en mode un seul téléphone : on les
+  // remplace par des Simples Villageois plutôt que de laisser un trou.
+  for (const id of ecartes) {
+    if (base[id]) {
+      base["simple-villageois"] = (base["simple-villageois"] ?? 0) + base[id]!;
+      delete base[id];
+    }
+  }
+
+  // Le Voleur emporte deux cartes au centre : il faut les ajouter au paquet.
+  if (base["voleur"] && variante === "centre") {
+    base["simple-villageois"] = (base["simple-villageois"] ?? 0) + 2;
+  }
+
   return base;
 }
 

@@ -241,7 +241,7 @@ function NouvellePartie() {
               // La composition conseillée se pose au moment où l'on ouvre
               // l'écran des cartes, pas dans un effet qui la remettrait à
               // zéro à chaque changement d'effectif.
-              setSelection(compositionAuto(count, singleDevice));
+              setSelection(compositionAuto(count, singleDevice, varianteVoleur));
               setStep(2);
             }}
           >
@@ -276,7 +276,7 @@ function NouvellePartie() {
           </div>
 
           <button
-            onClick={() => setSelection(compositionAuto(count))}
+            onClick={() => setSelection(compositionAuto(count, singleDevice, varianteVoleur))}
             className="mb-4 w-full rounded-xl border border-border bg-secondary px-3 py-3 text-left text-xs"
           >
             <span className="block font-display font-bold"> Composer automatiquement</span>
