@@ -173,7 +173,7 @@ export function ConduiteNuit({
         </p>
       )}
 
-      <BoutonAide role={etape.role} />
+      {!etape.titre && <BoutonAide role={etape.role} />}
 
       {!dernier && <RecapNuit game={game} />}
     </div>

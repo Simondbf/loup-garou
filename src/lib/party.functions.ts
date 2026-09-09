@@ -265,7 +265,6 @@ export interface GameDTO {
    * code à retaper.
    */
   suite: string;
-  reveals: { id: string; toPosition: number; targetPosition: number; note: string | null }[];
 }
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -543,11 +542,6 @@ async function renumeroter(db: Base, gameId: string) {
 async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO> {
   const isHost = token === game["host_token"];
   const seats = await seatsDe(db, game["id"]);
-  const revealRows = (await db.pb.liste("reveals", {
-    filtre: `game_id = ${db.litteral(game["id"])}`,
-    tri: "-created",
-  })) as AnyRow[];
-
   const mySeats = seats
     .filter((s) => s["device_token"] && s["device_token"] === token)
     .map((s) => s["position"] as number);
@@ -596,14 +590,6 @@ async function buildDTO(db: Base, game: AnyRow, token: string): Promise<GameDTO>
     mesEtats: seats
       .filter((s) => s["device_token"] && s["device_token"] === token)
       .map((s) => etatPersonnel(s, seats, (game["host_state"] ?? {}) as HostState, game)),
-    reveals: revealRows
-      .filter((r) => isHost || mySeats.includes(r["to_position"]))
-      .map((r) => ({
-        id: r["id"],
-        toPosition: r["to_position"],
-        targetPosition: r["target_position"],
-        note: vide(r["note"]),
-      })),
     seats: seats.map((s) => {
       const mine = !!s["device_token"] && s["device_token"] === token;
       // Partie terminée : toutes les cartes se retournent, comme on les
@@ -993,21 +979,6 @@ export const setSeatName = createServerFn({ method: "POST" })
     return buildDTO(db, fresh, data.token);
   });
 
-export const hostTakeSeat = createServerFn({ method: "POST" })
-  .inputValidator((d: { code: string; token: string; position: number; take: boolean }) => d)
-  .handler(async ({ data }) => {
-    const db = await base();
-    const game = await requireHost(db, data.code, data.token);
-    const seats = await seatsDe(db, game["id"]);
-    const cible = seats.find((s) => s["position"] === data.position);
-    if (cible) {
-      await db.pb.modifier("seats", cible["id"], {
-        device_token: data.take ? data.token : "",
-      });
-    }
-    return buildDTO(db, game, data.token);
-  });
-
 export const dealCards = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; token: string }) => d)
   .handler(async ({ data }) => {
@@ -1076,20 +1047,6 @@ export const markSeen = createServerFn({ method: "POST" })
       (s) => s["position"] === data.position && s["device_token"] === data.token,
     );
     if (cible) await db.pb.modifier("seats", cible["id"], { seen: true });
-    return buildDTO(db, game, data.token);
-  });
-
-/** Le MJ rouvre une carte déjà consultée, pour un joueur qui a oublié la sienne.
- *  Sans cela, une carte vue reste verrouillée : c'est ce qui empêche un joueur
- *  de repasser en revue toutes les places sur un téléphone partagé. */
-export const resetSeen = createServerFn({ method: "POST" })
-  .inputValidator((d: { code: string; token: string; position: number }) => d)
-  .handler(async ({ data }) => {
-    const db = await base();
-    const game = await requireHost(db, data.code, data.token);
-    const seats = await seatsDe(db, game["id"]);
-    const cible = seats.find((s) => s["position"] === data.position);
-    if (cible) await db.pb.modifier("seats", cible["id"], { seen: false });
     return buildDTO(db, game, data.token);
   });
 
@@ -1837,38 +1794,6 @@ export const resolveNight = createServerFn({ method: "POST" })
 
     const fresh = await loadGame(db, data.code);
     return buildDTO(db, fresh, data.token);
-  });
-
-/** Révélation privée : le MJ envoie le rôle d'un joueur à un autre joueur (Voyante, Renard…). */
-export const pushReveal = createServerFn({ method: "POST" })
-  .inputValidator(
-    (d: { code: string; token: string; toPosition: number; targetPosition: number }) => d,
-  )
-  .handler(async ({ data }) => {
-    const db = await base();
-    const game = await requireHost(db, data.code, data.token);
-    const seats = await seatsDe(db, game["id"]);
-    const target = seats.find((s) => s["position"] === data.targetPosition);
-    const roleName = ROLES_BY_ID[target?.["role_id"] ?? ""]?.name ?? "inconnu";
-    await db.pb.creer("reveals", {
-      game_id: game["id"],
-      to_position: data.toPosition,
-      target_position: data.targetPosition,
-      note: roleName,
-    });
-    return buildDTO(db, game, data.token);
-  });
-
-export const clearReveals = createServerFn({ method: "POST" })
-  .inputValidator((d: { code: string; token: string }) => d)
-  .handler(async ({ data }) => {
-    const db = await base();
-    const game = await requireHost(db, data.code, data.token);
-    const revealRows = await db.pb.liste("reveals", {
-      filtre: `game_id = ${db.litteral(game["id"])}`,
-    });
-    for (const r of revealRows) await db.pb.supprimer("reveals", r["id"]);
-    return buildDTO(db, game, data.token);
   });
 
 /**
