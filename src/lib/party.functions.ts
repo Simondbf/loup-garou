@@ -1558,6 +1558,161 @@ export const servanteEchange = createServerFn({ method: "POST" })
  * qu'elle est l'Ancien. Le poison, lui, ignore la protection. Les Amoureux
  * suivent en dernier, une fois les morts établies.
  */
+/** Ce que la nuit donnera au lever du jour. */
+export interface DenouementNuit {
+  /** Morts dans leur ordre d'application, cascade des Amoureux comprise. */
+  morts: { position: number; cause: string }[];
+  /** Survies, avec leur raison — réservées au Maître du Jeu. */
+  sauves: { position: number; raison: string }[];
+  /** Victime infectée par l'Infect Père des Loups. */
+  infecte?: number;
+  /** L'Enfant Sauvage a perdu son modèle et rejoint la meute. */
+  enfantTransforme: boolean;
+  /** Compteurs du Maître du Jeu à mettre à jour. */
+  patchEtat: HostState;
+}
+
+/** La place, réduite à ce dont le dénouement a besoin. */
+export interface PlaceNuit {
+  position: number;
+  alive: boolean;
+  roleId: string | null;
+  loverGroup: number | null;
+}
+
+/**
+ * Qui meurt cette nuit, et qui s'en sort.
+ *
+ * Fonction pure, sans base de données : c'est elle qui décide, et le serveur
+ * ne fait qu'appliquer ce qu'elle renvoie. L'écran du Maître du Jeu s'en sert
+ * pour lui montrer le bilan avant qu'il ne lève le jour — même calcul, même
+ * résultat, aucune chance que l'aperçu mente sur ce qui va se passer.
+ */
+export function denouementNuit(
+  places: PlaceNuit[],
+  nuit: NuitEnCours,
+  etat: HostState,
+): DenouementNuit {
+  const parPosition = (p?: number) =>
+    p === undefined ? undefined : places.find((s) => s.position === p);
+
+  const directes: { position: number; cause: string }[] = [];
+  const sauves: { position: number; raison: string }[] = [];
+  const patchEtat: HostState = {};
+  let infecte: number | undefined;
+
+  /**
+   * Une attaque de Loups, avec toutes ses parades, dans l'ordre du livret.
+   *
+   * L'Ancien passe en premier : à sa première morsure il résiste, et n'est
+   * pas non plus affecté par l'Infect Père des Loups. L'infection vient
+   * ensuite, car le Salvateur ne protège pas de l'infection. Et sa
+   * protection ne donne aucun résultat sur la Petite Fille.
+   */
+  function attaqueLoups(cible: number | undefined, peutEtreInfecte: boolean) {
+    if (cible === undefined) return;
+    const siege = parPosition(cible);
+    if (!siege || !siege.alive) return;
+
+    if (siege.roleId === "ancien" && !etat.ancienDejaAttaque) {
+      patchEtat.ancienDejaAttaque = true;
+      sauves.push({
+        position: cible,
+        raison: "l'Ancien encaisse sa première morsure (et résiste à l'infection)",
+      });
+      return;
+    }
+    if (peutEtreInfecte && nuit.infection && !etat.infectionUtilisee) {
+      infecte = cible;
+      patchEtat.infectionUtilisee = true;
+      sauves.push({ position: cible, raison: "infecté : il rejoint les Loups-Garous" });
+      return;
+    }
+    if (nuit.protection === cible && siege.roleId !== "petite-fille") {
+      sauves.push({ position: cible, raison: "protégé par le Salvateur" });
+      return;
+    }
+    if (nuit.protection === cible && siege.roleId === "petite-fille") {
+      sauves.push({
+        position: cible,
+        raison: "protection sans effet : le Salvateur ne protège pas la Petite Fille",
+      });
+    }
+    if (nuit.soin === cible) {
+      sauves.push({ position: cible, raison: "soigné par la Sorcière" });
+      return;
+    }
+    directes.push({ position: cible, cause: "loups" });
+  }
+
+  attaqueLoups(nuit.victimeLoups, true);
+  attaqueLoups(nuit.secondeVictime, false);
+
+  // Chevalier à l'Épée Rouillée : le Loup contaminé la veille meurt de la
+  // gangrène au cours de cette nuit. Ni protection ni potion n'y peuvent
+  // quoi que ce soit — c'est une maladie, pas une attaque.
+  if (etat.gangrene) {
+    const malade = parPosition(etat.gangrene);
+    if (malade && malade.alive) directes.push({ position: etat.gangrene, cause: "gangrene" });
+    patchEtat.gangrene = 0;
+  }
+
+  // Le Loup-Garou Blanc frappe un Loup : ni protection ni potion ne jouent ici.
+  if (nuit.loupBlanc !== undefined) {
+    const siege = parPosition(nuit.loupBlanc);
+    if (siege && siege.alive) directes.push({ position: nuit.loupBlanc, cause: "loup blanc" });
+  }
+
+  // Le poison ignore la protection du Salvateur.
+  if (nuit.poison !== undefined) {
+    const siege = parPosition(nuit.poison);
+    if (siege && siege.alive) directes.push({ position: nuit.poison, cause: "poison" });
+  }
+
+  for (const autre of nuit.autres ?? []) {
+    const siege = parPosition(autre.position);
+    if (siege && siege.alive) directes.push(autre);
+  }
+
+  const dejaMort = new Set<number>();
+  const morts: { position: number; cause: string }[] = [];
+  function tuer(position: number, cause: string) {
+    if (dejaMort.has(position)) return;
+    const siege = parPosition(position);
+    if (!siege || !siege.alive) return;
+    dejaMort.add(position);
+    morts.push({ position, cause });
+  }
+
+  for (const m of directes) tuer(m.position, m.cause);
+
+  // Cascade des Amoureux : un Amoureux mort entraîne l'autre.
+  for (const m of [...morts]) {
+    const siege = parPosition(m.position);
+    const groupe = siege?.loverGroup;
+    if (!groupe) continue;
+    for (const autre of places) {
+      if (autre.loverGroup === groupe && autre.position !== m.position) {
+        tuer(autre.position, "chagrin");
+      }
+    }
+  }
+
+  // Enfant Sauvage : si son modèle est mort cette nuit, il devient Loup-Garou.
+  let enfantTransforme = false;
+  if (etat.modele !== undefined && dejaMort.has(etat.modele)) {
+    const enfant = places.find((s) => s.roleId === "enfant-sauvage" && s.alive);
+    if (enfant && !dejaMort.has(enfant.position)) {
+      enfantTransforme = true;
+      patchEtat.devenusLoups = [...(etat.devenusLoups ?? []), enfant.position];
+    }
+  }
+
+  const resultat: DenouementNuit = { morts, sauves, enfantTransforme, patchEtat };
+  if (infecte !== undefined) resultat.infecte = infecte;
+  return resultat;
+}
+
 export const resolveNight = createServerFn({ method: "POST" })
   .inputValidator((d: { code: string; token: string }) => d)
   .handler(async ({ data }) => {
@@ -1570,126 +1725,31 @@ export const resolveNight = createServerFn({ method: "POST" })
     const parPosition = (p?: number) =>
       p === undefined ? undefined : seats.find((s) => s["position"] === p);
 
-    const morts: { position: number; cause: string }[] = [];
-    const sauves: { position: number; raison: string }[] = [];
-    const patchEtat: HostState = {};
-    let infecte: number | undefined;
+    // Tout le raisonnement est dans `denouementNuit`, qui ne touche à rien :
+    // ici on ne fait qu'appliquer ce qu'elle a décidé.
+    const { morts, sauves, infecte, enfantTransforme, patchEtat } = denouementNuit(
+      seats.map((s) => ({
+        position: s["position"] as number,
+        alive: !!s["alive"],
+        roleId: (s["role_id"] as string) || null,
+        loverGroup: (s["lover_group"] as number) || null,
+      })),
+      nuit,
+      etat,
+    );
 
-    /**
-     * Une attaque de Loups, avec toutes ses parades, dans l'ordre du livret.
-     *
-     * L'Ancien passe en premier : à sa première morsure il résiste, et n'est
-     * pas non plus affecté par l'Infect Père des Loups. L'infection vient
-     * ensuite, car le Salvateur ne protège pas de l'infection. Et sa
-     * protection ne donne aucun résultat sur la Petite Fille.
-     */
-    function attaqueLoups(cible: number | undefined, peutEtreInfecte: boolean) {
-      if (cible === undefined) return;
-      const siege = parPosition(cible);
-      if (!siege || !siege["alive"]) return;
-
-      if (siege["role_id"] === "ancien" && !etat.ancienDejaAttaque) {
-        patchEtat.ancienDejaAttaque = true;
-        sauves.push({
-          position: cible,
-          raison: "l'Ancien encaisse sa première morsure (et résiste à l'infection)",
-        });
-        return;
-      }
-      if (peutEtreInfecte && nuit.infection && !etat.infectionUtilisee) {
-        infecte = cible;
-        patchEtat.infectionUtilisee = true;
-        sauves.push({ position: cible, raison: "infecté : il rejoint les Loups-Garous" });
-        return;
-      }
-      if (nuit.protection === cible && siege["role_id"] !== "petite-fille") {
-        sauves.push({ position: cible, raison: "protégé par le Salvateur" });
-        return;
-      }
-      if (nuit.protection === cible && siege["role_id"] === "petite-fille") {
-        sauves.push({
-          position: cible,
-          raison: "protection sans effet : le Salvateur ne protège pas la Petite Fille",
-        });
-      }
-      if (nuit.soin === cible) {
-        sauves.push({ position: cible, raison: "soigné par la Sorcière" });
-        return;
-      }
-      morts.push({ position: cible, cause: "loups" });
-    }
-
-    attaqueLoups(nuit.victimeLoups, true);
-    attaqueLoups(nuit.secondeVictime, false);
-
-    // Chevalier à l'Épée Rouillée : le Loup contaminé la veille meurt de la
-    // gangrène au cours de cette nuit. Ni protection ni potion n'y peuvent
-    // quoi que ce soit — c'est une maladie, pas une attaque.
-    if (etat.gangrene) {
-      const malade = parPosition(etat.gangrene);
-      if (malade && malade["alive"]) morts.push({ position: etat.gangrene, cause: "gangrene" });
-      patchEtat.gangrene = 0;
-    }
-
-    // Le Loup-Garou Blanc frappe un Loup : ni protection ni potion ne jouent ici.
-    if (nuit.loupBlanc !== undefined) {
-      const siege = parPosition(nuit.loupBlanc);
-      if (siege && siege["alive"]) morts.push({ position: nuit.loupBlanc, cause: "loup blanc" });
-    }
-
-    // Le poison ignore la protection du Salvateur.
-    if (nuit.poison !== undefined) {
-      const siege = parPosition(nuit.poison);
-      if (siege && siege["alive"]) morts.push({ position: nuit.poison, cause: "poison" });
-    }
-
-    for (const autre of nuit.autres ?? []) {
-      const siege = parPosition(autre.position);
-      if (siege && siege["alive"]) morts.push(autre);
-    }
-
-    // Application : d'abord les morts directes, puis la cascade des Amoureux.
     let ordre = Math.max(0, ...seats.map((s) => (s["death_order"] as number) ?? 0));
-    const dejaMort = new Set<number>();
-
-    async function tuer(position: number, cause: string) {
-      if (dejaMort.has(position)) return;
-      const siege = parPosition(position);
-      if (!siege || !siege["alive"]) return;
-      dejaMort.add(position);
+    for (const m of morts) {
+      const siege = parPosition(m.position);
+      if (!siege) continue;
       ordre += 1;
       await db.pb.modifier("seats", siege["id"], {
         alive: false,
-        death_cause: cause,
-        death_phase: cause === "chasseur" ? "chasseur" : "nuit",
+        death_cause: m.cause,
+        death_phase: "nuit",
         death_order: ordre,
       });
       siege["alive"] = false;
-    }
-
-    for (const m of morts) await tuer(m.position, m.cause);
-
-    // Cascade des Amoureux : un Amoureux mort entraîne l'autre.
-    for (const m of [...morts]) {
-      const siege = parPosition(m.position);
-      const groupe = siege?.["lover_group"];
-      if (!groupe) continue;
-      for (const autre of seats) {
-        if (autre["lover_group"] === groupe && autre["position"] !== m.position) {
-          await tuer(autre["position"] as number, "chagrin");
-          morts.push({ position: autre["position"] as number, cause: "chagrin" });
-        }
-      }
-    }
-
-    // Enfant Sauvage : si son modèle est mort cette nuit, il devient Loup-Garou.
-    let enfantTransforme = false;
-    if (etat.modele !== undefined && dejaMort.has(etat.modele)) {
-      const enfant = seats.find((s) => s["role_id"] === "enfant-sauvage" && s["alive"]);
-      if (enfant) {
-        enfantTransforme = true;
-        patchEtat.devenusLoups = [...(etat.devenusLoups ?? []), enfant["position"] as number];
-      }
     }
 
     if (infecte !== undefined) {
@@ -1737,12 +1797,9 @@ export const resolveNight = createServerFn({ method: "POST" })
     // Le bilan de la nuit ouvre le fil de la journée. Il est écrit en base
     // plutôt que renvoyé au seul écran du moment : le Maître du Jeu peut
     // recharger sa page en plein milieu des annonces sans rien perdre.
-    const mortsUniques = morts.filter(
-      (m, i, t) => t.findIndex((x) => x.position === m.position) === i,
-    );
     const journalDuJour: JourEnCours = {
       faites: [],
-      mortsNuit: mortsUniques,
+      mortsNuit: morts,
       sauves,
       enfantTransforme,
       ordreDepart: ordre,

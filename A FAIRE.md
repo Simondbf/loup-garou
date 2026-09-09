@@ -119,6 +119,19 @@ publiques. Le pouvoir vaut encore la journée qui suit
 tirer en mourant ce jour-là, alors que sa carte retournée reste le Comédien.
 La carte n'est défaussée qu'à la nuit tombée.
 
+## Le dénouement de la nuit
+`denouementNuit()` est une fonction pure : elle reçoit les places, le journal
+de la nuit et l'état du MJ, et rend qui meurt, qui s'en sort et pourquoi. Le
+serveur ne fait qu'appliquer ce qu'elle décide, et l'écran du MJ l'appelle
+avec les mêmes données pour afficher le journal des morts avant le lever du
+jour. Un seul calcul, donc aucun risque que l'aperçu mente sur ce qui va se
+passer — c'est la raison d'être de cette extraction.
+
+Le fil de la nuit se termine donc par cet écran : les morts et leur cause, les
+survies réservées au MJ, puis le bouton qui lève le jour. Un récapitulatif
+plus léger suit chaque étape en cours de nuit, pour relire ses décisions sans
+attendre la fin.
+
 ## Corriger une erreur du Maître du Jeu
 Rien de ce qui se décide la nuit n'est appliqué avant le lever du jour : la
 victime des Loups, les potions, l'infection, la protection ne sont que des

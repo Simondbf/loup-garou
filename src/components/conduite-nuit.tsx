@@ -3,7 +3,7 @@ import { Button, CampBadge, Modal } from "@/components/ui-kit";
 import { ROLES_BY_ID, type Role } from "@/data/roles";
 import { CLOTURE, OUVERTURE } from "@/data/nuit";
 import { useConseils } from "@/lib/conseils";
-import type { GameDTO, PatchNuit, SeatDTO } from "@/lib/party.functions";
+import { denouementNuit, type GameDTO, type PatchNuit, type SeatDTO } from "@/lib/party.functions";
 import { cn } from "@/lib/utils";
 
 /**
@@ -27,6 +27,8 @@ interface Etape {
   id: string;
   role: Role;
   appel: string;
+  /** Titre de l'écran, quand ce n'est pas un rôle qu'on appelle. */
+  titre?: string;
   consigne: string;
   aide: string;
   pret: () => boolean;
@@ -109,13 +111,15 @@ export function ConduiteNuit({
       <div className="surface p-5">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="font-display text-lg font-black">{etape.role.name}</h2>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {game.seats
-                .filter((s) => s.roleId === etape.role.id)
-                .map((s) => `${s.name || `Place ${s.position}`}${s.alive ? "" : " †"}`)
-                .join(", ") || "—"}
-            </p>
+            <h2 className="font-display text-lg font-black">{etape.titre ?? etape.role.name}</h2>
+            {!etape.titre && (
+              <p className="truncate text-[11px] text-muted-foreground">
+                {game.seats
+                  .filter((s) => s.roleId === etape.role.id)
+                  .map((s) => `${s.name || `Place ${s.position}`}${s.alive ? "" : " †"}`)
+                  .join(", ") || "—"}
+              </p>
+            )}
           </div>
         </div>
 
@@ -171,7 +175,7 @@ export function ConduiteNuit({
 
       <BoutonAide role={etape.role} />
 
-      <RecapNuit game={game} />
+      {!dernier && <RecapNuit game={game} />}
     </div>
   );
 }
@@ -1095,5 +1099,90 @@ function construire(
     });
   }
 
+  /*
+   * Le journal des morts, dernier écran avant le lever du jour.
+   *
+   * Rien n'a encore été appliqué : c'est le moment où le Maître du Jeu relit
+   * ce que la nuit donnera, repère la ligne fausse et revient sur l'étape
+   * concernée. Le calcul est celui du serveur, mot pour mot — la même
+   * fonction, appelée avec les mêmes données.
+   */
+  const denouement = denouementNuit(
+    game.seats.map((s) => ({
+      position: s.position,
+      alive: s.alive,
+      roleId: s.roleId,
+      loverGroup: s.loverGroup,
+    })),
+    nuit,
+    etat,
+  );
+
+  e.push({
+    id: "bilan",
+    role: R("capitaine"),
+    titre: "Le journal de la nuit",
+    appel: "Avant de lever le jour",
+    consigne:
+      "Relisez ce que la nuit va donner. Tant que vous n'avez pas levé le jour, rien n'est appliqué : une erreur se corrige en revenant sur l'étape concernée.",
+    aide: "Les survies ne sont jamais annoncées au village : personne ne doit savoir qui la Sorcière a sauvé, ni qui le Salvateur protégeait.",
+    pret: ok,
+    rendu: () => (
+      <>
+        {denouement.morts.length === 0 ? (
+          <p className="rounded-xl border border-border bg-secondary p-3 text-center text-sm">
+            Personne ne meurt cette nuit.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {denouement.morts.map((m) => (
+              <li
+                key={m.position}
+                className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm"
+              >
+                <span className="font-semibold">{nom(m.position)}</span>
+                <span className="text-muted-foreground"> — {CAUSES[m.cause] ?? m.cause}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {(denouement.sauves.length > 0 ||
+          denouement.infecte !== undefined ||
+          denouement.enfantTransforme) && (
+          <>
+            <p className="mt-4 text-[11px] tracking-widest text-destructive uppercase">
+              Pour vous seul — ne dites rien
+            </p>
+            <ul className="mt-1 flex flex-col gap-1 text-[11px] text-muted-foreground">
+              {denouement.sauves.map((s) => (
+                <li key={`${s.position}-${s.raison}`}>
+                  {nom(s.position)} : {s.raison}.
+                </li>
+              ))}
+              {denouement.infecte !== undefined && (
+                <li>
+                  Prévenez discrètement {nom(denouement.infecte)} qu'il rejoint les Loups-Garous.
+                </li>
+              )}
+              {denouement.enfantTransforme && (
+                <li>Le modèle de l'Enfant Sauvage est tombé : il devient Loup-Garou.</li>
+              )}
+            </ul>
+          </>
+        )}
+      </>
+    ),
+  });
+
   return e;
 }
+
+/** Comment chacun est mort, en clair. */
+const CAUSES: Record<string, string> = {
+  loups: "dévoré par les Loups-Garous",
+  poison: "empoisonné par la Sorcière",
+  chagrin: "mort de chagrin",
+  "loup blanc": "égorgé par le Loup-Garou Blanc",
+  gangrene: "emporté par la gangrène",
+};
