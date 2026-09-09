@@ -170,6 +170,72 @@ export function ConduiteNuit({
       )}
 
       <BoutonAide role={etape.role} />
+
+      <RecapNuit game={game} />
+    </div>
+  );
+}
+
+/**
+ * Ce que la nuit a décidé jusqu'ici.
+ *
+ * Rien n'est appliqué avant le lever du jour : ni mort, ni potion consommée,
+ * ni infection. C'est ce qui permet de tout reprendre d'un toucher tant que
+ * la nuit dure — mais encore faut-il voir ce qu'on a noté. Ce récapitulatif
+ * tient lieu de table : le Maître du Jeu y relit ses décisions, repère la
+ * ligne fausse, et revient sur l'étape concernée pour la corriger.
+ */
+function RecapNuit({ game }: { game: GameDTO }) {
+  const nuit = game.nuit ?? {};
+  const nom = (p: number) => game.seats.find((s) => s.position === p)?.name || `Place ${p}`;
+
+  const lignes: string[] = [];
+  if (nuit.protection !== undefined)
+    lignes.push(`Protégé par le Salvateur : ${nom(nuit.protection)}`);
+  if (nuit.victimeLoups !== undefined) {
+    let sort = `Victime des Loups : ${nom(nuit.victimeLoups)}`;
+    if (nuit.infection) sort += " — infectée : elle survit et rejoint la meute";
+    else if (nuit.soin !== undefined) sort += " — sauvée par la potion de vie";
+    else if (nuit.protection === nuit.victimeLoups) sort += " — protégée par le Salvateur";
+    lignes.push(sort);
+  }
+  if (nuit.secondeVictime !== undefined) {
+    lignes.push(`Seconde victime du Grand Méchant Loup : ${nom(nuit.secondeVictime)}`);
+  }
+  if (nuit.loupBlanc !== undefined)
+    lignes.push(`Égorgé par le Loup-Garou Blanc : ${nom(nuit.loupBlanc)}`);
+  if (nuit.poison !== undefined) lignes.push(`Empoisonné par la Sorcière : ${nom(nuit.poison)}`);
+  if (nuit.voyante !== undefined) lignes.push(`Carte montrée à la Voyante : ${nom(nuit.voyante)}`);
+  if (nuit.renard !== undefined)
+    lignes.push(`Trio flairé par le Renard, autour de ${nom(nuit.renard)}`);
+  if (nuit.charmes && nuit.charmes.length > 0) {
+    lignes.push(`Envoûtés cette nuit : ${nuit.charmes.map(nom).join(", ")}`);
+  }
+  if (nuit.comedien)
+    lignes.push(`Carte prise par le Comédien : ${ROLES_BY_ID[nuit.comedien]?.name}`);
+  if (nuit.voleurEchange !== undefined)
+    lignes.push(`Le Voleur a échangé avec ${nom(nuit.voleurEchange)}`);
+  if (nuit.voleurCarte)
+    lignes.push(`Le Voleur a pris ${ROLES_BY_ID[nuit.voleurCarte]?.name} au centre`);
+  if (nuit.modele !== undefined) lignes.push(`Modèle de l'Enfant Sauvage : ${nom(nuit.modele)}`);
+  for (const autre of nuit.autres ?? []) lignes.push(`${nom(autre.position)} : ${autre.cause}`);
+
+  if (lignes.length === 0) return null;
+
+  return (
+    <div className="surface p-4">
+      <h2 className="text-[11px] tracking-widest text-muted-foreground uppercase">
+        Cette nuit, jusqu'ici
+      </h2>
+      <ul className="mt-2 flex flex-col gap-1 text-[11px] text-muted-foreground">
+        {lignes.map((l) => (
+          <li key={l}>{l}</li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        Rien n'est encore appliqué : tout prend effet au lever du jour. Une ligne fausse se corrige
+        en revenant sur son étape.
+      </p>
     </div>
   );
 }
