@@ -1,0 +1,12 @@
+node_modules
+.output
+.nitro
+.tanstack
+.vinxi
+pb_data
+.git
+.env
+.env.*
+!.env.example
+*.log
+deploiement
